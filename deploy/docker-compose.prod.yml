@@ -1,0 +1,131 @@
+# Produção (ou homologação). Configuração independente da de desenvolvimento.
+# Uso (da raiz do repositório):
+#   mvn -f backend/pom.xml package -DskipTests && npm --prefix web run build
+#   cp deploy/.env.prod.example deploy/.env.prod   # preencha TODOS os segredos
+#   docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d --build
+name: portaria-prod
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portaria
+      POSTGRES_USER: portaria
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init-keycloak.sql:/docker-entrypoint-initdb.d/10-keycloak.sql:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portaria -d portaria"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: portaria
+      KC_DB_PASSWORD: ${DB_PASSWORD}
+      KC_HOSTNAME: https://auth.${DOMAIN:?defina DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?defina KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./keycloak/portaria-realm.json:/opt/keycloak/data/import/portaria-realm.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal, edge]
+
+  app:
+    build:
+      context: ../backend
+    image: portaria-platform:local
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/portaria
+      DB_USER: portaria
+      DB_PASSWORD: ${DB_PASSWORD}
+      OIDC_ISSUER_URI: https://auth.${DOMAIN}${PUBLIC_PORT_SUFFIX:-}/realms/portaria
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/portaria/protocol/openid-connect/certs
+      CREDENTIAL_HMAC_SECRET: ${CREDENTIAL_HMAC_SECRET:?defina CREDENTIAL_HMAC_SECRET}
+      AGENT_POLICY_MASTER_SECRET: ${AGENT_POLICY_MASTER_SECRET:?defina AGENT_POLICY_MASTER_SECRET}
+      DEVICE_HTTP_ALLOWED_HOSTS: ${DEVICE_HTTP_ALLOWED_HOSTS:-}
+      BOOTSTRAP_PLATFORM_ADMIN_SUBJECT: ${BOOTSTRAP_PLATFORM_ADMIN_SUBJECT:-}
+      BOOTSTRAP_PLATFORM_ADMIN_EMAIL: ${BOOTSTRAP_PLATFORM_ADMIN_EMAIL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks: [internal, edge]
+    healthcheck:
+      # JRE sem curl: requisição HTTP mínima pela porta de gestão (interna)
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8082 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.invalid}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../web/panel/dist:/srv/panel:ro
+      - ../web/resident/dist:/srv/resident:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app, keycloak]
+    networks: [edge]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["observability"]
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [internal]
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: ["observability"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?defina GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [internal]
+
+networks:
+  internal:
+    internal: true
+  edge:
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -5,6 +5,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,11 @@ public class BusinessMetrics {
         gauge(registry, "portaria.commands.pending", "Comandos físicos aguardando confirmação", commandsPending);
         gauge(registry, "portaria.commands.unknown.1h", "Comandos físicos sem confirmação na última hora", commandsUnknown1h);
         gauge(registry, "portaria.commands.failed.1h", "Comandos físicos que falharam na última hora", commandsFailed1h);
+    }
+
+    /** Primeira leitura só depois que a aplicação está pronta (as migrações já rodaram). */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onReady() {
         refresh();
     }
 
@@ -67,7 +74,7 @@ public class BusinessMetrics {
                          AND requested_at > now() - interval '1 hour') AS unknown,
                       (SELECT count(*) FROM access_command WHERE state = 'FAILED'
                          AND requested_at > now() - interval '1 hour') AS failed
-                    """).query(rs -> {
+                    """).query((rs, row) -> {
                 queuedCalls.set(rs.getLong("queued"));
                 assignedCalls.set(rs.getLong("assigned"));
                 openIncidents.set(rs.getLong("incidents"));
@@ -78,8 +85,8 @@ public class BusinessMetrics {
                 commandsPending.set(rs.getLong("pending"));
                 commandsUnknown1h.set(rs.getLong("unknown"));
                 commandsFailed1h.set(rs.getLong("failed"));
-                return null;
-            });
+                return row;
+            }).single();
         } catch (RuntimeException e) {
             log.warn("Could not refresh business metrics: {}", e.getMessage());
         }

@@ -10,3 +10,6 @@ target/
 node_modules/
 dist/
 backups/
+.env.*
+!.env.example
+!.env.prod.example

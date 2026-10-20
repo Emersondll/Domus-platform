@@ -1,0 +1,72 @@
+# Proxy reverso com TLS automático (Let's Encrypt para domínios públicos; CA interna do Caddy para *.localhost).
+# Publica SOMENTE: api.<DOMAIN> (agentes/dispositivos), panel.<DOMAIN>, app.<DOMAIN> e auth.<DOMAIN>.
+# A porta de gestão da API (8082: health/Prometheus) nunca é exposta aqui.
+{
+	email {$ACME_EMAIL:admin@example.invalid}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+(api_proxy) {
+	# Caminhos que não podem sair para a internet, mesmo que existissem na aplicação
+	@blocked path /actuator /actuator/* /dev /dev/* /swagger-ui /swagger-ui/* /swagger-ui.html /v3/api-docs /v3/api-docs/*
+	respond @blocked 404
+	request_body {
+		max_size 1MB
+	}
+	reverse_proxy app:8081 {
+		# Sobrescreve (não acrescenta) o IP do cliente: o limitador de taxa confia neste cabeçalho
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+api.{$DOMAIN} {
+	import security_headers
+	encode zstd gzip
+	import api_proxy
+}
+
+panel.{$DOMAIN} {
+	import security_headers
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}; frame-ancestors 'none'; base-uri 'none'"
+	encode zstd gzip
+	handle /api/* {
+		import api_proxy
+	}
+	handle {
+		root * /srv/panel
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+app.{$DOMAIN} {
+	import security_headers
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}; frame-ancestors 'none'; base-uri 'none'"
+	encode zstd gzip
+	handle /api/* {
+		import api_proxy
+	}
+	handle {
+		root * /srv/resident
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+auth.{$DOMAIN} {
+	import security_headers
+	# O console de administração do Keycloak não é publicado
+	@admin path /admin/* /realms/master/*
+	respond @admin 404
+	reverse_proxy keycloak:8080
+}

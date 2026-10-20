@@ -1,0 +1,14 @@
+# Keycloak local (modo dev, H2 embutido) para validar a integração OIDC. NÃO é a configuração de produção
+# (ver deploy/docker-compose.prod.yml). Uso: docker compose -f docker-compose.keycloak-dev.yml up -d
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_dev_only}
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./deploy/keycloak/portaria-realm.json:/opt/keycloak/data/import/portaria-realm.json:ro
+    ports:
+      - "127.0.0.1:8180:8080"

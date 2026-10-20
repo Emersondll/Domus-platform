@@ -11,6 +11,8 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
     List<Membership> findByUserIdAndActiveTrue(UUID userId);
 
+    boolean existsByRoleAndActiveTrue(Role role);
+
     List<Membership> findByResidentId(UUID residentId);
 
     List<Membership> findByCondominiumIdAndActiveTrue(UUID condominiumId);

@@ -95,3 +95,7 @@ portaria:
     agent-events-days: 90
     device-events-days: 90
     resolved-conflicts-days: 365
+  bootstrap:
+    # Somente para a instalação inicial: sub (e e-mail) da conta criada no Keycloak que será o primeiro administrador.
+    platform-admin-subject: ${BOOTSTRAP_PLATFORM_ADMIN_SUBJECT:}
+    platform-admin-email: ${BOOTSTRAP_PLATFORM_ADMIN_EMAIL:}

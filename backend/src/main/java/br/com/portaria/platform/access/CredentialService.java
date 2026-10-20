@@ -1,6 +1,7 @@
 package br.com.portaria.platform.access;
 
 import br.com.portaria.platform.notifications.NotificationService;
+import br.com.portaria.platform.shared.PolicyVersion;
 import br.com.portaria.platform.residents.ResidentRepository;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
@@ -12,6 +13,7 @@ import br.com.portaria.platform.shared.tenant.ResidentContext;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.MDC;
@@ -41,12 +43,13 @@ public class CredentialService {
     private final AuditService audit;
     private final Clock clock;
     private final NotificationService notifications;
+    private final PolicyVersion policyVersion;
 
     public CredentialService(AccessCredentialRepository credentials, VisitorRepository visitors,
                              AccessAttemptRepository attempts, ResidentRepository residents,
                              CredentialTokenCodec codec,
                              br.com.portaria.platform.shared.tenant.AccessService access, AuditService audit,
-                             Clock clock, NotificationService notifications) {
+                             Clock clock, NotificationService notifications, PolicyVersion policyVersion) {
         this.credentials = credentials;
         this.visitors = visitors;
         this.attempts = attempts;
@@ -56,10 +59,20 @@ public class CredentialService {
         this.audit = audit;
         this.clock = clock;
         this.notifications = notifications;
+        this.policyVersion = policyVersion;
     }
 
     /** Convite criado, com o token em claro (devolvido uma única vez, nunca armazenado). */
     public record Issued(AccessCredential credential, Visitor visitor, String token) {
+    }
+
+    /** Credencial elegível para validação offline pelo agente (assinatura já calculada na central). */
+    public record OfflineCredential(UUID id, String sig, Instant validFrom, Instant validUntil, int maxUses,
+                                    int usesSoFar) {
+    }
+
+    /** Resultado da aplicação de um uso feito offline; {@code conflictKind} nulo = sem divergência. */
+    public record OfflineOutcome(String conflictKind, String detail) {
     }
 
     /** Resultado da validação de um token na portaria. */
@@ -82,6 +95,7 @@ public class CredentialService {
                 visitor.getId(), validFrom, validUntil, maxUses, me.actor().userId()));
         audit.record(me.actor().userId(), null, condominiumId, "invitation.create", "credential",
                 credential.getId().toString(), AuditOutcome.SUCCESS);
+        policyVersion.bump(condominiumId);
         return new Issued(credential, visitor, codec.encode(credential.getId(), condominiumId));
     }
 
@@ -101,6 +115,7 @@ public class CredentialService {
         credential.revoke(Instant.now(clock));
         audit.record(me.actor().userId(), null, condominiumId, "invitation.revoke", "credential",
                 credentialId.toString(), AuditOutcome.SUCCESS);
+        policyVersion.bump(condominiumId);
         return credential;
     }
 
@@ -141,6 +156,61 @@ public class CredentialService {
                 .filter(a -> a.getCondominiumId().equals(condominiumId) && "GRANTED".equals(a.getResult())
                         && a.getOccurredAt().isAfter(Instant.now(clock).minus(Duration.ofMinutes(5))))
                 .isPresent();
+    }
+
+    /** Credenciais que o agente local pode aceitar offline, com a assinatura que ele compara (sem o segredo). */
+    @Transactional(readOnly = true)
+    public List<OfflineCredential> offlineCredentials(UUID condominiumId, int limit) {
+        Instant now = Instant.now(clock);
+        return credentials.findOfflineEligible(condominiumId, now, Pageable.ofSize(limit)).stream()
+                .map(c -> new OfflineCredential(c.getId(), codec.signatureOf(c.getId(), condominiumId),
+                        c.getValidFrom(), c.getValidUntil(), c.getMaxUses(), c.getUseCount()))
+                .toList();
+    }
+
+    /**
+     * Reconcilia uma entrada concedida offline pelo agente. A entrada já ocorreu: ela é sempre registrada, e as
+     * divergências (revogada antes do uso, vencida, quota estourada, desconhecida) geram um conflito para auditoria.
+     */
+    @Transactional
+    public OfflineOutcome applyOfflineEntry(UUID condominiumId, UUID credentialId, String entrance,
+                                            Instant occurredAt) {
+        Optional<AccessCredential> found = credentials.findByIdAndCondominiumId(credentialId, condominiumId);
+        if (found.isEmpty()) {
+            attempts.save(new AccessAttempt(condominiumId, null, entrance, "GRANTED", "OFFLINE_UNKNOWN_CREDENTIAL",
+                    null, MDC.get(CorrelationIdFilter.MDC_KEY), occurredAt));
+            return new OfflineOutcome("UNKNOWN_CREDENTIAL", "Credential " + credentialId + " not found");
+        }
+        AccessCredential c = found.get();
+        String conflict = null;
+        String detail = null;
+        if (c.getRevokedAt() != null && occurredAt.isAfter(c.getRevokedAt())) {
+            conflict = "REVOKED_BEFORE_USE";
+            detail = "Credential revoked at " + c.getRevokedAt() + " before the offline entry at " + occurredAt;
+        } else if (!occurredAt.isBefore(c.getValidUntil()) || occurredAt.isBefore(c.getValidFrom())) {
+            conflict = "EXPIRED_AT_USE";
+            detail = "Entry at " + occurredAt + " outside validity window";
+        }
+        boolean applied = credentials.applyOfflineUse(credentialId, condominiumId) == 1;
+        if (!applied && conflict == null) {
+            conflict = "QUOTA_EXCEEDED";
+            detail = "Credential quota already exhausted at the central";
+        }
+        attempts.save(new AccessAttempt(condominiumId, credentialId, entrance, "GRANTED",
+                conflict == null ? "OFFLINE" : "OFFLINE_CONFLICT", null, MDC.get(CorrelationIdFilter.MDC_KEY),
+                occurredAt));
+        notifications.notifyUnit(condominiumId, c.getUnitId(), NotificationService.VISITOR_ARRIVED,
+                "Visitante na portaria", "Entrada de seu convidado registrada pela portaria local.");
+        return new OfflineOutcome(conflict, detail);
+    }
+
+    /** Registra uma negação feita offline pelo agente. */
+    @Transactional
+    public void recordOfflineDenial(UUID condominiumId, UUID credentialId, String entrance, String reason,
+                                    Instant occurredAt) {
+        attempts.save(new AccessAttempt(condominiumId, credentialId, entrance, "DENIED",
+                reason == null ? "OFFLINE_DENIED" : "OFFLINE_" + reason, null,
+                MDC.get(CorrelationIdFilter.MDC_KEY), occurredAt));
     }
 
     @Transactional(readOnly = true)

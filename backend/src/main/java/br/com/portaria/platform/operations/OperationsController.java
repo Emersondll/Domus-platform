@@ -137,7 +137,7 @@ public class OperationsController {
      * @param assignedCalls    atendimentos em andamento
      * @param openIncidents    incidentes abertos
      * @param deviceHealth     resumo da saúde dos dispositivos (NO_DEVICES, ONLINE n/n, DEGRADED x/n, UNKNOWN n/n)
-     * @param connectivity     conectividade/contingência: NOT_IMPLEMENTED até a Fase 7
+     * @param connectivity     conectividade do agente local: NO_AGENT, ONLINE ou OFFLINE (com eventos pendentes)
      */
     public record OverviewResponse(UUID condominiumId, String name, long queuedCalls, long assignedCalls,
                                    long openIncidents, String deviceHealth, String connectivity) {
@@ -175,7 +175,7 @@ public class OperationsController {
     public List<OverviewResponse> overview() {
         return service.overview().stream().map(o -> new OverviewResponse(o.condominium().getId(),
                 o.condominium().getName(), o.queuedCalls(), o.assignedCalls(), o.openIncidents(),
-                o.deviceHealth(), "NOT_IMPLEMENTED")).toList();
+                o.deviceHealth(), o.connectivity())).toList();
     }
 
     @PostMapping("/condominiums/{condominiumId}/calls")

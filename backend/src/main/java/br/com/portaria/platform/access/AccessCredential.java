@@ -102,6 +102,10 @@ public class AccessCredential {
         return useCount;
     }
 
+    public Instant getRevokedAt() {
+        return revokedAt;
+    }
+
     public String getStatus() {
         return status;
     }

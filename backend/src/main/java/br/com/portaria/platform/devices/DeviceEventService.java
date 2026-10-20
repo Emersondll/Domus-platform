@@ -53,6 +53,13 @@ public class DeviceEventService implements DeviceEventSink {
         record(device, type, commandId, Instant.now(clock));
     }
 
+    /** O agente informa que não conseguiu executar o comando (controladora indisponível, comando vencido...). */
+    @Transactional
+    public void onCommandFailed(UUID commandId, UUID deviceId, String reason) {
+        commands.findById(commandId).filter(c -> c.getDeviceId().equals(deviceId)).ifPresent(
+                c -> commands.markFailed(commandId, reason == null ? "AGENT_FAILURE" : reason, Instant.now(clock)));
+    }
+
     private void record(Device device, String type, UUID commandId, Instant occurredAt) {
         if (!TYPES.contains(type)) {
             throw new IllegalArgumentException("Unknown event type");

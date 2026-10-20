@@ -35,6 +35,11 @@ public class CredentialTokenCodec {
         return credentialId + "." + ENC.encodeToString(sign(credentialId, condominiumId));
     }
 
+    /** Assinatura (parte após o ponto) esperada para a credencial naquele condomínio. */
+    public String signatureOf(UUID credentialId, UUID condominiumId) {
+        return ENC.encodeToString(sign(credentialId, condominiumId));
+    }
+
     /** @return o ID da credencial se o formato e a assinatura forem válidos para o condomínio informado */
     public Optional<UUID> decode(String token, UUID condominiumId) {
         if (token == null || token.length() > 200) {

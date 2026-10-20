@@ -26,6 +26,8 @@ public class SecurityConfig {
                         .requestMatchers("/dev/**").permitAll()
                         // Ingestão de eventos: autenticada pela chave do dispositivo, verificada no serviço.
                         .requestMatchers(HttpMethod.POST, "/api/v1/devices/*/events").permitAll()
+                        // API do agente local: autenticada por X-Agent-Id/X-Agent-Key, verificada no serviço.
+                        .requestMatchers("/api/v1/agent/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
                 .build();

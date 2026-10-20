@@ -5,6 +5,7 @@ import br.com.portaria.platform.commercial.Condominium;
 import br.com.portaria.platform.identity.MembershipRepository;
 import br.com.portaria.platform.identity.Role;
 import br.com.portaria.platform.residents.ResidentRepository;
+import br.com.portaria.platform.shared.ConnectivityLookup;
 import br.com.portaria.platform.shared.DeviceHealthLookup;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
@@ -37,7 +38,7 @@ public class OperationsService {
 
     /** Resumo operacional de um condomínio. */
     public record Overview(Condominium condominium, long queuedCalls, long assignedCalls, long openIncidents,
-                           String deviceHealth) {
+                           String deviceHealth, String connectivity) {
     }
 
     private final ShiftRepository shifts;
@@ -51,11 +52,13 @@ public class OperationsService {
     private final AuditService audit;
     private final Clock clock;
     private final DeviceHealthLookup deviceHealth;
+    private final ConnectivityLookup connectivity;
 
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
                              IncidentRepository incidents, MembershipRepository memberships,
                              ResidentRepository residents, CommercialService commercial, AccessService access,
-                             AuditService audit, Clock clock, DeviceHealthLookup deviceHealth) {
+                             AuditService audit, Clock clock, DeviceHealthLookup deviceHealth,
+                             ConnectivityLookup connectivity) {
         this.shifts = shifts;
         this.calls = calls;
         this.events = events;
@@ -67,6 +70,7 @@ public class OperationsService {
         this.audit = audit;
         this.clock = clock;
         this.deviceHealth = deviceHealth;
+        this.connectivity = connectivity;
     }
 
     // ---- turnos ----
@@ -240,7 +244,7 @@ public class OperationsService {
                 .map(c -> new Overview(c, calls.countByStatus(c.getId(), ServiceCall.QUEUED),
                         calls.countByStatus(c.getId(), ServiceCall.ASSIGNED),
                         incidents.countByCondominiumIdAndStatus(c.getId(), Incident.OPEN),
-                        deviceHealth.healthSummary(c.getId())))
+                        deviceHealth.healthSummary(c.getId()), connectivity.connectivitySummary(c.getId())))
                 .toList();
     }
 

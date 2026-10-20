@@ -25,6 +25,7 @@ abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("portaria.credentials.hmac-secret", () -> "test-only-secret-0123456789-abcdefghijklmnop");
+        registry.add("portaria.agent.policy-master-secret", () -> "test-only-agent-master-0123456789-abcdefghij");
         registry.add("portaria.devices.simulator-enabled", () -> "true");
         registry.add("portaria.devices.http-allowed-hosts", () -> "localhost,127.0.0.1");
         registry.add("portaria.devices.confirmation-timeout", () -> "PT2S");

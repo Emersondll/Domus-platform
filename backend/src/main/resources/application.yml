@@ -47,3 +47,7 @@ portaria:
     # Hosts que a central pode contatar (proteção contra SSRF). Vazio = nenhum.
     http-allowed-hosts: ${DEVICE_HTTP_ALLOWED_HOSTS:}
     confirmation-timeout: PT15S
+  agent:
+    # Obrigatório (>= 32 caracteres). Deriva o segredo de assinatura da política de cada agente.
+    policy-master-secret: ${AGENT_POLICY_MASTER_SECRET:}
+    policy-ttl: PT6H

@@ -12,3 +12,5 @@ portaria:
     hmac-secret: dev-only-secret-do-not-use-in-production-0123456789
   devices:
     simulator-enabled: true
+  agent:
+    policy-master-secret: dev-only-agent-master-secret-do-not-use-in-production-01

@@ -74,7 +74,7 @@ public class PrivacyService {
     }
 
     /** Exportação dos dados pessoais do morador em formato estruturado. */
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> export(UUID condominiumId, UUID residentId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.export");
         Resident r = residents.findByIdAndCondominiumId(residentId, condominiumId)

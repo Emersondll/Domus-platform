@@ -41,14 +41,14 @@ public class ResidentService {
         return resident;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<Resident> list(UUID condominiumId, Pageable pageable) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.list");
         audit.record(actor.userId(), null, condominiumId, "resident.list", "resident", null, AuditOutcome.SUCCESS);
         return residents.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Resident get(UUID condominiumId, UUID residentId) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.read");
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)

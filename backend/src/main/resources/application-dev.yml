@@ -8,3 +8,5 @@ spring:
 portaria:
   dev:
     seed-enabled: true
+  credentials:
+    hmac-secret: dev-only-secret-do-not-use-in-production-0123456789

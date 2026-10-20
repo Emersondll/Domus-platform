@@ -33,6 +33,9 @@ public class Membership {
     @Column(name = "condominium_id")
     private UUID condominiumId;
 
+    @Column(name = "resident_id")
+    private UUID residentId;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -48,6 +51,17 @@ public class Membership {
         this.role = role;
         this.operatorCompanyId = operatorCompanyId;
         this.condominiumId = condominiumId;
+    }
+
+    /** Cria a associação de um morador autenticado ao seu cadastro de morador. */
+    public static Membership forResident(UUID userId, UUID condominiumId, UUID residentId) {
+        Membership m = new Membership(userId, Role.RESIDENT, null, condominiumId);
+        m.residentId = residentId;
+        return m;
+    }
+
+    public UUID getResidentId() {
+        return residentId;
     }
 
     public UUID getId() {

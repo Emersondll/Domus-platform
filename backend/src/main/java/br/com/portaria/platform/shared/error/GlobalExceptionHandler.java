@@ -2,6 +2,8 @@ package br.com.portaria.platform.shared.error;
 
 import java.net.URI;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -25,6 +27,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     ProblemDetail conflict(ConflictException ex) {
         return problem(HttpStatus.CONFLICT, "conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail integrity(DataIntegrityViolationException ex) {
+        return problem(HttpStatus.CONFLICT, "conflict", "The request conflicts with existing data");
+    }
+
+    @ExceptionHandler({PropertyReferenceException.class, IllegalArgumentException.class})
+    ProblemDetail badRequest(RuntimeException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "bad-request", "Invalid request parameter");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

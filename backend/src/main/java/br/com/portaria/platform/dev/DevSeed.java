@@ -68,8 +68,13 @@ class DevSeed implements ApplicationRunner {
             Block a = blocks.save(new Block(c.getId(), "A"));
             Unit u101 = units.save(new Unit(c.getId(), a.getId(), "101"));
             units.save(new Unit(c.getId(), a.getId(), "102"));
-            residents.save(new Resident(c.getId(), u101.getId(), "Morador Exemplo " + c.getName(),
-                    "morador@example.invalid", "+55 11 90000-0000", ResidentType.OWNER));
+            Resident resident = residents.save(new Resident(c.getId(), u101.getId(),
+                    "Morador Exemplo " + c.getName(), "morador@example.invalid", "+55 11 90000-0000",
+                    ResidentType.OWNER));
+            if (c == sol) {
+                AppUser u = users.save(new AppUser("resident-sol", "resident-sol@example.invalid", "Morador Sol"));
+                memberships.save(Membership.forResident(u.getId(), sol.getId(), resident.getId()));
+            }
         }
 
         user("platform-admin", "Admin da Plataforma", Role.PLATFORM_ADMIN, null, null);
@@ -80,7 +85,7 @@ class DevSeed implements ApplicationRunner {
         memberships.save(new Membership(multi.getId(), Role.OPERATOR, null, lua.getId()));
         user("manager-sol", "Síndico Sol", Role.CONDO_MANAGER, null, sol.getId());
         log.info("Dev seed loaded. Tokens: GET /dev/token?subject=<platform-admin|alpha-admin|beta-admin|"
-                + "operator-sol|operator-multi|manager-sol>");
+                + "operator-sol|operator-multi|manager-sol|resident-sol>");
     }
 
     private AppUser user(String subject, String name, Role role,

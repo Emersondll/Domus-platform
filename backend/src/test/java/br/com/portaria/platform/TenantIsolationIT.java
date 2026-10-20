@@ -26,34 +26,15 @@ import br.com.portaria.platform.residents.ResidentRepository;
 import br.com.portaria.platform.residents.ResidentType;
 import br.com.portaria.platform.shared.audit.AuditLogRepository;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Isolamento entre empresas e condomínios, contra PostgreSQL real. Sem dados reais. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-class TenantIsolationIT {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17");
-
-    @MockitoBean
-    JwtDecoder jwtDecoder;
+class TenantIsolationIT extends AbstractIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -67,10 +48,6 @@ class TenantIsolationIT {
     @Autowired AuditLogRepository auditLog;
 
     static UUID alphaCompany, betaCompany, sol, lua, mar, solBlock, marBlock, solUnit, solResident;
-
-    @BeforeAll
-    static void noop() {
-    }
 
     private void seedOnce() {
         if (alphaCompany != null) {
@@ -100,7 +77,8 @@ class TenantIsolationIT {
         member("beta-admin", Role.COMPANY_ADMIN, betaCompany, null);
         member("operator-sol", Role.OPERATOR, null, sol);
         member("manager-sol", Role.CONDO_MANAGER, null, sol);
-        member("resident-sol", Role.RESIDENT, null, sol);
+        AppUser resident = users.save(new AppUser("resident-sol", "resident-sol@example.invalid", "resident-sol"));
+        memberships.save(Membership.forResident(resident.getId(), sol, solResident));
     }
 
     private void member(String subject, Role role, UUID company, UUID condo) {

@@ -70,7 +70,7 @@ public class AccessService {
                 case CONDO_MANAGER -> level = condominiumId.equals(m.getCondominiumId())
                         ? AccessLevel.MANAGE : AccessLevel.NONE;
                 case OPERATOR -> level = condominiumId.equals(m.getCondominiumId())
-                        ? AccessLevel.READ : AccessLevel.NONE;
+                        ? AccessLevel.OPERATE : AccessLevel.NONE;
                 case PLATFORM_ADMIN, RESIDENT -> level = AccessLevel.NONE;
             }
             if (level.ordinal() > best.ordinal()) {
@@ -93,6 +93,23 @@ public class AccessService {
             throw new NotFoundException("Condominium not found");
         }
         throw new ForbiddenException("Insufficient permissions");
+    }
+
+    /**
+     * Exige que o ator seja morador do condomínio informado e devolve o cadastro ao qual está vinculado.
+     * Quem não é morador ali recebe 404, como nos demais recursos de tenant.
+     */
+    public ResidentContext requireResident(UUID condominiumId, String action) {
+        Actor actor = currentActor();
+        return actor.memberships().stream()
+                .filter(m -> m.getRole() == Role.RESIDENT && condominiumId.equals(m.getCondominiumId()))
+                .findFirst()
+                .map(m -> new ResidentContext(actor, m.getResidentId(), condominiumId))
+                .orElseThrow(() -> {
+                    audit.record(actor.userId(), null, condominiumId, action, "condominium",
+                            condominiumId.toString(), AuditOutcome.DENIED);
+                    return new NotFoundException("Condominium not found");
+                });
     }
 
     public Actor requirePlatformAdmin(String action) {

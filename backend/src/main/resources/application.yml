@@ -37,3 +37,8 @@ management:
 logging:
   pattern:
     level: "%5p [%X{correlationId:-}]"
+
+portaria:
+  credentials:
+    # Obrigatório (>= 32 caracteres). Em produção vem de um gerenciador de segredos.
+    hmac-secret: ${CREDENTIAL_HMAC_SECRET:}

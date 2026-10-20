@@ -57,3 +57,7 @@ docs/      STATUS, operação, segurança, LGPD, agente, ADRs, análise dos repo
 
 Documentação: [STATUS](docs/STATUS.md) · [Operação](docs/operations.md) · [Segurança](docs/security.md) · [LGPD](docs/lgpd.md) ·
 [Agente local](docs/agent.md) · [ADRs](docs/adr) · [Licenças das referências](docs/reference-analysis/LICENSES.md) · [Inventário](docs/inventory/README.md)
+
+## Licença
+
+[MIT](LICENSE). Avisos de componentes de terceiros em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

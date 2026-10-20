@@ -15,5 +15,5 @@ Nenhuma dependência AGPL/SSPL. Imagens de contêiner (postgres, keycloak, caddy
 e **precisa de revisão jurídica** se o produto for oferecido a terceiros como serviço).
 
 Código de projetos de referência: **nenhum foi copiado** (ver `docs/reference-analysis/LICENSES.md`).
-**Licença do próprio projeto:** ainda não definida (decisão do titular do repositório).
+**Licença do próprio projeto:** MIT (ver `LICENSE` e `THIRD_PARTY_NOTICES.md` na raiz).
 Atualize com: `mvn -f backend/pom.xml org.codehaus.mojo:license-maven-plugin:2.5.0:add-third-party` e `npm ls --omit=dev`.

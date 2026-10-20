@@ -1,6 +1,7 @@
 {
   "name": "portaria-web",
   "private": true,
+  "license": "MIT",
   "workspaces": ["panel", "resident"],
   "scripts": {
     "test": "npm run test --workspaces --if-present",

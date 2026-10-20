@@ -64,7 +64,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 8. **Atualização segura do agente** (binário assinado + verificação) e instalador; hoje manual.
 9. Operador-chefe/relatórios por condomínio e exportação de relatórios (só há listagens e auditoria); cadastro de planos/contratos/limites.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
-11. CI nunca executado; licença do projeto não definida; texto de skills de terceiros não editado (precedência no `CLAUDE.md`).
+11. CI nunca executado; licença do projeto: MIT (`LICENSE`); texto de skills de terceiros não editado (precedência no `CLAUDE.md`).
 
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).

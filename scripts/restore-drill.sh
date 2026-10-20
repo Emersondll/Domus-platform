@@ -30,6 +30,8 @@ for q in "select count(*) from pg_constraint c join pg_namespace n on n.oid=c.co
   a=$(psql_ "$DB" "$q"); b=$(psql_ "$TMP_DB" "$q")
   if [ "$a" = "$b" ]; then echo "  ok   estrutura ($a)"; else echo "  FAIL estrutura origem=$a restaurado=$b"; FAIL=1; fi
 done
-out=$(psql_ "$TMP_DB" "delete from audit_log" 2>&1 || true)   # captura antes: grep -q + pipefail daria falso negativo
+# DELETE em tabela vazia não dispara o trigger: insere uma linha de teste (no banco temporário) antes de tentar apagar.
+psql_ "$TMP_DB" "insert into audit_log (id, occurred_at, action, outcome) values (gen_random_uuid(), now(), 'restore-drill', 'SUCCESS')" >/dev/null
+out=$(psql_ "$TMP_DB" "delete from audit_log where action = 'restore-drill'" 2>&1 || true)   # captura antes: grep -q + pipefail daria falso negativo
 if grep -q "append-only" <<<"$out"; then echo "  ok   audit_log continua append-only após a restauração"; else echo "  FAIL audit_log aceitou DELETE"; FAIL=1; fi
 if [ "$FAIL" = 0 ]; then echo "RESTORE DRILL: PASS"; else echo "RESTORE DRILL: FAIL"; exit 1; fi

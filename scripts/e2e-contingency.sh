@@ -15,7 +15,7 @@ jget() { python3 -c "import sys,json;d=json.load(sys.stdin);print($1)"; }
 start_central() {
   SPRING_PROFILES_ACTIVE=dev nohup java -jar "$ROOT/backend/target/platform-0.1.0-SNAPSHOT.jar" >"$WORK/central.log" 2>&1 &
   echo $! >"$WORK/central.pid"
-  for _ in $(seq 1 60); do curl -sf "$BASE/actuator/health" >/dev/null && return 0; sleep 1; done
+  for _ in $(seq 1 60); do curl -sf "http://localhost:8082/actuator/health" >/dev/null && return 0; sleep 1; done
   echo "central did not start"; tail -20 "$WORK/central.log"; exit 1
 }
 stop_central() { kill -9 "$(cat "$WORK/central.pid")" 2>/dev/null || true; sleep 1; }

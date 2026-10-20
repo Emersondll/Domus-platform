@@ -57,6 +57,11 @@ management:
     export:
       otlp:
         enabled: false
+  otlp:
+    metrics:
+      export:
+        # Desligado por padrão: sem coletor, o exportador só gera erros no log. As métricas saem pelo Prometheus.
+        enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
   opentelemetry:
     tracing:
       export:

@@ -26,15 +26,23 @@ curl -H "Authorization: Bearer $TOKEN" localhost:8081/api/v1/condominiums
 Usuários de teste: `platform-admin`, `alpha-admin`, `beta-admin`, `operator-sol`, `operator-multi`, `manager-sol`.
 Documentação interativa da API: <http://localhost:8081/swagger-ui.html>.
 
+## Painel da central (web)
+
+```bash
+cd web && npm install && npm run dev -w panel      # http://localhost:5173 (proxy para a API em 8081)
+```
+
 ## Testes
 
 ```bash
 cd backend && mvn verify      # usa Testcontainers (PostgreSQL real); precisa do Docker
+cd web && npm test            # testes de UI (Vitest)
 ```
 
 ## Estrutura
 
 ```
-backend/   API (pacotes por domínio: shared, identity, commercial, residents, dev)
+backend/   API (pacotes por domínio: shared, identity, commercial, residents, access, operations, ...)
+web/       painel da central (React + TypeScript)
 docs/      análise dos repositórios de referência, arquitetura, ADRs, status
 ```

@@ -1,0 +1,9 @@
+{
+  "name": "portaria-web",
+  "private": true,
+  "workspaces": ["panel", "resident"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  }
+}

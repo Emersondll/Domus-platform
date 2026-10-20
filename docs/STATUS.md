@@ -1,6 +1,6 @@
 # Status do projeto (2026-10-20)
 
-_Fase 3 concluída: 27 testes de integração passando (`mvn verify`)._
+_Fases 0–4 concluídas: 36 testes de integração no backend (`mvn verify`) e 4 testes de UI no painel (`npm test`)._
 
 ## Concluído e verificado
 - Build Maven (Java 26, Spring Boot 4.0.7); `mvn verify`: 15 testes de integração passando contra PostgreSQL 17 real
@@ -17,12 +17,18 @@ _Fase 3 concluída: 27 testes de integração passando (`mvn verify`)._
   sem dado pessoal; tentativas registradas; papel OPERATE para a rotina da portaria.
   GRANTED = autorização válida e uso consumido; **não** significa porta aberta (Fase 6).
 
+- Fase 4: central de operações. Turnos (um aberto por usuário), fila de atendimentos com atribuição atômica
+  (`FOR UPDATE SKIP LOCKED`; teste: 10 pegadas concorrentes por 2 operadores, sem duplicidade), transferência só
+  para operador de plantão do mesmo condomínio, justificativa obrigatória para ENTRY_GRANTED/ENTRY_DENIED,
+  histórico de decisões, incidentes, visão geral. Painel web (React + TS) em `web/panel`.
+  Saúde de dispositivos e conectividade aparecem como "não integrado"; o botão "Abrir porta" está desabilitado.
+
 ## Simulado (somente dev)
 - Emissor de tokens `/dev/token` e dados semeados fictícios (`DevSeed`). Substituem Keycloak.
 
 ## Pendente (próximas fases)
 - Fase 2: Keycloak + MFA no Compose, rate limiting, CI, métricas/OpenTelemetry, escopo de ordenação seguro nas listagens.
-- Fase 4: central de operadores (painel web em TypeScript). Fase 5: app do morador.
+- Fase 5: app do morador.
 - Fase 6: adaptadores de dispositivos (ONVIF/RTSP/SIP) e simuladores. Fase 7: agente local de contingência.
 - Fase 8: observabilidade, backup/restauração, retenção LGPD, testes de carga.
 - Skills próprias: `multi-tenant-security`, `access-control-resilience`, `device-integration`.

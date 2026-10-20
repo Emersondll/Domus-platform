@@ -134,6 +134,14 @@ public class AccessService {
                 .collect(Collectors.toSet());
     }
 
+    /** Condomínios em que o ator atua como operador da central. */
+    public Set<UUID> operatorCondominiumIds(Actor actor) {
+        return actor.memberships().stream()
+                .filter(m -> m.getRole() == Role.OPERATOR)
+                .map(Membership::getCondominiumId)
+                .collect(Collectors.toSet());
+    }
+
     /** Condomínios atribuídos diretamente ao ator (gestor ou operador). */
     public Set<UUID> directCondominiumIds(Actor actor) {
         return actor.memberships().stream()

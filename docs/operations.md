@@ -84,3 +84,12 @@ Dimensionamento do pool: `DB_POOL_SIZE` (padrão 20) + 3 conexões do pool de au
 - `@Scheduled` (expurgo, vencimento de comandos, métricas) roda em cada instância: com N instâncias, use lock distribuído
   (ex.: ShedLock) — as operações são idempotentes, mas não otimizadas para isso.
 - Sem alta disponibilidade do PostgreSQL configurada (réplica/failover).
+
+## Cadastrar uma controladora Dahua/Intelbras (`DAHUA_CGI`)
+> Não validado com hardware real: faça o primeiro teste com a porta supervisionada.
+
+1. Crie no equipamento um usuário só com a permissão de abrir a porta (o protocolo usa Digest/MD5; mantenha o tráfego em rede privada ou VPN).
+2. Exporte as credenciais como variáveis de ambiente da aplicação (ex.: `PORTARIA_GATE1_USER`, `PORTARIA_GATE1_PASS`); o banco guarda só os nomes.
+3. Inclua o IP em `portaria.devices.http-allowed-hosts` (proteção SSRF).
+4. Cadastre o dispositivo com `adapter=DAHUA_CGI` e `config` = `{"baseUrl":"http://10.0.0.20","channel":"1","userEnv":"PORTARIA_GATE1_USER","passwordEnv":"PORTARIA_GATE1_PASS"}`.
+5. "OK" na resposta significa só **aceito**. O comando fica `SENT` até chegar o evento de abertura do equipamento (endpoint de eventos de dispositivo ou agente local); sem evento, termina `UNKNOWN`.

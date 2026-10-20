@@ -39,13 +39,13 @@ public class DeviceController {
     /**
      * @param name     nome do equipamento
      * @param kind     ACCESS_CONTROLLER, CAMERA ou INTERCOM
-     * @param adapter  SIMULATOR (apenas desenvolvimento), GENERIC_HTTP, ONVIF ou AGENT_RELAY (via agente local)
+     * @param adapter  SIMULATOR (apenas desenvolvimento), GENERIC_HTTP, ONVIF, DAHUA_CGI ou AGENT_RELAY (via agente local)
      * @param entrance entrada controlada (ex.: portaria, garagem)
      * @param config   configuração não secreta do adaptador (segredos ficam em variáveis de ambiente)
      */
     public record RegisterDeviceRequest(@NotBlank @Size(max = 80) String name,
                                         @NotNull @Pattern(regexp = "ACCESS_CONTROLLER|CAMERA|INTERCOM") String kind,
-                                        @NotNull @Pattern(regexp = "SIMULATOR|GENERIC_HTTP|ONVIF|AGENT_RELAY") String adapter,
+                                        @NotNull @Pattern(regexp = "SIMULATOR|GENERIC_HTTP|ONVIF|AGENT_RELAY|DAHUA_CGI") String adapter,
                                         @NotBlank @Size(max = 60) String entrance, Map<String, String> config) {
     }
 

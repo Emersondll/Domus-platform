@@ -28,7 +28,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
   entrada liberada/negada, histórico, incidentes, visão geral com saúde de dispositivos e conectividade reais.
 - **App do morador (PWA)** e **painel da central:** fluxos principais, login OIDC (Authorization Code + PKCE), estados honestos
   (pendências marcadas, "porta aberta" só com confirmação).
-- **Dispositivos:** contrato `DeviceAdapter`, adaptadores `SIMULATOR`/`GENERIC_HTTP`/`ONVIF`/`AGENT_RELAY`, comandos físicos com
+- **Dispositivos:** contrato `DeviceAdapter`, adaptadores `SIMULATOR`/`GENERIC_HTTP`/`ONVIF`/`DAHUA_CGI`/`AGENT_RELAY`, comandos físicos com
   estados verificáveis, idempotência, ingestão de eventos por chave do dispositivo, anti-SSRF e anti-XXE (ADR 0005).
 - **Contingência (agente local):** identidade e chave rotacionável, política assinada/versionada/com validade, contingência só
   offline, fila SQLite, falha fechada, sincronização idempotente, reconciliação com conflitos auditáveis; os 10 cenários de falha exigidos
@@ -46,11 +46,13 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Simulado (somente desenvolvimento/teste)
 - Login `/dev/token` e seed fictício (`DevSeed`, perfil `dev`; não existe em produção nem nos bundles de produção).
 - Dispositivos `SIMULATOR`; controladora do agente (`SimulatedDoor`); central falsa nos testes do agente (contrato idêntico ao da API real,
-  que tem testes próprios); `GENERIC_HTTP` e `ONVIF` só validados contra servidores HTTP locais de teste.
+  que tem testes próprios); `GENERIC_HTTP`, `ONVIF` e `DAHUA_CGI` só validados contra servidores HTTP locais de teste.
 
 ## Pendente / não feito (em ordem de impacto)
-1. **Hardware real:** nenhum adaptador testado com equipamento (controladoras, câmeras, interfones); falta o adaptador do primeiro fabricante e o
-   teste de campo com perda de conectividade durante o comando.
+1. **Hardware real:** nenhum adaptador testado com equipamento (controladoras, câmeras, interfones); o primeiro fabricante (`DAHUA_CGI`, família Dahua/Intelbras, Digest)
+   existe e passa em 6 testes contra um servidor que valida o Digest de verdade, mas **foi escrito pela documentação pública, sem equipamento**:
+   falta o teste de campo (firmware, canal, evento de abertura real) e com perda de conectividade durante o comando. A confirmação de abertura
+   continua só por evento do dispositivo; a assinatura do fluxo de eventos do equipamento (`eventManager.cgi`) não foi implementada.
 2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
 4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador e refresh de token no frontend (token de 5 min → novo login

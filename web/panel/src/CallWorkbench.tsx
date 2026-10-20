@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ApiError, request } from "../../shared/src/api";
-import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type OnDuty } from "./types";
+import { ApiError, request, type Page } from "../../shared/src/api";
+import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type Command, type Device, type OnDuty } from "./types";
 
 /** Atendimento selecionado: histórico, desfecho com justificativa, transferência e (futuro) abertura de porta. */
 export function CallWorkbench({ token, call, onChanged }: { token: string; call: Call; onChanged: () => void }) {
@@ -12,6 +12,10 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceId, setDeviceId] = useState("");
+  const [doorReason, setDoorReason] = useState("");
+  const [command, setCommand] = useState<Command | null>(null);
 
   const needsJustification = SENSITIVE_OUTCOMES.includes(outcome);
   const closeBlocked = needsJustification && justification.trim().length < 5;
@@ -21,7 +25,35 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
     request<OnDuty[]>(token, "GET", `/api/v1/condominiums/${call.condominiumId}/operators/on-duty`).then((o) =>
       setOperators(o ?? []),
     );
+    request<Page<Device>>(token, "GET", `/api/v1/condominiums/${call.condominiumId}/devices`).then((p) =>
+      setDevices((p?.items ?? []).filter((d) => d.kind === "ACCESS_CONTROLLER")),
+    );
   }, [token, base, call.condominiumId]);
+
+  // Acompanha o resultado do comando até um estado final. Só CONFIRMED significa porta aberta.
+  useEffect(() => {
+    if (!command || ["CONFIRMED", "FAILED", "UNKNOWN"].includes(command.state)) return;
+    const id = setInterval(async () => {
+      const next = await request<Command>(token, "GET", `/api/v1/condominiums/${call.condominiumId}/commands/${command.id}`);
+      if (next) setCommand(next);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [command, token, call.condominiumId]);
+
+  async function openDoor() {
+    setError(null);
+    try {
+      const sent = await request<Command>(
+        token,
+        "POST",
+        `/api/v1/condominiums/${call.condominiumId}/devices/${deviceId}/open`,
+        { callId: call.id, justification: doorReason, idempotencyKey: crypto.randomUUID() },
+      );
+      setCommand(sent);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+    }
+  }
 
   async function act(path: string, body: unknown) {
     setError(null);
@@ -40,10 +72,30 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
         Origem: {call.source} · Status: {call.status}
       </p>
 
-      <button disabled title="Door control integration is not implemented yet">
+      <h3>Abrir porta</h3>
+      <label htmlFor="door-device">Dispositivo</label>
+      <select id="door-device" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
+        <option value="">Selecione</option>
+        {devices.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name} ({d.entrance}) — {d.status}
+          </option>
+        ))}
+      </select>
+      <label htmlFor="door-reason">Justificativa da abertura</label>
+      <input id="door-reason" value={doorReason} onChange={(e) => setDoorReason(e.target.value)} />
+      <button disabled={!deviceId || doorReason.trim().length < 5} onClick={openDoor}>
         Abrir porta
       </button>
-      <span className="badge pending"> Controle de porta não integrado (Fase 6)</span>
+      {command && (
+        <p role="status" className={command.state === "CONFIRMED" ? "" : "hint"}>
+          {command.state === "CONFIRMED" && `Porta aberta — confirmado (${command.evidence}).`}
+          {(command.state === "PENDING" || command.state === "SENT") && "Comando enviado. Aguardando confirmação do dispositivo…"}
+          {command.state === "FAILED" && `Falhou: ${command.failureReason}. A porta NÃO foi aberta.`}
+          {command.state === "UNKNOWN" &&
+            "Sem confirmação — estado desconhecido. Verifique no local antes de tentar novamente."}
+        </p>
+      )}
 
       <h3>Desfecho</h3>
       <label htmlFor="outcome">Desfecho</label>
@@ -52,7 +104,7 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
           <option key={o}>{o}</option>
         ))}
       </select>
-      <label htmlFor="justification">Justificativa{needsJustification ? " (obrigatória)" : ""}</label>
+      <label htmlFor="justification">Justificativa do desfecho{needsJustification ? " (obrigatória)" : ""}</label>
       <textarea id="justification" value={justification} onChange={(e) => setJustification(e.target.value)} />
       {closeBlocked && <p className="hint">Informe a justificativa (mín. 5 caracteres) para este desfecho.</p>}
       <button disabled={closeBlocked} onClick={() => act("close", { outcome, justification: justification || null })}>

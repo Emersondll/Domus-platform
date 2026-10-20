@@ -34,3 +34,6 @@ export type Shift = { id: string; startedAt: string; endedAt: string | null };
 
 export const SENSITIVE_OUTCOMES = ["ENTRY_GRANTED", "ENTRY_DENIED"];
 export const OUTCOMES = ["RESOLVED", "ENTRY_GRANTED", "ENTRY_DENIED", "NO_ANSWER", "FALSE_ALARM"];
+
+export type Device = { id: string; name: string; kind: string; entrance: string; status: string };
+export type Command = { id: string; state: string; failureReason: string | null; evidence: string | null };

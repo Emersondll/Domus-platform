@@ -5,6 +5,7 @@ import br.com.portaria.platform.commercial.Condominium;
 import br.com.portaria.platform.identity.MembershipRepository;
 import br.com.portaria.platform.identity.Role;
 import br.com.portaria.platform.residents.ResidentRepository;
+import br.com.portaria.platform.shared.DeviceHealthLookup;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
 import br.com.portaria.platform.shared.error.ConflictException;
@@ -35,7 +36,8 @@ public class OperationsService {
     static final Set<String> OUTCOMES = Set.of("RESOLVED", "ENTRY_GRANTED", "ENTRY_DENIED", "NO_ANSWER", "FALSE_ALARM");
 
     /** Resumo operacional de um condomínio. */
-    public record Overview(Condominium condominium, long queuedCalls, long assignedCalls, long openIncidents) {
+    public record Overview(Condominium condominium, long queuedCalls, long assignedCalls, long openIncidents,
+                           String deviceHealth) {
     }
 
     private final ShiftRepository shifts;
@@ -48,11 +50,12 @@ public class OperationsService {
     private final AccessService access;
     private final AuditService audit;
     private final Clock clock;
+    private final DeviceHealthLookup deviceHealth;
 
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
                              IncidentRepository incidents, MembershipRepository memberships,
                              ResidentRepository residents, CommercialService commercial, AccessService access,
-                             AuditService audit, Clock clock) {
+                             AuditService audit, Clock clock, DeviceHealthLookup deviceHealth) {
         this.shifts = shifts;
         this.calls = calls;
         this.events = events;
@@ -63,6 +66,7 @@ public class OperationsService {
         this.access = access;
         this.audit = audit;
         this.clock = clock;
+        this.deviceHealth = deviceHealth;
     }
 
     // ---- turnos ----
@@ -235,8 +239,17 @@ public class OperationsService {
         return commercial.listCondominiums(PageRequest.of(0, 200)).getContent().stream()
                 .map(c -> new Overview(c, calls.countByStatus(c.getId(), ServiceCall.QUEUED),
                         calls.countByStatus(c.getId(), ServiceCall.ASSIGNED),
-                        incidents.countByCondominiumIdAndStatus(c.getId(), Incident.OPEN)))
+                        incidents.countByCondominiumIdAndStatus(c.getId(), Incident.OPEN),
+                        deviceHealth.healthSummary(c.getId())))
                 .toList();
+    }
+
+    /** Verdadeiro se o atendimento está em andamento e atribuído ao usuário, naquele condomínio. */
+    @Transactional(readOnly = true)
+    public boolean isCallAssignedTo(UUID condominiumId, UUID callId, UUID userId) {
+        return calls.findByIdAndCondominiumId(callId, condominiumId)
+                .filter(c -> ServiceCall.ASSIGNED.equals(c.getStatus()) && userId.equals(c.getAssignedUserId()))
+                .isPresent();
     }
 
     // ---- internos ----

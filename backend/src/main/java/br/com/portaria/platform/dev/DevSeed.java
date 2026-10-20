@@ -8,6 +8,8 @@ import br.com.portaria.platform.commercial.OperatorCompany;
 import br.com.portaria.platform.commercial.OperatorCompanyRepository;
 import br.com.portaria.platform.commercial.Unit;
 import br.com.portaria.platform.commercial.UnitRepository;
+import br.com.portaria.platform.devices.Device;
+import br.com.portaria.platform.devices.DeviceRepository;
 import br.com.portaria.platform.identity.AppUser;
 import br.com.portaria.platform.identity.AppUserRepository;
 import br.com.portaria.platform.identity.Membership;
@@ -38,10 +40,11 @@ class DevSeed implements ApplicationRunner {
     private final ResidentRepository residents;
     private final AppUserRepository users;
     private final MembershipRepository memberships;
+    private final DeviceRepository devices;
 
     DevSeed(OperatorCompanyRepository companies, CondominiumRepository condominiums, BlockRepository blocks,
             UnitRepository units, ResidentRepository residents, AppUserRepository users,
-            MembershipRepository memberships) {
+            MembershipRepository memberships, DeviceRepository devices) {
         this.companies = companies;
         this.condominiums = condominiums;
         this.blocks = blocks;
@@ -49,6 +52,7 @@ class DevSeed implements ApplicationRunner {
         this.residents = residents;
         this.users = users;
         this.memberships = memberships;
+        this.devices = devices;
     }
 
     @Override
@@ -76,6 +80,12 @@ class DevSeed implements ApplicationRunner {
                 memberships.save(Membership.forResident(u.getId(), sol.getId(), resident.getId()));
             }
         }
+
+        // Dispositivos simulados (sem hardware): um confirma a abertura, outro aceita mas nunca confirma.
+        devices.save(new Device(sol.getId(), "Portão principal", "ACCESS_CONTROLLER", "SIMULATOR", "portaria",
+                java.util.Map.of("behavior", "CONFIRM"), null));
+        devices.save(new Device(sol.getId(), "Portão da garagem (simulado sem confirmação)", "ACCESS_CONTROLLER",
+                "SIMULATOR", "garagem", java.util.Map.of("behavior", "SILENT"), null));
 
         user("platform-admin", "Admin da Plataforma", Role.PLATFORM_ADMIN, null, null);
         user("alpha-admin", "Admin Alfa", Role.COMPANY_ADMIN, alpha.getId(), null);

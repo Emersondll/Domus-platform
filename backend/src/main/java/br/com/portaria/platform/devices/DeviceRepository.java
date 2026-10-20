@@ -1,0 +1,20 @@
+package br.com.portaria.platform.devices;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/** Acesso a dispositivos, sempre escopado por condomínio (exceto a ingestão, que autentica por chave). */
+public interface DeviceRepository extends JpaRepository<Device, UUID> {
+
+    Page<Device> findByCondominiumId(UUID condominiumId, Pageable pageable);
+
+    List<Device> findByCondominiumId(UUID condominiumId);
+
+    Optional<Device> findByIdAndCondominiumId(UUID id, UUID condominiumId);
+
+    boolean existsByCondominiumIdAndName(UUID condominiumId, String name);
+}

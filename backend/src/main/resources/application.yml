@@ -42,3 +42,8 @@ portaria:
   credentials:
     # Obrigatório (>= 32 caracteres). Em produção vem de um gerenciador de segredos.
     hmac-secret: ${CREDENTIAL_HMAC_SECRET:}
+  devices:
+    simulator-enabled: false
+    # Hosts que a central pode contatar (proteção contra SSRF). Vazio = nenhum.
+    http-allowed-hosts: ${DEVICE_HTTP_ALLOWED_HOSTS:}
+    confirmation-timeout: PT15S

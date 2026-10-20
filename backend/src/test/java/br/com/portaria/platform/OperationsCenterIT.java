@@ -242,12 +242,12 @@ class OperationsCenterIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void overviewListsOnlyAuthorizedCondominiumsAndFlagsUnimplementedIntegrations() throws Exception {
+    void overviewListsOnlyAuthorizedCondominiumsAndFlagsConnectivityAsNotImplemented() throws Exception {
         mvc.perform(get("/api/v1/operator/overview").with(as("p4-op-other")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("P4 Other"))
-                .andExpect(jsonPath("$[0].deviceHealth").value("NOT_IMPLEMENTED"))
+                .andExpect(jsonPath("$[0].deviceHealth").value("NO_DEVICES"))
                 .andExpect(jsonPath("$[0].connectivity").value("NOT_IMPLEMENTED"));
     }
 

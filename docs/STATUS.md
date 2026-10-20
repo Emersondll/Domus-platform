@@ -1,6 +1,6 @@
 # Status do projeto (2026-10-20)
 
-_Fases 0–5 concluídas: 41 testes de integração no backend (`mvn verify`), 4 testes de UI no painel e 4 no app do morador (`npm test`)._
+_Fases 0–6 concluídas: 53 testes no backend (`mvn verify`), 5 de UI no painel e 4 no app do morador (`npm test`)._
 
 ## Concluído e verificado
 - Build Maven (Java 26, Spring Boot 4.0.7); `mvn verify`: 15 testes de integração passando contra PostgreSQL 17 real
@@ -29,16 +29,21 @@ _Fases 0–5 concluídas: 41 testes de integração no backend (`mvn verify`), 4
   visitante, respeitando a preferência de cada morador e isoladas por unidade. Ver ADR 0004.
   **Não integrados:** push, e-mail e WhatsApp (API oficial); sem NFC/credencial em carteira.
 
+- Fase 6: dispositivos. Contrato `DeviceAdapter`, adaptadores SIMULATOR/GENERIC_HTTP/ONVIF, comandos físicos com
+  estados verificáveis (ver ADR 0005), idempotência, autorização por atendimento ou credencial, ingestão de eventos
+  por chave do dispositivo, anti-SSRF e anti-XXE. O painel abre a porta de verdade e só exibe "porta aberta" com
+  confirmação. **Nenhum teste com hardware real.**
+
 ## Simulado (somente dev)
-- Emissor de tokens `/dev/token` e dados semeados fictícios (`DevSeed`). Substituem Keycloak.
+- Emissor de tokens `/dev/token`, dados semeados fictícios e dispositivos `SIMULATOR` (`DevSeed`). Substituem Keycloak e hardware.
 
 ## Pendente (próximas fases)
 - Fase 2: Keycloak + MFA no Compose, rate limiting, CI, métricas/OpenTelemetry, escopo de ordenação seguro nas listagens.
-- Fase 6: adaptadores de dispositivos (ONVIF/RTSP/SIP) e simuladores. Fase 7: agente local de contingência.
+- Fase 7: agente local de contingência. Pendente de dispositivos: SIP/telefonia, vídeo ao vivo (RTSP), primeira integração com fabricante real.
 - Fase 8: observabilidade, backup/restauração, retenção LGPD, testes de carga.
 - Skills próprias: `multi-tenant-security`, `access-control-resilience`, `device-integration`.
 
 ## Limitações conhecidas
 - `sort` inválido responde 400, mas ainda não há lista branca de campos ordenáveis.
 - Sem MFA, sem rate limiting, sem criptografia de campos pessoais ainda.
-- Nada foi testado com hardware real.
+- Nada foi testado com hardware real (adaptadores validados só contra servidores locais de teste).

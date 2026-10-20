@@ -63,7 +63,7 @@ public class CredentialService {
     }
 
     /** Resultado da validação de um token na portaria. */
-    public record Validation(boolean granted, String reason, UUID unitId, String visitorName) {
+    public record Validation(boolean granted, String reason, UUID unitId, String visitorName, UUID attemptId) {
     }
 
     @Transactional
@@ -110,30 +110,39 @@ public class CredentialService {
         Instant now = Instant.now(clock);
         Optional<UUID> id = codec.decode(token, condominiumId);
         if (id.isEmpty()) {
-            record(condominiumId, null, entrance, false, "INVALID_TOKEN", actor.userId(), now);
-            return new Validation(false, "INVALID_TOKEN", null, null);
+            UUID attemptId = record(condominiumId, null, entrance, false, "INVALID_TOKEN", actor.userId(), now);
+            return new Validation(false, "INVALID_TOKEN", null, null, attemptId);
         }
         Optional<AccessCredential> found = credentials.findByIdAndCondominiumId(id.get(), condominiumId);
         if (found.isEmpty()) {
-            record(condominiumId, id.get(), entrance, false, "UNKNOWN_CREDENTIAL", actor.userId(), now);
-            return new Validation(false, "UNKNOWN_CREDENTIAL", null, null);
+            UUID attemptId = record(condominiumId, id.get(), entrance, false, "UNKNOWN_CREDENTIAL", actor.userId(), now);
+            return new Validation(false, "UNKNOWN_CREDENTIAL", null, null, attemptId);
         }
         if (credentials.consumeUse(id.get(), condominiumId, now) == 1) {
             AccessCredential c = found.get();
             String name = c.getVisitorId() == null ? null
                     : visitors.findById(c.getVisitorId()).map(Visitor::getFullName).orElse(null);
-            record(condominiumId, id.get(), entrance, true, "OK", actor.userId(), now);
+            UUID attemptId = record(condominiumId, id.get(), entrance, true, "OK", actor.userId(), now);
             notifications.notifyUnit(condominiumId, c.getUnitId(), NotificationService.VISITOR_ARRIVED,
                     "Visitante na portaria", (name == null ? "Seu convidado" : name) + " teve a entrada autorizada.");
-            return new Validation(true, "OK", c.getUnitId(), name);
+            return new Validation(true, "OK", c.getUnitId(), name, attemptId);
         }
         String reason = denialReason(credentials.findByIdAndCondominiumId(id.get(), condominiumId)
                 .orElse(found.get()), now);
-        record(condominiumId, id.get(), entrance, false, reason, actor.userId(), now);
-        return new Validation(false, reason, null, null);
+        UUID attemptId = record(condominiumId, id.get(), entrance, false, reason, actor.userId(), now);
+        return new Validation(false, reason, null, null, attemptId);
     }
 
     /** Histórico de acessos das credenciais da própria unidade do morador. */
+    /** Verdadeiro se a tentativa foi concedida neste condomínio nos últimos 5 minutos. */
+    @Transactional(readOnly = true)
+    public boolean isFreshGrant(UUID condominiumId, UUID attemptId) {
+        return attempts.findById(attemptId)
+                .filter(a -> a.getCondominiumId().equals(condominiumId) && "GRANTED".equals(a.getResult())
+                        && a.getOccurredAt().isAfter(Instant.now(clock).minus(Duration.ofMinutes(5))))
+                .isPresent();
+    }
+
     @Transactional(readOnly = true)
     public Page<AccessAttempt> historyOfMyUnit(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "access.history.self");
@@ -165,10 +174,10 @@ public class CredentialService {
         return "NOT_YET_VALID";
     }
 
-    private void record(UUID condominiumId, UUID credentialId, String entrance, boolean granted, String reason,
+    private UUID record(UUID condominiumId, UUID credentialId, String entrance, boolean granted, String reason,
                         UUID actorUserId, Instant now) {
-        attempts.save(new AccessAttempt(condominiumId, credentialId, entrance, granted ? "GRANTED" : "DENIED",
-                reason, actorUserId, MDC.get(CorrelationIdFilter.MDC_KEY), now));
+        return attempts.save(new AccessAttempt(condominiumId, credentialId, entrance, granted ? "GRANTED" : "DENIED",
+                reason, actorUserId, MDC.get(CorrelationIdFilter.MDC_KEY), now)).getId();
     }
 
     private UUID unitOf(ResidentContext me) {

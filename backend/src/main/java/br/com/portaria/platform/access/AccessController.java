@@ -72,8 +72,9 @@ public class AccessController {
      * @param reason      OK ou o motivo da negação
      * @param unitId      unidade visitada, quando autorizado
      * @param visitorName visitante, quando autorizado
+     * @param attemptId   identificador da tentativa registrada; base para um comando físico se concedida
      */
-    public record ValidateResponse(boolean granted, String reason, UUID unitId, String visitorName) {
+    public record ValidateResponse(boolean granted, String reason, UUID unitId, String visitorName, UUID attemptId) {
     }
 
     /**
@@ -127,7 +128,7 @@ public class AccessController {
     @PostMapping("/access/validate")
     public ValidateResponse validate(@PathVariable UUID condominiumId, @Valid @RequestBody ValidateRequest r) {
         CredentialService.Validation v = service.validate(condominiumId, r.token(), r.entrance());
-        return new ValidateResponse(v.granted(), v.reason(), v.unitId(), v.visitorName());
+        return new ValidateResponse(v.granted(), v.reason(), v.unitId(), v.visitorName(), v.attemptId());
     }
 
     @GetMapping("/access/attempts")

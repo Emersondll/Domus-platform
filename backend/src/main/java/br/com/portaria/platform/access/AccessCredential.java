@@ -102,6 +102,10 @@ public class AccessCredential {
         return useCount;
     }
 
+    public UUID getCreatedByUserId() {
+        return createdByUserId;
+    }
+
     public Instant getRevokedAt() {
         return revokedAt;
     }

@@ -60,6 +60,14 @@ public class AppUser {
         return active;
     }
 
+    /** Desvincula do provedor de identidade e remove dados pessoais. */
+    public void anonymize() {
+        this.externalSubject = "anonymized-" + id;
+        this.email = "anonymized-" + id + "@anonymized.invalid";
+        this.displayName = "ANONIMIZADO";
+        this.active = false;
+    }
+
     public void deactivate() {
         this.active = false;
     }

@@ -86,3 +86,12 @@ portaria:
     validate-per-minute: 120
     api-per-minute: 600
     max-auth-failures: 10
+  retention:
+    # Política de retenção (dias). O audit_log é append-only e não é expurgado automaticamente (ver docs/lgpd.md).
+    enabled: true
+    cron: "0 30 3 * * *"
+    notifications-days: 90
+    access-attempts-days: 365
+    agent-events-days: 90
+    device-events-days: 90
+    resolved-conflicts-days: 365

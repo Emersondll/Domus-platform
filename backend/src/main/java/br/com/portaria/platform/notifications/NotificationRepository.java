@@ -1,5 +1,6 @@
 package br.com.portaria.platform.notifications;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -8,6 +9,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Acesso a notificações, sempre escopado por usuário e condomínio. */
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
+
+    List<Notification> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 
     Page<Notification> findByUserIdAndCondominiumId(UUID userId, UUID condominiumId, Pageable pageable);
 

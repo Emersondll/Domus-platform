@@ -95,6 +95,23 @@ public class AccessService {
         throw new ForbiddenException("Insufficient permissions");
     }
 
+    /** Exige que o ator seja administrador da empresa operadora dona do condomínio (404 se nem enxerga o condomínio). */
+    public Actor requireCompanyAdminOf(UUID condominiumId, String action) {
+        Actor actor = currentActor();
+        UUID companyId = condominiums.companyIdOf(condominiumId).orElse(null);
+        boolean isAdmin = companyId != null && actor.memberships().stream()
+                .anyMatch(m -> m.getRole() == Role.COMPANY_ADMIN && companyId.equals(m.getOperatorCompanyId()));
+        if (isAdmin) {
+            return actor;
+        }
+        audit.record(actor.userId(), null, condominiumId, action, "condominium", condominiumId.toString(),
+                AuditOutcome.DENIED);
+        if (levelFor(actor, condominiumId) == AccessLevel.NONE) {
+            throw new NotFoundException("Condominium not found");
+        }
+        throw new ForbiddenException("Company administrator required");
+    }
+
     /**
      * Exige que o ator seja morador do condomínio informado e devolve o cadastro ao qual está vinculado.
      * Quem não é morador ali recebe 404, como nos demais recursos de tenant.

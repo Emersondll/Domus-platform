@@ -54,6 +54,14 @@ public class Resident {
         this.residentType = residentType;
     }
 
+    /** Remove os dados pessoais (direito de eliminação); o vínculo estrutural com a unidade permanece. */
+    public void anonymize() {
+        this.fullName = "ANONIMIZADO";
+        this.email = null;
+        this.phone = null;
+        this.active = false;
+    }
+
     public void updateContact(String email, String phone) {
         this.email = email;
         this.phone = phone;

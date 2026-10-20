@@ -1,0 +1,19 @@
+# Inventário de dependências e licenças
+
+Gerado em 2026-10-20 a partir das próprias ferramentas de build.
+
+| Arquivo | Conteúdo |
+|---|---|
+| `maven-backend-THIRD-PARTY.txt` | 154 dependências de runtime do backend (`license-maven-plugin`) |
+| `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
+| `npm-production-licenses.txt` | dependências npm que entram nos bundles (somente MIT/ISC) |
+
+Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPD no relatório são **duplo licenciamento** com opção permissiva
+(logback: EPL-2.0 ou LGPL-2.1 — usamos EPL-2.0; jakarta.annotation/transaction: EPL-2.0 ou GPL-2.0 com Classpath Exception).
+Nenhuma dependência AGPL/SSPL. Imagens de contêiner (postgres, keycloak, caddy, prometheus, grafana, temurin) têm licenças próprias
+(PostgreSQL, Apache-2.0, Apache-2.0, Apache-2.0, AGPL-3.0 para o Grafana OSS — usado como serviço separado, sem modificação,
+e **precisa de revisão jurídica** se o produto for oferecido a terceiros como serviço).
+
+Código de projetos de referência: **nenhum foi copiado** (ver `docs/reference-analysis/LICENSES.md`).
+**Licença do próprio projeto:** ainda não definida (decisão do titular do repositório).
+Atualize com: `mvn -f backend/pom.xml org.codehaus.mojo:license-maven-plugin:2.5.0:add-third-party` e `npm ls --omit=dev`.

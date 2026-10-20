@@ -1,0 +1,34 @@
+# LGPD — o que é técnico e o que depende de decisão jurídica/operacional
+
+> **Este documento não declara conformidade com a LGPD.** Controles técnicos são necessários, não suficientes: base legal,
+> contratos, DPO, RIPD e resposta a incidentes são decisões organizacionais e jurídicas.
+
+## Controles técnicos implementados
+| Tema | Implementação |
+|---|---|
+| Minimização | QR Code sem dado pessoal; apenas nome/contato necessários; logs sem tokens/senhas |
+| Controle de acesso | papéis por condomínio, 404 entre tenants, `PLATFORM_ADMIN` sem acesso a moradores |
+| Registro de consultas sensíveis | listagem/leitura de morador, exportação e anonimização geram `audit_log` (append-only) |
+| Direito de acesso/portabilidade | `GET .../residents/{id}/export` (JSON: cadastro, conta, preferências, notificações, convites, veículos/encomendas da unidade) |
+| Direito de eliminação | `POST .../residents/{id}/anonymize`: anonimiza cadastro e conta, revoga acessos e convites ativos, apaga notificações e preferências |
+| Privacidade do morador | preferências de aviso (encomenda, chegada de visitante) respeitadas por morador |
+| Retenção | expurgo diário configurável: notificações 90 d, tentativas de acesso 365 d, eventos de agente/dispositivo 90 d, conflitos resolvidos 365 d (registros ainda referenciados são preservados) |
+| Segurança | TLS, MFA para equipe, segregação por papéis, backups com checksum e criptografia opcional |
+
+## Pendências técnicas
+- **Imagens e áudios**: a plataforma **não** os armazena ainda. Ao integrar vídeo/gravação, é obrigatório definir retenção,
+  controle de acesso às gravações e registro de cada consulta antes de ligar a gravação.
+- **`audit_log` não é expurgado automaticamente** (trigger append-only). O descarte exige procedimento de manutenção
+  controlado e aprovado (desabilitar o trigger por DBA, em transação auditada) conforme a política de retenção definida pelo controlador.
+- A anonimização não altera `audit_log` nem `access_attempt`/`access_command` (registros de segurança), que não contêm o nome do morador;
+  visitantes (nome) permanecem vinculados à unidade — decidir política própria para dados de visitantes.
+- Exportação cobre os dados que a plataforma conhece; dados em backups só saem na rotação dos backups.
+
+## Decisões que cabem ao controlador (condomínio) e à operadora (empresa de portaria)
+1. Papéis: em geral o **condomínio é controlador** e a **empresa de portaria é operadora** — formalizar em contrato (art. 39) e
+   ajustar a quem o titular dirige o pedido.
+2. Base legal para cada tratamento (visitantes, moradores, imagens), prazos de retenção finais e mecanismo de transparência.
+3. Encarregado (DPO), canal do titular, **RIPD**, política de resposta a incidentes e notificação à ANPD/titulares.
+4. Transferência internacional (provedores de nuvem/IdP/WhatsApp) e cláusulas contratuais.
+5. Retenção de imagens e áudios quando houver gravação; acesso e justificativa para consulta.
+6. Tratamento de dados de crianças/adolescentes e de terceiros (visitantes) cadastrados por moradores.

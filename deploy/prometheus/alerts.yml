@@ -1,0 +1,48 @@
+groups:
+  - name: portaria
+    rules:
+      - alert: PortariaApiDown
+        expr: up{job="portaria"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "API da portaria fora do ar", description: "O Prometheus não consegue coletar a porta de gestão da API há 1 minuto."}
+      - alert: PortariaAgentOffline
+        expr: portaria_agents_offline > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Agente local sem contato", description: "{{ $value }} agente(s) ativo(s) sem contato há mais de 5 minutos: condomínio possivelmente em contingência."}
+      - alert: PortariaUnsyncedEvents
+        expr: portaria_agents_backlog > 0
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "Eventos não sincronizados", description: "Há {{ $value }} evento(s) pendentes nos agentes por mais de 15 minutos."}
+      - alert: PortariaSyncConflictsOpen
+        expr: portaria_sync_conflicts_open > 0
+        for: 30m
+        labels: {severity: warning}
+        annotations: {summary: "Conflitos de sincronização sem resolução", description: "{{ $value }} conflito(s) aguardam revisão humana."}
+      - alert: PortariaDoorCommandUnknown
+        expr: portaria_commands_unknown_1h > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Comando de porta sem confirmação", description: "Há comando(s) físico(s) em estado UNKNOWN na última hora: verificar no local."}
+      - alert: PortariaDeviceOffline
+        expr: portaria_devices_offline > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Dispositivo offline", description: "{{ $value }} dispositivo(s) reportado(s) offline."}
+      - alert: PortariaCallQueueGrowing
+        expr: portaria_calls_queued > 5
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: "Fila de atendimento crescendo", description: "{{ $value }} atendimentos aguardando operador há mais de 3 minutos."}
+      - alert: PortariaHigh5xxRate
+        expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Taxa de erros 5xx acima de 5%"}
+      - alert: PortariaHighLatencyP95
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "Latência p95 da API acima de 1s"}

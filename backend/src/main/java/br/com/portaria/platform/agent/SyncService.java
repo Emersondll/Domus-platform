@@ -4,6 +4,7 @@ import br.com.portaria.platform.access.CredentialService;
 import br.com.portaria.platform.devices.DeviceEventService;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,22 +39,27 @@ public class SyncService {
     private final DeviceEventService deviceEvents;
     private final AuditService audit;
     private final Clock clock;
+    private final MeterRegistry meters;
 
     public SyncService(AgentEventRepository events, SyncConflictRepository conflicts, CredentialService credentials,
-                       DeviceEventService deviceEvents, AuditService audit, Clock clock) {
+                       DeviceEventService deviceEvents, AuditService audit, Clock clock,
+                       MeterRegistry meters) {
         this.events = events;
         this.conflicts = conflicts;
         this.credentials = credentials;
         this.deviceEvents = deviceEvents;
         this.audit = audit;
         this.clock = clock;
+        this.meters = meters;
     }
 
     @Transactional
     public List<Result> process(Agent agent, List<Incoming> incoming) {
         List<Result> results = new ArrayList<>();
         for (Incoming e : incoming) {
-            results.add(processOne(agent, e));
+            Result result = processOne(agent, e);
+            meters.counter("portaria.agent.events", "status", result.status().toLowerCase(java.util.Locale.ROOT)).increment();
+            results.add(result);
         }
         return results;
     }

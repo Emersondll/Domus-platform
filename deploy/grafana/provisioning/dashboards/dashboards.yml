@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: portaria
+    folder: Portaria
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

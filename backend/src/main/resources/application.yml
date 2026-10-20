@@ -25,14 +25,40 @@ server:
     include-stacktrace: never
 
 management:
+  # Porta de gestão separada: nunca publicada pelo proxy reverso (métricas e health ficam na rede interna).
+  server:
+    port: ${MANAGEMENT_PORT:8082}
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_PROBABILITY:0.1}
+    export:
+      otlp:
+        # Desligado por padrão (os trace ids seguem nos logs). Em produção: OTEL_TRACES_EXPORT_ENABLED=true e o coletor abaixo.
+        enabled: ${OTEL_TRACES_EXPORT_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: false
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
 
 logging:
   pattern:
@@ -51,3 +77,12 @@ portaria:
     # Obrigatório (>= 32 caracteres). Deriva o segredo de assinatura da política de cada agente.
     policy-master-secret: ${AGENT_POLICY_MASTER_SECRET:}
     policy-ttl: PT6H
+  rate-limit:
+    enabled: true
+    # Atrás do proxy reverso (que sobrescreve X-Forwarded-For) mude para true; senão o cabeçalho é falsificável.
+    trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}
+    agent-per-minute: 120
+    device-per-minute: 120
+    validate-per-minute: 120
+    api-per-minute: 600
+    max-auth-failures: 10

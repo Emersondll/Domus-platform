@@ -2,6 +2,7 @@ package br.com.portaria.platform.access;
 
 import br.com.portaria.platform.notifications.NotificationService;
 import br.com.portaria.platform.shared.PolicyVersion;
+import io.micrometer.core.instrument.MeterRegistry;
 import br.com.portaria.platform.residents.ResidentRepository;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
@@ -44,12 +45,14 @@ public class CredentialService {
     private final Clock clock;
     private final NotificationService notifications;
     private final PolicyVersion policyVersion;
+    private final MeterRegistry meters;
 
     public CredentialService(AccessCredentialRepository credentials, VisitorRepository visitors,
                              AccessAttemptRepository attempts, ResidentRepository residents,
                              CredentialTokenCodec codec,
                              br.com.portaria.platform.shared.tenant.AccessService access, AuditService audit,
-                             Clock clock, NotificationService notifications, PolicyVersion policyVersion) {
+                             Clock clock, NotificationService notifications, PolicyVersion policyVersion,
+                             MeterRegistry meters) {
         this.credentials = credentials;
         this.visitors = visitors;
         this.attempts = attempts;
@@ -60,6 +63,7 @@ public class CredentialService {
         this.clock = clock;
         this.notifications = notifications;
         this.policyVersion = policyVersion;
+        this.meters = meters;
     }
 
     /** Convite criado, com o token em claro (devolvido uma única vez, nunca armazenado). */
@@ -246,6 +250,8 @@ public class CredentialService {
 
     private UUID record(UUID condominiumId, UUID credentialId, String entrance, boolean granted, String reason,
                         UUID actorUserId, Instant now) {
+        meters.counter("portaria.access.validations", "result", granted ? "granted" : "denied",
+                "reason", reason.toLowerCase(java.util.Locale.ROOT)).increment();
         return attempts.save(new AccessAttempt(condominiumId, credentialId, entrance, granted ? "GRANTED" : "DENIED",
                 reason, actorUserId, MDC.get(CorrelationIdFilter.MDC_KEY), now)).getId();
     }

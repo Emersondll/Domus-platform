@@ -9,7 +9,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Base dos testes de integração: um PostgreSQL real compartilhado e contexto Spring em cache. */
-@SpringBootTest
+// Limites altos: os testes de concorrência disparam dezenas de chamadas do mesmo IP. RateLimitIT usa limites baixos.
+@SpringBootTest(properties = {
+        "portaria.rate-limit.validate-per-minute=100000", "portaria.rate-limit.api-per-minute=100000",
+        "portaria.rate-limit.agent-per-minute=100000", "portaria.rate-limit.device-per-minute=100000",
+        "portaria.rate-limit.max-auth-failures=100000"})
 @AutoConfigureMockMvc
 abstract class AbstractIntegrationTest {
 

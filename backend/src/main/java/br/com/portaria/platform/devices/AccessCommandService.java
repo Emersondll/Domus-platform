@@ -5,6 +5,7 @@ import br.com.portaria.platform.devices.adapter.DeviceAdapter;
 import br.com.portaria.platform.devices.adapter.DeviceAdapters;
 import br.com.portaria.platform.operations.OperationsService;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
+import io.micrometer.core.instrument.MeterRegistry;
 import br.com.portaria.platform.shared.audit.AuditService;
 import br.com.portaria.platform.shared.config.CorrelationIdFilter;
 import br.com.portaria.platform.shared.error.ConflictException;
@@ -52,11 +53,13 @@ public class AccessCommandService {
     private final Clock clock;
     private final TransactionTemplate tx;
     private final Duration confirmationTimeout;
+    private final MeterRegistry meters;
 
     public AccessCommandService(AccessCommandRepository commands, DeviceService devices, DeviceAdapters adapters,
                                 OperationsService operations, CredentialService credentials, AccessService access,
                                 AuditService audit, Clock clock, PlatformTransactionManager txManager,
-                                @Value("${portaria.devices.confirmation-timeout:PT15S}") Duration confirmationTimeout) {
+                                @Value("${portaria.devices.confirmation-timeout:PT15S}") Duration confirmationTimeout,
+                                MeterRegistry meters) {
         this.commands = commands;
         this.devices = devices;
         this.adapters = adapters;
@@ -67,6 +70,7 @@ public class AccessCommandService {
         this.clock = clock;
         this.tx = new TransactionTemplate(txManager);
         this.confirmationTimeout = confirmationTimeout;
+        this.meters = meters;
     }
 
     /** Pedido de abertura. @param callId ou @param attemptId é a base de autorização (exatamente um). */
@@ -121,6 +125,7 @@ public class AccessCommandService {
             commands.markUnknown(command.getId(), "NO_DELIVERY_PROOF", Instant.now(clock));
         }
         AccessCommand result = reload(condominiumId, command.getId());
+        meters.counter("portaria.door.commands", "state", result.getState().toLowerCase(java.util.Locale.ROOT)).increment();
         auditCommand(actor, condominiumId, result,
                 "FAILED".equals(result.getState()) ? AuditOutcome.FAILURE : AuditOutcome.SUCCESS);
         return result;

@@ -6,6 +6,8 @@
    não sobe (variáveis obrigatórias). O arquivo real nunca é versionado.
 3. `docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d --build`
 4. DNS: `api.`, `panel.`, `app.` e `auth.` apontando para o servidor. O Caddy obtém os certificados (Let's Encrypt) sozinho.
+   Os apps web leem `/config.json` (gerado pelo Caddy a partir de `DOMAIN`): o **mesmo build** serve qualquer ambiente.
+   Os clientes `portaria-panel` e `portaria-resident` do realm aceitam `https://panel.*/*` e `https://app.*/*`; restrinja ao seu domínio.
 5. **Primeiro administrador:** crie o usuário no Keycloak (`https://auth.<domínio>`, usando o admin criado em
    `KEYCLOAK_ADMIN`), atribua o papel de realm `platform-admin`, copie o `id` do usuário para
    `BOOTSTRAP_PLATFORM_ADMIN_SUBJECT`/`..._EMAIL`, reinicie `app` uma vez e **remova essas variáveis** em seguida.

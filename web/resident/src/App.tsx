@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { devLogin, request } from "../../shared/src/api";
+import { devLogin, request, setUnauthorizedHandler } from "../../shared/src/api";
+import { handleCallback, loadOidcConfig, logout, startLogin, type OidcConfig } from "../../shared/src/oidc";
 import { Home } from "./Home";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
@@ -16,6 +17,28 @@ export function App() {
   const [condo, setCondo] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("Início");
   const [error, setError] = useState<string | null>(null);
+  const [oidc, setOidc] = useState<OidcConfig | null | undefined>(undefined); // undefined = carregando
+
+  useEffect(() => {
+    (async () => {
+      const cfg = await loadOidcConfig();
+      if (cfg) {
+        try {
+          const t = await handleCallback(cfg);
+          if (t) setToken(t);
+        } catch {
+          setError("Não foi possível concluir o login. Tente novamente.");
+        }
+      }
+      setOidc(cfg);
+    })();
+  }, []);
+
+  // 401 da API: sessão expirada, volta à tela de entrada.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setToken(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -34,14 +57,25 @@ export function App() {
     });
   }, [token]);
 
+  if (oidc === undefined) {
+    return <main className="login"><p>Carregando…</p></main>;
+  }
   if (!token) {
     return (
       <main className="login">
         <h1>Meu Condomínio</h1>
-        <p className="badge warn">DEV login (morador de teste) — Keycloak + MFA pendente</p>
-        <form onSubmit={login}>
-          <button type="submit">Entrar como morador de teste</button>
-        </form>
+        {oidc ? (
+          <button onClick={() => startLogin(oidc)}>Entrar</button>
+        ) : import.meta.env.DEV ? (
+          <>
+            <p className="badge warn">DEV login (morador de teste) — só em desenvolvimento; em produção o login é do Keycloak</p>
+            <form onSubmit={login}>
+              <button type="submit">Entrar como morador de teste</button>
+            </form>
+          </>
+        ) : (
+          <p role="alert" className="error">Login não configurado (/config.json ausente).</p>
+        )}
         {error && <p role="alert" className="error">{error}</p>}
       </main>
     );
@@ -53,6 +87,7 @@ export function App() {
     <div className="app">
       <header>
         <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Meu Condomínio"}</strong>
+        <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
           <select aria-label="Condomínio" value={condo ?? ""} onChange={(e) => setCondo(e.target.value)}>
             {residencies.map((r) => (

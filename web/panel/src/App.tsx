@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, request, type Page } from "../../shared/src/api";
+import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shared/src/api";
+import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
 import { CallWorkbench } from "./CallWorkbench";
 import { IncidentsPanel } from "./IncidentsPanel";
 import { Login } from "./Login";
@@ -16,6 +17,30 @@ export function App() {
   const [selectedCondo, setSelectedCondo] = useState<string | null>(null);
   const [selectedCall, setSelectedCall] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [oidc, setOidc] = useState<OidcConfig | null | undefined>(undefined); // undefined = carregando
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Descobre se há OIDC e, se a URL for um retorno do Keycloak, conclui o login.
+  useEffect(() => {
+    (async () => {
+      const cfg = await loadOidcConfig();
+      if (cfg) {
+        try {
+          const t = await handleCallback(cfg);
+          if (t) setSession({ token: t, subject: displayNameFrom(t) });
+        } catch {
+          setAuthError("Não foi possível concluir o login. Tente novamente.");
+        }
+      }
+      setOidc(cfg);
+    })();
+  }, []);
+
+  // 401 da API (token expirado/inválido): volta à tela de entrada (o SSO do Keycloak renova sem pedir senha).
+  useEffect(() => {
+    setUnauthorizedHandler(() => setSession(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const token = session?.token;
 
@@ -46,8 +71,11 @@ export function App() {
     await refresh();
   }
 
+  if (oidc === undefined) {
+    return <main className="login"><p>Carregando…</p></main>;
+  }
   if (!session) {
-    return <Login onLogin={(t, s) => setSession({ token: t, subject: s })} />;
+    return <Login oidc={oidc} authError={authError} onLogin={(t, s) => setSession({ token: t, subject: s })} />;
   }
 
   const call = calls.find((c) => c.id === selectedCall) ?? null;
@@ -79,7 +107,7 @@ export function App() {
         >
           Atender próxima
         </button>
-        <button onClick={() => setSession(null)}>Sair</button>
+        <button onClick={() => (oidc ? logout(oidc) : setSession(null))}>Sair</button>
       </header>
 
       {message && <p role="status" className="message">{message}</p>}

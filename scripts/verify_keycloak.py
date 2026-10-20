@@ -65,12 +65,12 @@ def create_user(tok, username, role):
     return uid
 
 
-def browser_login(username):
+def browser_login(username, redirect_uri="http://localhost:5173/"):
     """Login real pelo fluxo 'browser-mfa'. Devolve ('code', codigo) ou ('otp-setup', None)."""
     jar = cookiejar.CookieJar()
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-    q = urllib.parse.urlencode({"client_id": "portaria-panel", "redirect_uri": "http://localhost:5173/callback", "response_type": "code",
+    q = urllib.parse.urlencode({"client_id": "portaria-panel", "redirect_uri": redirect_uri, "response_type": "code",
                                 "scope": "openid", "code_challenge": challenge, "code_challenge_method": "S256", "state": "x"})
     s, _, page = http("GET", f"{KC}/realms/portaria/protocol/openid-connect/auth?{q}", jar=jar)
     for c in jar:  # navegadores enviam cookies Secure para localhost; o cookiejar do Python não: ajuste só do cliente de teste
@@ -78,13 +78,20 @@ def browser_login(username):
     action = html.unescape(re.search(r'<form[^>]+id="kc-form-login"[^>]+action="([^"]+)"', page).group(1))
     s, headers, body = http("POST", action, {"username": username, "password": PASSWORD, "credentialId": ""}, jar=jar, follow=False)
     if s in (302, 303) and "code=" in headers.get("Location", ""):
-        return "code", urllib.parse.parse_qs(urllib.parse.urlparse(headers["Location"]).query)["code"][0]
+        return "code", (urllib.parse.parse_qs(urllib.parse.urlparse(headers["Location"]).query)["code"][0], verifier, redirect_uri)
     # sem redirecionamento com código: a próxima página é a configuração do autenticador (OTP)
     if s in (302, 303):
         s, _, body = http("GET", headers["Location"], jar=jar)
     if re.search(r"kc-totp|otp|authenticator", body, re.I):
         return "otp-setup", None
     return "unknown", body[:300]
+
+
+def exchange_code(code, verifier, redirect_uri, verifier_override=None):
+    """Troca o código pelo token exatamente como o frontend (cliente público, PKCE, sem segredo)."""
+    return http("POST", f"{KC}/realms/portaria/protocol/openid-connect/token",
+                {"grant_type": "authorization_code", "client_id": "portaria-panel", "code": code,
+                 "redirect_uri": redirect_uri, "code_verifier": verifier_override or verifier})
 
 
 def api(method, path, token=None, body=None):
@@ -162,6 +169,21 @@ try:
     s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins", t_admin,
                   {"externalSubject": uid_op, "email": f"op-{suffix}@example.invalid", "displayName": "Operador KC"})
     check("provisionamento vincula o sub do Keycloak a um papel -> 201", s == 201, f"({s})")
+    print("== fluxo do frontend: login de navegador -> código -> troca com PKCE -> API")
+    kind, data = browser_login(f"nobody-{suffix}")
+    check("login de navegador devolve o código de autorização", kind == "code", f"({kind})")
+    code, verifier, redirect = data
+    s, _, b = exchange_code(code, verifier, redirect, verifier_override="x" * 60)
+    check("troca com code_verifier ERRADO é recusada (PKCE)", s == 400, f"({s})")
+    kind, data = browser_login(f"nobody-{suffix}")  # o código anterior foi consumido pela tentativa
+    code, verifier, redirect = data
+    s, _, b = exchange_code(code, verifier, redirect)
+    check("troca com o code_verifier correto devolve o token", s == 200, f"({s})")
+    pkce_token = json.loads(b)["access_token"]
+    s, _, b = exchange_code(code, verifier, redirect)
+    check("o mesmo código não pode ser reutilizado", s == 400, f"({s})")
+    s, _, b = api("GET", "/api/v1/condominiums", pkce_token)
+    check("token obtido pelo fluxo do frontend é aceito pela API (403 = autenticado, sem associação; não 401)", s == 403, f"({s})")
     t_op = direct_grant_token(tok, f"op-{suffix}")
     s, _, b = api("GET", "/api/v1/condominiums", t_op)
     check("o novo administrador de empresa já é reconhecido", s == 200, f"({s})")

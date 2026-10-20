@@ -39,7 +39,7 @@ function fakeApi() {
 async function openTab(name: string) {
   const user = userEvent.setup();
   render(<App />);
-  await user.click(screen.getByRole("button", { name: /Entrar/ }));
+  await user.click(await screen.findByRole("button", { name: /Entrar/ }));
   await screen.findByText(/Residencial Sol/);
   await user.click(screen.getByRole("button", { name }));
   return user;

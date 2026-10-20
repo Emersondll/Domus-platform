@@ -37,8 +37,14 @@ api.{$DOMAIN} {
 
 panel.{$DOMAIN} {
 	import security_headers
-	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}; frame-ancestors 'none'; base-uri 'none'"
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; frame-ancestors 'none'; base-uri 'none'"
 	encode zstd gzip
+	# Configuração em tempo de execução: o mesmo build serve qualquer ambiente
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control "no-store"
+		respond `{"authority":"https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}/realms/portaria","clientId":"portaria-panel"}`
+	}
 	handle /api/* {
 		import api_proxy
 	}
@@ -51,8 +57,14 @@ panel.{$DOMAIN} {
 
 app.{$DOMAIN} {
 	import security_headers
-	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}; frame-ancestors 'none'; base-uri 'none'"
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; frame-ancestors 'none'; base-uri 'none'"
 	encode zstd gzip
+	# Configuração em tempo de execução: o mesmo build serve qualquer ambiente
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control "no-store"
+		respond `{"authority":"https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}/realms/portaria","clientId":"portaria-resident"}`
+	}
 	handle /api/* {
 		import api_proxy
 	}

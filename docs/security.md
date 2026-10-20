@@ -21,8 +21,11 @@ CSRF: a API é stateless por Bearer (sem cookies de sessão), por isso o CSRF es
 renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. Injeção SQL: JPA/parâmetros nomeados; consultas nativas parametrizadas.
 
 ## Lacunas conhecidas (não declare "pronto para produção" sem tratá-las)
-1. **Painel e app do morador ainda usam o login de desenvolvimento** (`/dev/token`, inexistente em produção). Falta o fluxo OIDC
-   (Authorization Code + PKCE) no frontend — os clientes `portaria-panel`/`portaria-resident` já existem no realm.
+1. **Login OIDC dos frontends implementado, mas não exercitado em navegador real.** O painel e o app do morador usam Authorization Code +
+   PKCE (S256) com `state`, token só em memória e configuração por `/config.json` do proxy; o login de desenvolvimento não vai para o bundle
+   de produção (verificado). Validado: vetor da RFC 7636, `state` forjado/reuso recusados (testes de UI) e o protocolo completo contra o
+   Keycloak real (`scripts/verify_keycloak.py`: verifier errado → 400, código reutilizado → 400, token aceito pela API). Falta um teste
+   automatizado em navegador (Playwright) e refresh de token (hoje expira em 5 min → novo login transparente pelo SSO).
 2. **Validação de audiência (`aud`)** do token não está ativada: qualquer token do realm assinado pelo Keycloak é aceito.
 3. **mTLS por dispositivo/agente** não implementado (hoje: chave por agente/dispositivo sobre TLS).
 4. **Nada testado com hardware real** (controladoras, câmeras, SIP, vídeo).

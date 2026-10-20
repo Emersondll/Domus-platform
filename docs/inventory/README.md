@@ -8,7 +8,7 @@ Gerado em 2026-10-20 a partir das próprias ferramentas de build.
 | `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
 | `npm-production-licenses.txt` | dependências npm que entram nos bundles (somente MIT/ISC) |
 
-Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPD no relatório são **duplo licenciamento** com opção permissiva
+Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPL no relatório são **duplo licenciamento** com opção permissiva
 (logback: EPL-2.0 ou LGPL-2.1 — usamos EPL-2.0; jakarta.annotation/transaction: EPL-2.0 ou GPL-2.0 com Classpath Exception).
 Nenhuma dependência AGPL/SSPL. Imagens de contêiner (postgres, keycloak, caddy, prometheus, grafana, temurin) têm licenças próprias
 (PostgreSQL, Apache-2.0, Apache-2.0, Apache-2.0, AGPL-3.0 para o Grafana OSS — usado como serviço separado, sem modificação,

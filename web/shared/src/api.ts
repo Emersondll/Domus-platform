@@ -6,6 +6,13 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+/** O app registra o que fazer quando a API responde 401 (token expirado ou inválido): normalmente, novo login. */
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 export type Page<T> = { items: T[]; page: number; size: number; totalElements: number };
 
 /** Somente desenvolvimento: troca um subject semeado por um token. Em produção o login é OIDC (Keycloak). */
@@ -25,6 +32,7 @@ export async function request<T>(token: string, method: string, path: string, bo
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return null;
+  if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     let detail = res.statusText;
     try {

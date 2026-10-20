@@ -33,7 +33,7 @@ function fakeApi() {
 async function login() {
   const user = userEvent.setup();
   render(<App />);
-  await user.click(screen.getByRole("button", { name: "Entrar" }));
+  await user.click(await screen.findByRole("button", { name: "Entrar" }));
   return user;
 }
 

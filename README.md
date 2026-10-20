@@ -32,6 +32,12 @@ Documentação interativa da API: <http://localhost:8081/swagger-ui.html>.
 cd web && npm install && npm run dev -w panel      # http://localhost:5173 (proxy para a API em 8081)
 ```
 
+## App do morador (PWA)
+
+```bash
+cd web && npm run dev -w resident      # http://localhost:5174 ; entra como o morador de teste `resident-sol`
+```
+
 ## Testes
 
 ```bash

@@ -1,5 +1,6 @@
 package br.com.portaria.platform.access;
 
+import br.com.portaria.platform.notifications.NotificationService;
 import br.com.portaria.platform.residents.ResidentRepository;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
@@ -39,12 +40,13 @@ public class CredentialService {
     private final br.com.portaria.platform.shared.tenant.AccessService access;
     private final AuditService audit;
     private final Clock clock;
+    private final NotificationService notifications;
 
     public CredentialService(AccessCredentialRepository credentials, VisitorRepository visitors,
                              AccessAttemptRepository attempts, ResidentRepository residents,
                              CredentialTokenCodec codec,
                              br.com.portaria.platform.shared.tenant.AccessService access, AuditService audit,
-                             Clock clock) {
+                             Clock clock, NotificationService notifications) {
         this.credentials = credentials;
         this.visitors = visitors;
         this.attempts = attempts;
@@ -53,6 +55,7 @@ public class CredentialService {
         this.access = access;
         this.audit = audit;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     /** Convite criado, com o token em claro (devolvido uma única vez, nunca armazenado). */
@@ -120,12 +123,21 @@ public class CredentialService {
             String name = c.getVisitorId() == null ? null
                     : visitors.findById(c.getVisitorId()).map(Visitor::getFullName).orElse(null);
             record(condominiumId, id.get(), entrance, true, "OK", actor.userId(), now);
+            notifications.notifyUnit(condominiumId, c.getUnitId(), NotificationService.VISITOR_ARRIVED,
+                    "Visitante na portaria", (name == null ? "Seu convidado" : name) + " teve a entrada autorizada.");
             return new Validation(true, "OK", c.getUnitId(), name);
         }
         String reason = denialReason(credentials.findByIdAndCondominiumId(id.get(), condominiumId)
                 .orElse(found.get()), now);
         record(condominiumId, id.get(), entrance, false, reason, actor.userId(), now);
         return new Validation(false, reason, null, null);
+    }
+
+    /** Histórico de acessos das credenciais da própria unidade do morador. */
+    @Transactional(readOnly = true)
+    public Page<AccessAttempt> historyOfMyUnit(UUID condominiumId, Pageable pageable) {
+        ResidentContext me = access.requireResident(condominiumId, "access.history.self");
+        return attempts.findByUnit(condominiumId, unitOf(me), pageable);
     }
 
     @Transactional(readOnly = true)

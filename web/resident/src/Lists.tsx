@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { request } from "../../shared/src/api";
+import type { Parcel, Vehicle } from "./types";
+import { errorText, useList } from "./useApi";
+
+export function Parcels({ token, condo }: { token: string; condo: string }) {
+  const { items } = useList<Parcel>(token, `/api/v1/condominiums/${condo}/me/parcels`);
+  return (
+    <section aria-label="Encomendas">
+      <h2>Encomendas</h2>
+      <ul>
+        {items.map((p) => (
+          <li key={p.id}>
+            {p.carrier ?? "Encomenda"} · recebida {new Date(p.receivedAt).toLocaleString()} ·{" "}
+            {p.status === "RECEIVED" ? "aguardando retirada" : "retirada"}
+          </li>
+        ))}
+        {items.length === 0 && <li>Nenhuma encomenda.</li>}
+      </ul>
+    </section>
+  );
+}
+
+export function Vehicles({ token, condo }: { token: string; condo: string }) {
+  const base = `/api/v1/condominiums/${condo}/me/vehicles`;
+  const { items, reload } = useList<Vehicle>(token, base);
+  const [plate, setPlate] = useState("");
+  const [model, setModel] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    try {
+      await request(token, "POST", base, { plate, model: model || null });
+      setPlate("");
+      setModel("");
+      reload();
+    } catch (err) {
+      setMsg(errorText(err));
+    }
+  }
+
+  return (
+    <section aria-label="Veículos">
+      <h2>Veículos</h2>
+      <form onSubmit={add}>
+        <label htmlFor="plate">Placa</label>
+        <input id="plate" required value={plate} onChange={(e) => setPlate(e.target.value)} />
+        <label htmlFor="model">Modelo</label>
+        <input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+        <button type="submit">Cadastrar veículo</button>
+      </form>
+      {msg && <p role="alert" className="error">{msg}</p>}
+      <ul>
+        {items.map((v) => (
+          <li key={v.id}>{v.plate} {v.model ?? ""}</li>
+        ))}
+        {items.length === 0 && <li>Nenhum veículo.</li>}
+      </ul>
+    </section>
+  );
+}

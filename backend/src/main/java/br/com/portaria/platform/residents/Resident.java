@@ -54,6 +54,11 @@ public class Resident {
         this.residentType = residentType;
     }
 
+    public void updateContact(String email, String phone) {
+        this.email = email;
+        this.phone = phone;
+    }
+
     public UUID getId() {
         return id;
     }

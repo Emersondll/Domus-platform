@@ -136,6 +136,13 @@ public class AccessController {
         return PageResponse.of(service.listAttempts(condominiumId, pageable), AttemptResponse::from);
     }
 
+    @GetMapping("/me/access-history")
+    public PageResponse<AttemptResponse> myHistory(@PathVariable UUID condominiumId,
+            @PageableDefault(size = 50, sort = "occurredAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
+            Pageable pageable) {
+        return PageResponse.of(service.historyOfMyUnit(condominiumId, pageable), AttemptResponse::from);
+    }
+
     @GetMapping("/visitors")
     public PageResponse<VisitorResponse> visitors(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {

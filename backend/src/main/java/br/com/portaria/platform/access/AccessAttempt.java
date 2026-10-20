@@ -55,6 +55,10 @@ public class AccessAttempt {
         this.occurredAt = occurredAt;
     }
 
+    public UUID getCondominiumId() {
+        return condominiumId;
+    }
+
     public UUID getId() {
         return id;
     }

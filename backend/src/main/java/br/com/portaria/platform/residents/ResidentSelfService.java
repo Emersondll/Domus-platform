@@ -1,0 +1,69 @@
+package br.com.portaria.platform.residents;
+
+import br.com.portaria.platform.commercial.CommercialService;
+import br.com.portaria.platform.identity.Membership;
+import br.com.portaria.platform.identity.Role;
+import br.com.portaria.platform.shared.audit.AuditOutcome;
+import br.com.portaria.platform.shared.audit.AuditService;
+import br.com.portaria.platform.shared.tenant.AccessService;
+import br.com.portaria.platform.shared.tenant.Actor;
+import br.com.portaria.platform.shared.tenant.ResidentContext;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Autoatendimento do morador: residências do usuário e atualização de contato. */
+@Service
+public class ResidentSelfService {
+
+    /** Residência do usuário: condomínio, unidade e cadastro de morador. */
+    public record Residency(UUID condominiumId, String condominiumName, UUID unitId, String unitNumber,
+                            UUID residentId) {
+    }
+
+    private final ResidentRepository residents;
+    private final CommercialService commercial;
+    private final AccessService access;
+    private final AuditService audit;
+
+    public ResidentSelfService(ResidentRepository residents, CommercialService commercial, AccessService access,
+                               AuditService audit) {
+        this.residents = residents;
+        this.commercial = commercial;
+        this.access = access;
+        this.audit = audit;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Residency> residencies() {
+        Actor actor = access.currentActor();
+        return actor.memberships().stream()
+                .filter(m -> m.getRole() == Role.RESIDENT)
+                .map(this::toResidency)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Resident profile(UUID condominiumId) {
+        ResidentContext me = access.requireResident(condominiumId, "profile.read");
+        return residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow();
+    }
+
+    @Transactional
+    public Resident updateContact(UUID condominiumId, String email, String phone) {
+        ResidentContext me = access.requireResident(condominiumId, "profile.update");
+        Resident resident = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow();
+        resident.updateContact(email, phone);
+        audit.record(me.actor().userId(), null, condominiumId, "profile.update", "resident",
+                resident.getId().toString(), AuditOutcome.SUCCESS);
+        return resident;
+    }
+
+    private Residency toResidency(Membership m) {
+        Resident resident = residents.findByIdAndCondominiumId(m.getResidentId(), m.getCondominiumId()).orElseThrow();
+        return new Residency(m.getCondominiumId(), commercial.findCondominiumInternal(m.getCondominiumId()).getName(),
+                resident.getUnitId(), commercial.requireUnit(m.getCondominiumId(), resident.getUnitId()).getNumber(),
+                resident.getId());
+    }
+}

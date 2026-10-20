@@ -1,6 +1,7 @@
 package br.com.portaria.platform.parcels;
 
 import br.com.portaria.platform.commercial.CommercialService;
+import br.com.portaria.platform.notifications.NotificationService;
 import br.com.portaria.platform.residents.ResidentRepository;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
@@ -28,15 +29,18 @@ public class ParcelService {
     private final AccessService access;
     private final AuditService audit;
     private final Clock clock;
+    private final NotificationService notifications;
 
     public ParcelService(ParcelRepository parcels, CommercialService commercial, ResidentRepository residents,
-                         AccessService access, AuditService audit, Clock clock) {
+                         AccessService access, AuditService audit, Clock clock,
+                         NotificationService notifications) {
         this.parcels = parcels;
         this.commercial = commercial;
         this.residents = residents;
         this.access = access;
         this.audit = audit;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -47,6 +51,8 @@ public class ParcelService {
                 Instant.now(clock)));
         audit.record(actor.userId(), null, condominiumId, "parcel.register", "parcel",
                 parcel.getId().toString(), AuditOutcome.SUCCESS);
+        notifications.notifyUnit(condominiumId, unitId, NotificationService.PARCEL_RECEIVED,
+                "Encomenda recebida", carrier == null ? "Há uma encomenda na portaria." : "Encomenda de " + carrier + " na portaria.");
         return parcel;
     }
 

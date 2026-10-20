@@ -135,6 +135,12 @@ public class CommercialService {
         return units.findByCondominiumId(condominiumId, pageable);
     }
 
+    /** Uso interno (dados do próprio usuário); não aplica política de acesso. */
+    @Transactional(readOnly = true)
+    public Condominium findCondominiumInternal(UUID condominiumId) {
+        return condominiums.findById(condominiumId).orElseThrow(() -> new NotFoundException("Condominium not found"));
+    }
+
     @Transactional(readOnly = true)
     public Unit requireUnit(UUID condominiumId, UUID unitId) {
         return units.findByIdAndCondominiumId(unitId, condominiumId)

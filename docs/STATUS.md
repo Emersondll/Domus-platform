@@ -1,6 +1,6 @@
 # Status do projeto (2026-10-20)
 
-_Fases 0–4 concluídas: 36 testes de integração no backend (`mvn verify`) e 4 testes de UI no painel (`npm test`)._
+_Fases 0–5 concluídas: 41 testes de integração no backend (`mvn verify`), 4 testes de UI no painel e 4 no app do morador (`npm test`)._
 
 ## Concluído e verificado
 - Build Maven (Java 26, Spring Boot 4.0.7); `mvn verify`: 15 testes de integração passando contra PostgreSQL 17 real
@@ -23,12 +23,17 @@ _Fases 0–4 concluídas: 36 testes de integração no backend (`mvn verify`) e 
   histórico de decisões, incidentes, visão geral. Painel web (React + TS) em `web/panel`.
   Saúde de dispositivos e conectividade aparecem como "não integrado"; o botão "Abrir porta" está desabilitado.
 
+- Fase 5: app do morador (PWA, `web/resident`): convites com QR (uso e validade definidos, revogação), encomendas,
+  reservas (conflito explicado), veículos, pedido de atendimento à central, perfil/contato, preferências de
+  privacidade e histórico de acessos da própria unidade. Notificações in-app geradas por encomenda e entrada de
+  visitante, respeitando a preferência de cada morador e isoladas por unidade. Ver ADR 0004.
+  **Não integrados:** push, e-mail e WhatsApp (API oficial); sem NFC/credencial em carteira.
+
 ## Simulado (somente dev)
 - Emissor de tokens `/dev/token` e dados semeados fictícios (`DevSeed`). Substituem Keycloak.
 
 ## Pendente (próximas fases)
 - Fase 2: Keycloak + MFA no Compose, rate limiting, CI, métricas/OpenTelemetry, escopo de ordenação seguro nas listagens.
-- Fase 5: app do morador.
 - Fase 6: adaptadores de dispositivos (ONVIF/RTSP/SIP) e simuladores. Fase 7: agente local de contingência.
 - Fase 8: observabilidade, backup/restauração, retenção LGPD, testes de carga.
 - Skills próprias: `multi-tenant-security`, `access-control-resilience`, `device-integration`.

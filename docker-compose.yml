@@ -1,0 +1,20 @@
+# Infraestrutura local de desenvolvimento. Porta 5433 evita conflito com um Postgres local.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: portaria
+      POSTGRES_USER: portaria
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-portaria_dev_only}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portaria -d portaria"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

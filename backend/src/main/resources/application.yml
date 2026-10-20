@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: portaria-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/portaria}
+    username: ${DB_USER:portaria}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Produção: emissor OIDC real (ex.: Keycloak). No perfil dev o decoder local substitui este valor.
+          issuer-uri: ${OIDC_ISSUER_URI:}
+
+server:
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  pattern:
+    level: "%5p [%X{correlationId:-}]"

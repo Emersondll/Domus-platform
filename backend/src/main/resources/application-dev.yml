@@ -1,0 +1,10 @@
+# Perfil de desenvolvimento local. Nunca usar em produção: emite tokens sem autenticação real.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri:
+portaria:
+  dev:
+    seed-enabled: true

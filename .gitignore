@@ -1,0 +1,10 @@
+target/
+.env
+*.env
+!.env.example
+*.pem
+*.key
+.idea/
+.vscode/
+*.iml
+node_modules/

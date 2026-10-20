@@ -69,8 +69,8 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).
 - Quota offline é por agente (credencial multiuso pode estourar com dois agentes offline; vira `QUOTA_EXCEEDED` na volta).
-- Cadeia de teste (`vitest 2`/`vite` aninhado) com avisos de vulnerabilidade; só afeta desenvolvimento/teste. `vitest 5` exige Node ≥ 22.12
-  (a máquina de desenvolvimento tem Node 18.19). Atualizar junto com o Node.
+- Front-end exige **Node ≥ 22.12** (`vitest 5`). `npm audit` (inclui devtools) = 0 vulnerabilidades desde a atualização para
+  `vitest 5.0.5` e `@vitejs/plugin-react 4.7.0`; 14 testes e os dois builds passam no Node 22.23.
 - Grafana OSS é AGPL-3.0: usado como serviço separado e sem modificação; revisar com jurídico se oferecido a terceiros.
 
 ## Decisões minhas (reversíveis)

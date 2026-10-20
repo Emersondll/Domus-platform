@@ -6,7 +6,7 @@ concluído, simulado e pendente.
 
 ## Rodar localmente
 
-Requisitos: JDK 26, Maven 3.9.9, Docker, Node 18+ (Node 22 recomendado).
+Requisitos: JDK 26, Maven 3.9.9, Docker, Node 22.12+.
 
 ```bash
 docker compose up -d postgres                                    # PostgreSQL 17 na porta 5433

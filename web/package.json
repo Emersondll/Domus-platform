@@ -2,6 +2,7 @@
   "name": "portaria-web",
   "private": true,
   "license": "MIT",
+  "engines": { "node": ">=22.12" },
   "workspaces": ["panel", "resident"],
   "scripts": {
     "test": "npm run test --workspaces --if-present",

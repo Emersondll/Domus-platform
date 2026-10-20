@@ -32,6 +32,5 @@ renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. I
 5. Dados em repouso: SQLite do agente e campos pessoais no PostgreSQL **sem criptografia de campo** (use disco cifrado).
 6. Sem WAF/proteção DDoS; sem teste de intrusão independente; sem varredura de imagem de contêiner.
 7. Limitação de taxa e agendamentos por instância (ver [operations.md](operations.md)).
-8. **Devtools de teste** (`vitest`/`vite` aninhado) com avisos de vulnerabilidade só na cadeia de teste/desenvolvimento (0 em
-   produção). `vitest 5` exige Node ≥ 22.12; atualizar junto com o Node do CI/dev.
+8. Front-end exige Node ≥ 22.12; `npm audit` completo = 0 vulnerabilidades (revalidar a cada atualização de dependências).
 9. O CI foi escrito mas **não executado** no GitHub Actions.

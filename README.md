@@ -38,17 +38,24 @@ cd web && npm install && npm run dev -w panel      # http://localhost:5173 (prox
 cd web && npm run dev -w resident      # http://localhost:5174 ; entra como o morador de teste `resident-sol`
 ```
 
+## Agente local de contingência
+
+Ver [docs/agent.md](docs/agent.md). Prova ponta a ponta (central e agente reais, queda forçada):
+`mvn -f backend/pom.xml package -DskipTests && mvn -f agent/pom.xml package && ./scripts/e2e-contingency.sh`
+
 ## Testes
 
 ```bash
 cd backend && mvn verify      # usa Testcontainers (PostgreSQL real); precisa do Docker
 cd web && npm test            # testes de UI (Vitest)
+cd agent && mvn test          # agente local (16 testes, sem Docker)
 ```
 
 ## Estrutura
 
 ```
 backend/   API (pacotes por domínio: shared, identity, commercial, residents, access, operations, ...)
-web/       painel da central (React + TypeScript)
+web/       painel da central e app do morador (React + TypeScript)
+agent/     agente local de contingência (Java, SQLite)
 docs/      análise dos repositórios de referência, arquitetura, ADRs, status
 ```

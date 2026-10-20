@@ -1,0 +1,23 @@
+[Unit]
+Description=Portaria virtual - agente local de contingencia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=portaria-agent
+Group=portaria-agent
+# O arquivo de ambiente guarda os segredos do agente; permissao 600, dono root ou portaria-agent.
+EnvironmentFile=/etc/portaria-agent/agent.env
+ExecStart=/usr/bin/java -jar /opt/portaria-agent/agent.jar
+Restart=always
+RestartSec=5
+# Endurecimento basico
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/portaria-agent
+StateDirectory=portaria-agent
+
+[Install]
+WantedBy=multi-user.target

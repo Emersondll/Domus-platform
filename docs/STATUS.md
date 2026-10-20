@@ -1,6 +1,6 @@
 # Status do projeto (2026-10-20)
 
-_Fases 0–6 concluídas: 53 testes no backend (`mvn verify`), 5 de UI no painel e 4 no app do morador (`npm test`)._
+_Fases 0–7 concluídas: 65 testes no backend (`mvn verify`), 16 no agente, 5 de UI no painel e 4 no app do morador; mais a prova ponta a ponta `scripts/e2e-contingency.sh`._
 
 ## Concluído e verificado
 - Build Maven (Java 26, Spring Boot 4.0.7); `mvn verify`: 15 testes de integração passando contra PostgreSQL 17 real
@@ -34,12 +34,18 @@ _Fases 0–6 concluídas: 53 testes no backend (`mvn verify`), 5 de UI no painel
   por chave do dispositivo, anti-SSRF e anti-XXE. O painel abre a porta de verdade e só exibe "porta aberta" com
   confirmação. **Nenhum teste com hardware real.**
 
+- Fase 7: agente local de contingência (`agent/`, ver `docs/agent.md` e ADR 0006): identidade por instalação com chave
+  rotacionável, política assinada/versionada/com validade, contingência só offline, fila SQLite persistente, sincronização
+  idempotente, reconciliação com conflitos auditáveis, relé de comandos (`AGENT_RELAY`), falha fechada. Os 10 cenários de
+  falha exigidos têm teste; `scripts/e2e-contingency.sh` derruba a central real (kill -9) e verifica a reconciliação.
+  O painel mostra a conectividade real (ONLINE/OFFLINE e eventos pendentes).
+
 ## Simulado (somente dev)
 - Emissor de tokens `/dev/token`, dados semeados fictícios e dispositivos `SIMULATOR` (`DevSeed`). Substituem Keycloak e hardware.
 
 ## Pendente (próximas fases)
 - Fase 2: Keycloak + MFA no Compose, rate limiting, CI, métricas/OpenTelemetry, escopo de ordenação seguro nas listagens.
-- Fase 7: agente local de contingência. Pendente de dispositivos: SIP/telefonia, vídeo ao vivo (RTSP), primeira integração com fabricante real.
+- Pendente de dispositivos: SIP/telefonia, vídeo ao vivo (RTSP), primeira integração com fabricante real.
 - Fase 8: observabilidade, backup/restauração, retenção LGPD, testes de carga.
 - Skills próprias: `multi-tenant-security`, `access-control-resilience`, `device-integration`.
 

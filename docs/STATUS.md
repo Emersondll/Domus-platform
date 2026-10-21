@@ -61,8 +61,8 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
    eleição de líder entre instâncias (cada instância abre sua própria conexão de eventos).
 2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
-4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador e refresh de token no frontend (token de 5 min → novo login
-   transparente pelo SSO).
+4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador. (O refresh de token já existe: renovação silenciosa aos 80% da vida do
+   token e retry no 401, 9 testes; **ainda não exercitado contra o Keycloak real num navegador**.)
 5. **mTLS** por agente/dispositivo; criptografia de campos pessoais e do SQLite do agente;
    WAF/DDoS; pentest independente; varredura de imagens.
 6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos são por instância (precisam de Redis/lock distribuído);

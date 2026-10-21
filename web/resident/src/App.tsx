@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { devLogin, request, setUnauthorizedHandler } from "../../shared/src/api";
+import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { handleCallback, loadOidcConfig, logout, startLogin, type OidcConfig } from "../../shared/src/oidc";
 import { Home } from "./Home";
 import { Invitations } from "./Invitations";
@@ -39,6 +40,8 @@ export function App() {
     setUnauthorizedHandler(() => setToken(null));
     return () => setUnauthorizedHandler(null);
   }, []);
+
+  useTokenRefresh(oidc, token !== null, setToken);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();

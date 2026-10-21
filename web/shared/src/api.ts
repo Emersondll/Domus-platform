@@ -13,6 +13,13 @@ export function setUnauthorizedHandler(fn: (() => void) | null): void {
   onUnauthorized = fn;
 }
 
+let refresher: (() => Promise<string | null>) | null = null;
+
+/** O app registra como obter um novo access token; num 401 a requisição é refeita uma vez com ele. */
+export function setTokenRefresher(fn: (() => Promise<string | null>) | null): void {
+  refresher = fn;
+}
+
 export type Page<T> = { items: T[]; page: number; size: number; totalElements: number };
 
 /** Somente desenvolvimento: troca um subject semeado por um token. Em produção o login é OIDC (Keycloak). */
@@ -22,7 +29,8 @@ export async function devLogin(subject: string): Promise<string> {
   return (await res.json()).access_token as string;
 }
 
-export async function request<T>(token: string, method: string, path: string, body?: unknown): Promise<T | null> {
+export async function request<T>(token: string, method: string, path: string, body?: unknown,
+                                 retried = false): Promise<T | null> {
   const res = await fetch(path, {
     method,
     headers: {
@@ -32,6 +40,10 @@ export async function request<T>(token: string, method: string, path: string, bo
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return null;
+  if (res.status === 401 && !retried && refresher) {
+    const renewed = await refresher();
+    if (renewed) return request<T>(renewed, method, path, body, true);
+  }
   if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {
     let detail = res.statusText;

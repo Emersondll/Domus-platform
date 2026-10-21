@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shared/src/api";
+import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
 import { CallWorkbench } from "./CallWorkbench";
 import { IncidentsPanel } from "./IncidentsPanel";
@@ -41,6 +42,8 @@ export function App() {
     setUnauthorizedHandler(() => setSession(null));
     return () => setUnauthorizedHandler(null);
   }, []);
+
+  useTokenRefresh(oidc, session !== null, (t) => setSession((s) => (s ? { ...s, token: t } : s)));
 
   const token = session?.token;
 

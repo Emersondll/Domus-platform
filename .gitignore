@@ -13,3 +13,6 @@ backups/
 .env.*
 !.env.example
 !.env.prod.example
+
+# Skills locais do agente (não versionar)
+.claude/

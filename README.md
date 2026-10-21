@@ -67,7 +67,6 @@ agent/     agente local de contingência (Java, SQLite)
 deploy/    produção: Caddy (TLS), Keycloak (realm com MFA), Prometheus/Grafana, compose de produção
 scripts/   backup, restauração, drill, provas ponta a ponta, teste de carga
 docs/      STATUS, operação, segurança, LGPD, agente, ADRs, análise dos repositórios de referência, inventário de licenças
-.claude/skills/   skills do projeto (3 de domínio + 8 de engenharia de terceiros, revisadas)
 ```
 
 Documentação: [STATUS](docs/STATUS.md) · [Operação](docs/operations.md) · [Segurança](docs/security.md) · [LGPD](docs/lgpd.md) ·

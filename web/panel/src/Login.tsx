@@ -24,7 +24,7 @@ export function Login({ oidc, authError, onLogin }: { oidc: OidcConfig | null; a
 
   return (
     <main className="login">
-      <h1>Central de Portaria</h1>
+      <h1>Domus Central</h1>
       {oidc ? (
         <button onClick={() => startLogin(oidc)}>Entrar</button>
       ) : import.meta.env.DEV ? (

@@ -1,8 +1,23 @@
-# Portaria — plataforma de portaria virtual multicondomínio
+# Domus — plataforma de portaria virtual multicondomínio
 
 Monólito modular Java (Spring Boot 4.0.7, Java 26) para empresas que operam portaria remota de vários condomínios.
 Fases 0–8 executadas, **não pronto para produção** (nada testado com hardware real). Veja [docs/STATUS.md](docs/STATUS.md) para o que está
 concluído, simulado e pendente.
+
+## Telas
+
+Capturas do ambiente de desenvolvimento (perfil `dev`, dados fictícios, equipamentos simulados). A interface ainda é funcional e sem identidade visual.
+
+**Painel da central** (operador): atendimento em andamento, abertura de porta com justificativa obrigatória, desfecho, transferência e histórico.
+
+![Painel da central com um atendimento aberto](docs/images/panel-call.png)
+
+**App do morador** (PWA, no celular): início com chamada à central e convite com QR Code de uso limitado.
+
+<p>
+  <img src="docs/images/resident-home.png" alt="App do morador: início" width="260">
+  <img src="docs/images/resident-invite-qr.png" alt="App do morador: convite com QR Code" width="260">
+</p>
 
 ## Rodar localmente
 

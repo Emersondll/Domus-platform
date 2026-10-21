@@ -1,6 +1,6 @@
 # Status do projeto — 2026-10-20
 
-Plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.7, Java 26), painel da central e app do
+Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.7, Java 26), painel da central e app do
 morador (React + TypeScript), agente local de contingência (Java + SQLite). **Fases 0–8 executadas.**
 **Isto NÃO é "pronto para produção"**: nada foi testado com hardware real e há lacunas listadas abaixo.
 

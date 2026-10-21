@@ -63,7 +63,7 @@ export function App() {
   if (!token) {
     return (
       <main className="login">
-        <h1>Meu Condomínio</h1>
+        <h1>Domus</h1>
         {oidc ? (
           <button onClick={() => startLogin(oidc)}>Entrar</button>
         ) : import.meta.env.DEV ? (
@@ -86,7 +86,7 @@ export function App() {
   return (
     <div className="app">
       <header>
-        <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Meu Condomínio"}</strong>
+        <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Domus"}</strong>
         <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
           <select aria-label="Condomínio" value={condo ?? ""} onChange={(e) => setCondo(e.target.value)}>

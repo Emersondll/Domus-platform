@@ -83,7 +83,7 @@ export function App() {
   return (
     <div className="layout">
       <header>
-        <strong>Central de Portaria</strong>
+        <strong>Domus Central</strong>
         <span>{session.subject}</span>
         <span>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
         {shift ? (

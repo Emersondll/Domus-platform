@@ -36,7 +36,7 @@ recadastrar os agentes (o segredo de política de cada um é derivado dele).
 - Logs JSON (perfil `prod`) com `correlationId` (`X-Correlation-Id` entra e sai) e `trace_id` quando o tracing está ativo.
 - Métricas Prometheus em `:8082/actuator/prometheus` (rede interna). Subir Prometheus + Grafana:
   `docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d` (dev) ou `--profile observability` (prod).
-  Dashboard "Portaria — operação" e 9 regras de alerta provisionados (validados: alvo `up`, regras sem erro, dashboard com 12 painéis).
+  Dashboard "Domus — operação" e 9 regras de alerta provisionados (validados: alvo `up`, regras sem erro, dashboard com 12 painéis).
 - Health: `/actuator/health/liveness` e `/readiness` na porta 8082.
 
 | Alerta | Significado | Primeira ação |

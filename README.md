@@ -20,6 +20,10 @@ Capturas do ambiente de desenvolvimento (perfil `dev`, dados fictícios, equipam
   <img src="docs/images/resident-invite-qr.png" alt="App do morador: convite com QR Code" width="230">
 </p>
 
+**Login (Keycloak)**: tema `domus` em `deploy/keycloak/themes/domus`, na mesma paleta, em português.
+
+<img src="docs/images/keycloak-login.png" alt="Tela de login do Keycloak com o tema Domus" width="420">
+
 ## Rodar localmente
 
 Requisitos: JDK 26, Maven 3.9.9, Docker, Node 22.12+.

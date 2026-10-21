@@ -96,3 +96,8 @@ Dimensionamento do pool: `DB_POOL_SIZE` (padrão 20) + 3 conexões do pool de au
    globalmente com `portaria.devices.dahua-events.enabled=false`). Só um evento que devolva `UserID=portaria-<commandId>` confirma o comando; sem isso ele fica `SENT` e termina `UNKNOWN`.
    Opcional: `"eventCodes":"AccessControl,DoorStatus"`.
 6. Antes de produção, execute o roteiro de campo de `docs/reference-analysis/DAHUA_SOURCES.md`.
+
+## Identidade visual
+Os dois apps compartilham `web/shared/src/theme.css`. O login do Keycloak usa o tema `domus` (`deploy/keycloak/themes/domus/login`, montado em
+`/opt/keycloak/themes` nos dois compose; o realm define `loginTheme`, e o idioma padrão é pt-BR). Fora do tema: o Swagger UI (só em dev, desligado
+em produção), o console de administração do Keycloak e o console de conta do usuário continuam com a aparência padrão.

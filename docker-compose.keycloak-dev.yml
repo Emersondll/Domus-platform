@@ -10,5 +10,6 @@ services:
       KC_HEALTH_ENABLED: "true"
     volumes:
       - ./deploy/keycloak/portaria-realm.json:/opt/keycloak/data/import/portaria-realm.json:ro
+      - ./deploy/keycloak/themes:/opt/keycloak/themes:ro
     ports:
       - "127.0.0.1:8180:8080"

@@ -1,0 +1,64 @@
+/* Tema Domus (mesma paleta de web/shared/src/theme.css): azul-marinho, gradientes, destaque ciano e controles em pílula. */
+:root, .pf-v5-theme-dark {
+  --domus-bg: #040c1f; --domus-surface: #0b1f40; --domus-line: rgba(86, 160, 230, .28);
+  --domus-fg: #eaf2ff; --domus-muted: #8fa7c7; --domus-accent: #22b8ee; --domus-accent-strong: #0e7fb0;
+  --pf-v5-global--primary-color--100: var(--domus-accent);
+  --pf-v5-global--primary-color--200: var(--domus-accent);
+  --pf-v5-global--link--Color: var(--domus-accent);
+  --pf-v5-global--link--Color--hover: #7fd8f7;
+  --pf-v5-global--Color--100: var(--domus-fg);
+  --pf-v5-global--Color--200: var(--domus-muted);
+  --pf-v5-global--BackgroundColor--100: var(--domus-surface);
+  --pf-v5-global--BorderColor--100: var(--domus-line);
+}
+html, body, .pf-v5-c-login, .login-pf, body.pf-v5-theme-dark {
+  background: radial-gradient(1200px 600px at 80% -10%, #0a2a55 0%, transparent 60%), var(--domus-bg) !important;
+  background-image: radial-gradient(1200px 600px at 80% -10%, #0a2a55 0%, transparent 60%) !important;
+  color: var(--domus-fg); font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+.pf-v5-c-login__container { background: none !important; }
+.pf-v5-c-login__main {
+  background: linear-gradient(160deg, #0d2549 0%, #08193a 100%) !important; border: 1px solid var(--domus-line);
+  border-radius: 28px !important; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); color: var(--domus-fg);
+}
+.pf-v5-c-login__main-header, .pf-v5-c-login__main-body, .pf-v5-c-login__main-footer { background: transparent !important; }
+#kc-header-wrapper, .pf-v5-c-brand, .kc-logo-text {
+  color: var(--domus-fg) !important; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; font-size: 22px; background: none !important;
+}
+#kc-header-wrapper::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 12px; border-radius: 5px;
+  background: var(--domus-accent); box-shadow: 0 0 16px var(--domus-accent);
+}
+.pf-v5-c-login__main-header-desc, .pf-v5-c-form__label-text, label { color: var(--domus-muted) !important; font-weight: 600; }
+h1, h2, #kc-page-title { color: var(--domus-fg) !important; }
+.pf-v5-c-form-control, input[type="text"], input[type="password"], input[type="email"] {
+  background: rgba(4, 12, 31, .55) !important; color: var(--domus-fg) !important; border: 1px solid var(--domus-line) !important; border-radius: 999px !important;
+}
+.pf-v5-c-form-control > input, .pf-v5-c-form-control input { color: var(--domus-fg) !important; background: transparent !important; }
+.pf-v5-c-form-control:focus-within, input:focus { border-color: var(--domus-accent) !important; box-shadow: 0 0 0 3px rgba(34, 184, 238, .28) !important; outline: none; }
+.pf-v5-c-form-control::before, .pf-v5-c-form-control::after { border: 0 !important; }
+.pf-v5-c-button.pf-m-primary, #kc-login {
+  background: linear-gradient(180deg, #138dc2, var(--domus-accent-strong)) !important; color: #fff !important; font-weight: 700; border: 0 !important; border-radius: 999px !important;
+}
+.pf-v5-c-button.pf-m-primary:hover { filter: brightness(1.12); }
+.pf-v5-c-button.pf-m-link, a { color: var(--domus-accent) !important; }
+.pf-v5-c-alert { background: rgba(240, 179, 90, .08); border: 1px solid rgba(240, 179, 90, .45); border-radius: 14px; color: var(--domus-fg); }
+.pf-v5-c-alert.pf-m-danger { background: rgba(255, 107, 107, .08); border-color: rgba(255, 107, 107, .5); }
+.pf-v5-c-check__label, .pf-v5-c-check__description { color: var(--domus-fg) !important; }
+.pf-v5-c-login__main-footer-band { background: rgba(4, 12, 31, .5) !important; border-radius: 0 0 28px 28px; }
+.pf-v5-c-login__footer, .pf-v5-c-login__footer * { color: var(--domus-muted) !important; }
+.pf-v5-c-login__main::before, .pf-v5-c-login__main { border-top: 1px solid var(--domus-line) !important; }
+.pf-v5-c-helper-text__item.pf-m-error .pf-v5-c-helper-text__item-text, .pf-m-error, .kc-feedback-text { color: #ff8a8a !important; }
+.pf-v5-c-form-control__icon.pf-m-status svg, .pf-v5-c-form-control__icon.pf-m-status { color: #ff8a8a !important; fill: #ff8a8a !important; }
+.pf-v5-c-input-group__item .pf-v5-c-button.pf-m-control, button[aria-label*="assword"] {
+  background: rgba(4, 12, 31, .55) !important; color: var(--domus-accent) !important; border: 1px solid var(--domus-line) !important; border-radius: 999px !important;
+}
+#kc-page-title, .pf-v5-c-login__main-header h1 { font-size: 24px; }
+.pf-v5-c-login__main::before, .pf-v5-c-login__main::after { content: none !important; display: none !important; }
+.pf-v5-c-login__main { border-top-width: 1px !important; border-image: none !important; }
+.pf-v5-c-menu-toggle, .pf-v5-c-menu-toggle .pf-v5-c-menu-toggle__text, select#login-select-toggle, #login-select-toggle {
+  background: rgba(4, 12, 31, .55) !important; color: var(--domus-fg) !important; border-radius: 999px !important; border: 1px solid var(--domus-line) !important;
+}
+.pf-v5-c-menu, .pf-v5-c-menu__item, .pf-v5-c-menu__list-item { background: #0b1f40 !important; color: var(--domus-fg) !important; }
+.pf-v5-c-menu__item:hover { background: #0f2a52 !important; }
+.pf-v5-c-login__main-header { border-top: 0 !important; border-bottom: 0 !important; }

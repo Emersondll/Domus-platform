@@ -1,6 +1,6 @@
 {
   "realm": "portaria",
-  "displayName": "Portaria Virtual",
+  "displayName": "Domus",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
@@ -307,5 +307,12 @@
     "RESET_PASSWORD",
     "CODE_TO_TOKEN_ERROR",
     "REFRESH_TOKEN_ERROR"
-  ]
+  ],
+  "loginTheme": "domus",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "pt-BR",
+    "en"
+  ],
+  "defaultLocale": "pt-BR"
 }

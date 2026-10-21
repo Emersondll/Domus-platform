@@ -92,4 +92,7 @@ Dimensionamento do pool: `DB_POOL_SIZE` (padrão 20) + 3 conexões do pool de au
 2. Exporte as credenciais como variáveis de ambiente da aplicação (ex.: `PORTARIA_GATE1_USER`, `PORTARIA_GATE1_PASS`); o banco guarda só os nomes.
 3. Inclua o IP em `portaria.devices.http-allowed-hosts` (proteção SSRF).
 4. Cadastre o dispositivo com `adapter=DAHUA_CGI` e `config` = `{"baseUrl":"http://10.0.0.20","channel":"1","userEnv":"PORTARIA_GATE1_USER","passwordEnv":"PORTARIA_GATE1_PASS"}`.
-5. "OK" na resposta significa só **aceito**. O comando fica `SENT` até chegar o evento de abertura do equipamento (endpoint de eventos de dispositivo ou agente local); sem evento, termina `UNKNOWN`.
+5. "OK" na resposta significa só **aceito**. A central mantém uma conexão de eventos por equipamento (`eventManager.cgi`; desligue com `"events":"off"` na config, ou
+   globalmente com `portaria.devices.dahua-events.enabled=false`). Só um evento que devolva `UserID=portaria-<commandId>` confirma o comando; sem isso ele fica `SENT` e termina `UNKNOWN`.
+   Opcional: `"eventCodes":"AccessControl,DoorStatus"`.
+6. Antes de produção, execute o roteiro de campo de `docs/reference-analysis/DAHUA_SOURCES.md`.

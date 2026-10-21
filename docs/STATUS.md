@@ -50,9 +50,12 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 
 ## Pendente / não feito (em ordem de impacto)
 1. **Hardware real:** nenhum adaptador testado com equipamento (controladoras, câmeras, interfones); o primeiro fabricante (`DAHUA_CGI`, família Dahua/Intelbras, Digest)
-   existe e passa em 6 testes contra um servidor que valida o Digest de verdade, mas **foi escrito pela documentação pública, sem equipamento**:
-   falta o teste de campo (firmware, canal, evento de abertura real) e com perda de conectividade durante o comando. A confirmação de abertura
-   continua só por evento do dispositivo; a assinatura do fluxo de eventos do equipamento (`eventManager.cgi`) não foi implementada.
+   tem comando `openDoor` e assinatura de eventos (`eventManager.cgi`, reconexão com espera, detecção de fluxo mudo). 17 testes (14 unitários e 3 de integração)
+   passam contra um equipamento falso que valida o Digest de verdade, inclusive ponta a ponta com o banco (confirma só se o evento devolver o
+   `UserID=portaria-<commandId>`; senão `UNKNOWN`). **A documentação oficial não foi obtida** (NDA/solicitação ao fabricante): as fontes são
+   públicas e não oficiais e várias suposições (campos `Status`/`UserID`, `heartbeat`) estão **não confirmadas**; ver
+   `docs/reference-analysis/DAHUA_SOURCES.md` e o roteiro de campo. Falta teste em equipamento, teste com perda de conectividade durante o comando e
+   eleição de líder entre instâncias (cada instância abre sua própria conexão de eventos).
 2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
 4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador e refresh de token no frontend (token de 5 min → novo login

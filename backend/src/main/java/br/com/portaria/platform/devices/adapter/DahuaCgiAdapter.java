@@ -10,8 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,7 +21,8 @@ import org.springframework.stereotype.Component;
  * responde {@code OK} no corpo quando aceita; isso significa <b>aceito</b>, não aberto. A abertura só é confirmada por
  * evento do dispositivo (que chega pelo endpoint de eventos ou pelo agente local), nunca por esta resposta.
  *
- * <p><b>Não validado com hardware real.</b> Foi escrito a partir da documentação pública da API e testado contra um
+ * <p><b>Não validado com hardware real.</b> A documentação oficial não foi obtida (NDA do fabricante): foi escrito a partir de fontes públicas não oficiais (ver
+ * {@code docs/reference-analysis/DAHUA_SOURCES.md}) e testado contra um
  * servidor local que imita o protocolo; firmware e modelos diferem, então a primeira instalação precisa de teste em campo.
  */
 @Component
@@ -34,17 +33,11 @@ public class DahuaCgiAdapter implements DeviceAdapter {
     private final HostPolicy hosts;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
-    private final Function<String, String> environment;
+    private final DeviceSecrets secrets;
 
-    @Autowired
-    public DahuaCgiAdapter(HostPolicy hosts) {
-        this(hosts, System::getenv);
-    }
-
-    /** Permite injetar a origem das credenciais (testes). */
-    public DahuaCgiAdapter(HostPolicy hosts, Function<String, String> environment) {
+    public DahuaCgiAdapter(HostPolicy hosts, DeviceSecrets secrets) {
         this.hosts = hosts;
-        this.environment = environment;
+        this.secrets = secrets;
     }
 
     @Override
@@ -125,7 +118,7 @@ public class DahuaCgiAdapter implements DeviceAdapter {
 
     private String env(DeviceDescriptor device, String key) {
         String name = device.config().get(key);
-        String value = name == null ? null : environment.apply(name);
+        String value = name == null ? null : secrets.get(name);
         return value == null || value.isBlank() ? null : value;
     }
 

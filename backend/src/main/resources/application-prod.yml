@@ -12,6 +12,8 @@ spring:
           # issuer-uri valida o claim "iss"; jwk-set-uri evita a descoberta pela URL pública (rede interna do compose).
           issuer-uri: ${OIDC_ISSUER_URI}
           jwk-set-uri: ${OIDC_JWK_SET_URI}
+          # O token precisa ter sido emitido PARA esta API (mapper de audiência no Keycloak); evita aceitar token de outro cliente.
+          audiences: ${OIDC_AUDIENCE:portaria-api}
 
 server:
   forward-headers-strategy: native

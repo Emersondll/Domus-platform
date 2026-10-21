@@ -20,6 +20,8 @@ spring:
         jwt:
           # Produção: emissor OIDC real (ex.: Keycloak). No perfil dev o decoder local substitui este valor.
           issuer-uri: ${OIDC_ISSUER_URI:}
+          # Audiência exigida no claim "aud" (vazio = não valida; em produção o padrão é portaria-api).
+          audiences: ${OIDC_AUDIENCE:}
 
 server:
   port: ${SERVER_PORT:8081}

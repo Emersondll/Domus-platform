@@ -48,6 +48,9 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 - Dispositivos `SIMULATOR`; controladora do agente (`SimulatedDoor`); central falsa nos testes do agente (contrato idêntico ao da API real,
   que tem testes próprios); `GENERIC_HTTP`, `ONVIF` e `DAHUA_CGI` só validados contra servidores HTTP locais de teste.
 
+- **Audiência do token:** a API recusa token sem `aud=portaria-api` (`OIDC_AUDIENCE`, padrão em produção; o realm tem o mapper nos dois clientes).
+  Provado por `scripts/verify_keycloak.py` (token de outro cliente → 401; token do fluxo real do front → aceito).
+
 ## Pendente / não feito (em ordem de impacto)
 1. **Hardware real:** nenhum adaptador testado com equipamento (controladoras, câmeras, interfones); o primeiro fabricante (`DAHUA_CGI`, família Dahua/Intelbras, Digest)
    tem comando `openDoor` e assinatura de eventos (`eventManager.cgi`, reconexão com espera, detecção de fluxo mudo). 17 testes (14 unitários e 3 de integração)
@@ -60,7 +63,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
 4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador e refresh de token no frontend (token de 5 min → novo login
    transparente pelo SSO).
-5. **Validação de audiência (`aud`)** do token; **mTLS** por agente/dispositivo; criptografia de campos pessoais e do SQLite do agente;
+5. **mTLS** por agente/dispositivo; criptografia de campos pessoais e do SQLite do agente;
    WAF/DDoS; pentest independente; varredura de imagens.
 6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos são por instância (precisam de Redis/lock distribuído);
    PostgreSQL sem réplica/PITR; RTO/RPO não medidos em produção.
@@ -69,7 +72,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 8. **Atualização segura do agente** (binário assinado + verificação) e instalador; hoje manual.
 9. Operador-chefe/relatórios por condomínio e exportação de relatórios (só há listagens e auditoria); cadastro de planos/contratos/limites.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
-11. CI nunca executado; licença do projeto: MIT (`LICENSE`); skills do agente ficam só na máquina local (`.claude/` no `.gitignore`).
+11. CI: rodou no GitHub e acusou 2 falhas (teste dependente de ordem e versão inexistente do osv-scanner), corrigidas localmente; falta confirmar numa nova execução. Licença do projeto: MIT (`LICENSE`); skills do agente ficam só na máquina local (`.claude/` no `.gitignore`).
 
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).

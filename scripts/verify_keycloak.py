@@ -101,11 +101,19 @@ def api(method, path, token=None, body=None):
     return http(method, f"{API}{path}", json.dumps(body).encode() if body is not None else None, h)
 
 
-def direct_grant_token(tok, username):
-    """Cliente temporário só para este teste (login real das pessoas é pelo navegador, com PKCE e MFA)."""
-    admin("POST", "/clients", tok, {"clientId": "cli-test", "publicClient": True, "directAccessGrantsEnabled": True, "enabled": True})
+AUDIENCE_MAPPER = {"name": "portaria-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+                   "config": {"included.custom.audience": "portaria-api", "access.token.claim": "true", "id.token.claim": "false"}}
+
+
+def direct_grant_token(tok, username, client="cli-test", audience=True):
+    """Cliente temporário só para este teste (login real das pessoas é pelo navegador, com PKCE e MFA).
+    Com audience=False o token NÃO é emitido para a API (usado para provar que a API o recusa)."""
+    body = {"clientId": client, "publicClient": True, "directAccessGrantsEnabled": True, "enabled": True}
+    if audience:
+        body["protocolMappers"] = [AUDIENCE_MAPPER]
+    admin("POST", "/clients", tok, body)
     s, _, b = http("POST", f"{KC}/realms/portaria/protocol/openid-connect/token",
-                   {"client_id": "cli-test", "grant_type": "password", "username": username, "password": PASSWORD, "scope": "openid"})
+                   {"client_id": client, "grant_type": "password", "username": username, "password": PASSWORD, "scope": "openid"})
     assert s == 200, b
     return json.loads(b)["access_token"]
 
@@ -137,7 +145,7 @@ def psql(sql):
                           cwd=ROOT, capture_output=True, text=True)
 assert psql(f"CREATE DATABASE {VERIFY_DB}").returncode == 0  # banco limpo: o bootstrap só atua em instalação nova
 env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{VERIFY_DB}", DB_USER="portaria", DB_PASSWORD="portaria_dev_only",
-           OIDC_ISSUER_URI=f"{KC}/realms/portaria", OIDC_JWK_SET_URI=f"{KC}/realms/portaria/protocol/openid-connect/certs",
+           OIDC_AUDIENCE="portaria-api", OIDC_ISSUER_URI=f"{KC}/realms/portaria", OIDC_JWK_SET_URI=f"{KC}/realms/portaria/protocol/openid-connect/certs",
            CREDENTIAL_HMAC_SECRET="kc-verify-secret-0123456789-abcdefghijklmnopqr", AGENT_POLICY_MASTER_SECRET="kc-verify-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_admin, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"plat-admin-{suffix}@example.invalid",
            SPRING_PROFILES_ACTIVE="")
@@ -155,6 +163,9 @@ try:
         raise SystemExit("API não subiu")
     t_admin = direct_grant_token(tok, f"plat-admin-{suffix}")
     t_none = direct_grant_token(tok, f"nobody-{suffix}")
+    t_other = direct_grant_token(tok, f"plat-admin-{suffix}", client="cli-noaud", audience=False)
+    s, _, _ = api("GET", "/api/v1/condominiums", t_other)
+    check("token de outro cliente (sem audiência portaria-api) -> 401", s == 401, f"({s})")
     s, _, _ = api("GET", "/api/v1/condominiums")
     check("sem token -> 401", s == 401, f"({s})")
     bad = t_admin[:-4] + ("AAAA" if not t_admin.endswith("AAAA") else "BBBB")

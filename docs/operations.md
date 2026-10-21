@@ -101,3 +101,6 @@ Dimensionamento do pool: `DB_POOL_SIZE` (padrão 20) + 3 conexões do pool de au
 Os dois apps compartilham `web/shared/src/theme.css`. O login do Keycloak usa o tema `domus` (`deploy/keycloak/themes/domus/login`, montado em
 `/opt/keycloak/themes` nos dois compose; o realm define `loginTheme`, e o idioma padrão é pt-BR). Fora do tema: o Swagger UI (só em dev, desligado
 em produção), o console de administração do Keycloak e o console de conta do usuário continuam com a aparência padrão.
+
+## Audiência do token (`aud`)
+A API em produção exige `aud=portaria-api` (variável `OIDC_AUDIENCE`). O realm importado já tem o mapper de audiência nos clientes `portaria-panel` e `portaria-resident`; em um Keycloak já existente, adicione o mapper "Audience" (audiência customizada `portaria-api`, só no access token) a cada cliente, ou os logins passarão a receber 401.

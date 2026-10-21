@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Attempt, Preferences, Profile } from "./types";
 import { errorText, useList } from "./useApi";
@@ -8,6 +8,8 @@ export function ProfilePage({ token, condo }: { token: string; condo: string }) 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Campos que a pessoa já mexeu: a resposta do servidor (carga lenta ou renovação do token) não pode sobrescrevê-los.
+  const edited = useRef({ email: false, phone: false });
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const history = useList<Attempt>(token, `${base}/access-history`);
@@ -15,8 +17,8 @@ export function ProfilePage({ token, condo }: { token: string; condo: string }) 
   useEffect(() => {
     request<Profile>(token, "GET", `${base}/profile`).then((p) => {
       setProfile(p);
-      setEmail(p?.email ?? "");
-      setPhone(p?.phone ?? "");
+      if (!edited.current.email) setEmail(p?.email ?? "");
+      if (!edited.current.phone) setPhone(p?.phone ?? "");
     });
     request<Preferences>(token, "GET", `${base}/preferences`).then(setPrefs);
   }, [token, base]);
@@ -47,9 +49,9 @@ export function ProfilePage({ token, condo }: { token: string; condo: string }) 
       <p>{profile?.fullName}</p>
       <form onSubmit={saveContact}>
         <label htmlFor="email">E-mail</label>
-        <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="email" type="email" value={email} onChange={(e) => { edited.current.email = true; setEmail(e.target.value); }} />
         <label htmlFor="phone">Telefone</label>
-        <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input id="phone" value={phone} onChange={(e) => { edited.current.phone = true; setPhone(e.target.value); }} />
         <button type="submit">Salvar contato</button>
       </form>
       {msg && <p role="status">{msg}</p>}

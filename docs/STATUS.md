@@ -13,6 +13,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
+| `scripts/e2e-browser.py` (navegador real) | OK: chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; sem token em storage; sem erros de console |
 | `scripts/restore-drill.sh` | PASS: 16 tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
@@ -48,6 +49,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 - Dispositivos `SIMULATOR`; controladora do agente (`SimulatedDoor`); central falsa nos testes do agente (contrato idêntico ao da API real,
   que tem testes próprios); `GENERIC_HTTP`, `ONVIF` e `DAHUA_CGI` só validados contra servidores HTTP locais de teste.
 
+- **Achado do E2E:** a tela de perfil sobrescrevia o que a pessoa digitava quando a carga do perfil (ou, agora, a renovação do token) chegava depois; corrigido e coberto por teste.
 - **Audiência do token:** a API recusa token sem `aud=portaria-api` (`OIDC_AUDIENCE`, padrão em produção; o realm tem o mapper nos dois clientes).
   Provado por `scripts/verify_keycloak.py` (token de outro cliente → 401; token do fluxo real do front → aceito).
 
@@ -61,8 +63,8 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
    eleição de líder entre instâncias (cada instância abre sua própria conexão de eventos).
 2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
-4. **Teste automatizado em navegador** (Playwright) dos fluxos do operador e do morador. (O refresh de token já existe: renovação silenciosa aos 80% da vida do
-   token e retry no 401, 9 testes; **ainda não exercitado contra o Keycloak real num navegador**.)
+4. **Navegador:** `scripts/e2e-browser.py` (Chromium/Playwright, login de desenvolvimento) cobre os fluxos do morador e do operador; falta exercitar o login
+   OIDC/PKCE e a renovação silenciosa do token **num navegador contra o Keycloak real** (o PKCE e a API já são provados por `verify_keycloak.py`; a renovação tem 9 testes unitários).
 5. **mTLS** por agente/dispositivo; criptografia de campos pessoais e do SQLite do agente;
    WAF/DDoS; pentest independente; varredura de imagens.
 6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos são por instância (precisam de Redis/lock distribuído);

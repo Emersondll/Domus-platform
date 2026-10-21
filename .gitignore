@@ -14,5 +14,6 @@ backups/
 !.env.example
 !.env.prod.example
 
-# Skills locais do agente (não versionar)
+# Configuração local do agente (não versionar)
 .claude/
+CLAUDE.md

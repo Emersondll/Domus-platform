@@ -59,6 +59,9 @@ def cleanup():
         except Exception:
             pass
     time.sleep(2)
+    # o npm cria netos que podem escapar do grupo: derruba quem ainda escuta nas portas do Vite
+    if shutil.which("fuser"):
+        subprocess.run(["fuser", "-k", "5173/tcp", "5174/tcp"], capture_output=True)
     psql(f"DROP DATABASE IF EXISTS {DB} WITH (FORCE)")
 
 

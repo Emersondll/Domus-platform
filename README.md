@@ -6,7 +6,7 @@ concluído, simulado e pendente.
 
 ## Telas
 
-Capturas do ambiente de desenvolvimento (perfil `dev`, dados fictícios, equipamentos simulados). A interface ainda é funcional e sem identidade visual.
+Capturas do ambiente de desenvolvimento (perfil `dev`, dados fictícios, equipamentos simulados). O tema escuro (azul-marinho com destaque ciano) é compartilhado pelos dois apps em `web/shared/src/theme.css`.
 
 **Painel da central** (operador): atendimento em andamento, abertura de porta com justificativa obrigatória, desfecho, transferência e histórico.
 
@@ -15,8 +15,9 @@ Capturas do ambiente de desenvolvimento (perfil `dev`, dados fictícios, equipam
 **App do morador** (PWA, no celular): início com chamada à central e convite com QR Code de uso limitado.
 
 <p>
-  <img src="docs/images/resident-home.png" alt="App do morador: início" width="260">
-  <img src="docs/images/resident-invite-qr.png" alt="App do morador: convite com QR Code" width="260">
+  <img src="docs/images/resident-login.png" alt="App do morador: entrada" width="230">
+  <img src="docs/images/resident-home.png" alt="App do morador: início" width="230">
+  <img src="docs/images/resident-invite-qr.png" alt="App do morador: convite com QR Code" width="230">
 </p>
 
 ## Rodar localmente

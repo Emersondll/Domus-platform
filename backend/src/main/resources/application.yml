@@ -78,6 +78,13 @@ portaria:
   credentials:
     # Obrigatório (>= 32 caracteres). Em produção vem de um gerenciador de segredos.
     hmac-secret: ${CREDENTIAL_HMAC_SECRET:}
+  crypto:
+    # Criptografia de dados pessoais (AES-256-GCM). Obrigatório: lista "id:base64(32 bytes)" (vírgula para várias, rotação),
+    # chave ativa e chave do índice cego (>= 32 caracteres). Em produção vêm de um gerenciador de segredos, fora do backup do banco.
+    keys: ${FIELD_ENCRYPTION_KEYS:}
+    active-key-id: ${FIELD_ENCRYPTION_ACTIVE_KEY_ID:}
+    blind-index-key: ${BLIND_INDEX_KEY:}
+    migrate-on-start: ${FIELD_ENCRYPTION_MIGRATE:false}
   devices:
     simulator-enabled: false
     # Hosts que a central pode contatar (proteção contra SSRF). Vazio = nenhum.

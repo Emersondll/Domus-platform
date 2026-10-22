@@ -78,6 +78,7 @@ jobs:
         run: |
           DB_PASSWORD=x DOMAIN=example.test KEYCLOAK_ADMIN=a KEYCLOAK_ADMIN_PASSWORD=x \
           CREDENTIAL_HMAC_SECRET=x AGENT_POLICY_MASTER_SECRET=x GRAFANA_PASSWORD=x \
+          FIELD_ENCRYPTION_KEYS=k1:x BLIND_INDEX_KEY=x \
           docker compose -f deploy/docker-compose.prod.yml config -q
 
   security:

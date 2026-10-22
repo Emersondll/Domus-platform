@@ -1,11 +1,13 @@
 package br.com.portaria.platform.residents;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import br.com.portaria.platform.shared.crypto.EncryptedStringConverter;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -23,11 +25,14 @@ public class Resident {
     @Column(name = "unit_id", nullable = false, updatable = false)
     private UUID unitId;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Convert(converter = EncryptedStringConverter.class)
     private String email;
 
+    @Convert(converter = EncryptedStringConverter.class)
     private String phone;
 
     @Enumerated(EnumType.STRING)

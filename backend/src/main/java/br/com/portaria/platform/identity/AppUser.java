@@ -1,6 +1,8 @@
 package br.com.portaria.platform.identity;
 
+import br.com.portaria.platform.shared.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -18,9 +20,11 @@ public class AppUser {
     @Column(name = "external_subject", nullable = false, unique = true)
     private String externalSubject;
 
-    @Column(nullable = false, unique = true)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false)
     private String email;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "display_name", nullable = false)
     private String displayName;
 

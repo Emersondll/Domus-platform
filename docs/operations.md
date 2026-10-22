@@ -25,6 +25,8 @@ Validado localmente (com `DOMAIN=localhost`): TLS e cabeçalhos de segurança, `
 | `OIDC_ISSUER_URI`, `OIDC_JWK_SET_URI` | sim | valida o token (`iss`) e busca as chaves pela rede interna |
 | `CREDENTIAL_HMAC_SECRET` (≥32) | sim | assinatura dos QR Codes |
 | `AGENT_POLICY_MASTER_SECRET` (≥32) | sim | deriva o segredo de assinatura da política de cada agente |
+| `FIELD_ENCRYPTION_KEYS` (`id:base64`, 32 bytes) · `BLIND_INDEX_KEY` (≥32) | sim | criptografia de dados pessoais (ver abaixo) |
+| `FIELD_ENCRYPTION_ACTIVE_KEY_ID` · `FIELD_ENCRYPTION_MIGRATE` | não | chave ativa (padrão: a primeira) · cifra dados legados/rotaciona na partida |
 | `DEVICE_HTTP_ALLOWED_HOSTS` | se usar controladora HTTP | anti-SSRF: hosts que a central pode contatar |
 | `BOOTSTRAP_PLATFORM_ADMIN_*` | só na instalação | primeiro administrador |
 | `DB_POOL_SIZE` (20) · `TRUST_FORWARDED_FOR` (true no prod) · `MANAGEMENT_PORT` (8082) | não | ajuste |
@@ -104,3 +106,14 @@ em produção), o console de administração do Keycloak e o console de conta do
 
 ## Audiência do token (`aud`)
 A API em produção exige `aud=portaria-api` (variável `OIDC_AUDIENCE`). O realm importado já tem o mapper de audiência nos clientes `portaria-panel` e `portaria-resident`; em um Keycloak já existente, adicione o mapper "Audience" (audiência customizada `portaria-api`, só no access token) a cada cliente, ou os logins passarão a receber 401.
+
+## Criptografia de dados pessoais
+Nome, e-mail, telefone (morador, usuário, visitante, chamador) e placa são cifrados na aplicação com AES-256-GCM (`FieldCipher`); no banco ficam como
+`enc:v1:<chave>:<dados>`. A unicidade da placa usa um índice cego (HMAC com `BLIND_INDEX_KEY`). Não há busca nem ordenação por esses campos.
+- **Gerar chave:** `openssl rand -base64 32` → `FIELD_ENCRYPTION_KEYS=k1:<resultado>`; `BLIND_INDEX_KEY=$(openssl rand -hex 32)`.
+- **Guarde as chaves fora do backup do banco** (gerenciador de segredos). Sem elas os dados pessoais são irrecuperáveis. Trocar `BLIND_INDEX_KEY` quebra a
+  unicidade das placas já cadastradas: não troque; se precisar, rode a migração (ela refaz o índice só de linhas sem índice).
+- **Instalação que já tinha dados em texto puro:** os valores antigos continuam legíveis; suba uma vez com `FIELD_ENCRYPTION_MIGRATE=true`, confira o log
+  ("PII encryption migration finished") e desligue a variável.
+- **Rotação:** `FIELD_ENCRYPTION_KEYS=k1:<antiga>,k2:<nova>` + `FIELD_ENCRYPTION_ACTIVE_KEY_ID=k2` + uma partida com `FIELD_ENCRYPTION_MIGRATE=true`; só depois remova a `k1`.
+- **Fora do escopo desta camada:** o banco em si (disco/backup) deve ter criptografia de armazenamento própria; logs e auditoria não recebem dados pessoais.

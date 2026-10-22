@@ -57,6 +57,7 @@ class PrivacyIT extends AbstractIntegrationTest {
     @Autowired MembershipRepository memberships;
     @Autowired AuditLogRepository auditLog;
     @Autowired RetentionService retention;
+    @Autowired br.com.portaria.platform.shared.crypto.FieldCipher cipher;
 
     UUID condo, otherCondo, unit, residentToErase, residentToExport;
 
@@ -135,14 +136,15 @@ class PrivacyIT extends AbstractIntegrationTest {
         mvc.perform(post(url(residentToErase, "/anonymize")).with(as("p8-manager"))).andExpect(status().isNoContent());
 
         Map<String, Object> row = jdbc.queryForMap("select full_name, email, phone, active from resident where id = ?", residentToErase);
-        assertThat(row.get("full_name")).isEqualTo("ANONIMIZADO");
+        assertThat(cipher.decrypt((String) row.get("full_name"))).isEqualTo("ANONIMIZADO"); // cifrado no banco
         assertThat(row.get("email")).isNull();
         assertThat(row.get("phone")).isNull();
         assertThat(row.get("active")).isEqualTo(false);
-        Map<String, Object> user = jdbc.queryForMap("select email, display_name, active, external_subject from app_user where external_subject like 'anonymized-%' and display_name = 'ANONIMIZADO' limit 1");
-        assertThat(user.get("email").toString()).endsWith("@anonymized.invalid");
-        assertThat(jdbc.queryForObject("select count(*) from access_credential where status = 'ACTIVE' and created_by_user_id in (select id from app_user where display_name = 'ANONIMIZADO')", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from notification where user_id in (select id from app_user where display_name = 'ANONIMIZADO')", Integer.class)).isZero();
+        Map<String, Object> user = jdbc.queryForMap("select email, display_name, active, external_subject from app_user where external_subject like 'anonymized-%' limit 1");
+        assertThat(cipher.decrypt((String) user.get("display_name"))).isEqualTo("ANONIMIZADO");
+        assertThat(cipher.decrypt(user.get("email").toString())).endsWith("@anonymized.invalid");
+        assertThat(jdbc.queryForObject("select count(*) from access_credential where status = 'ACTIVE' and created_by_user_id in (select id from app_user where external_subject like 'anonymized-%')", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from notification where user_id in (select id from app_user where external_subject like 'anonymized-%')", Integer.class)).isZero();
         // o login antigo deixa de funcionar
         mvc.perform(get("/api/v1/me/residencies").with(as("p8-erase"))).andExpect(status().isForbidden());
         assertThat(auditLog.findByCondominiumIdOrderByOccurredAtDesc(condo)).anyMatch(e -> e.getAction().equals("resident.anonymize"));

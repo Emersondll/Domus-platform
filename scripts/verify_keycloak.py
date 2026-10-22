@@ -146,6 +146,7 @@ def psql(sql):
 assert psql(f"CREATE DATABASE {VERIFY_DB}").returncode == 0  # banco limpo: o bootstrap só atua em instalação nova
 env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{VERIFY_DB}", DB_USER="portaria", DB_PASSWORD="portaria_dev_only",
            OIDC_AUDIENCE="portaria-api", OIDC_ISSUER_URI=f"{KC}/realms/portaria", OIDC_JWK_SET_URI=f"{KC}/realms/portaria/protocol/openid-connect/certs",
+           FIELD_ENCRYPTION_KEYS="kcv:" + base64.b64encode(b"kc-verify-field-key-0123456789-a").decode(), BLIND_INDEX_KEY="kc-verify-blind-index-key-0123456789-abc",
            CREDENTIAL_HMAC_SECRET="kc-verify-secret-0123456789-abcdefghijklmnopqr", AGENT_POLICY_MASTER_SECRET="kc-verify-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_admin, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"plat-admin-{suffix}@example.invalid",
            SPRING_PROFILES_ACTIVE="")

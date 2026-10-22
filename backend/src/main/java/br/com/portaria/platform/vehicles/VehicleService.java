@@ -2,6 +2,7 @@ package br.com.portaria.platform.vehicles;
 
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
+import br.com.portaria.platform.shared.crypto.FieldCipher;
 import br.com.portaria.platform.shared.error.ConflictException;
 import br.com.portaria.platform.shared.tenant.AccessLevel;
 import br.com.portaria.platform.shared.tenant.AccessService;
@@ -22,13 +23,15 @@ public class VehicleService {
     private final ResidentRepository residents;
     private final AccessService access;
     private final AuditService audit;
+    private final FieldCipher cipher;
 
     public VehicleService(VehicleRepository vehicles, ResidentRepository residents, AccessService access,
-                          AuditService audit) {
+                          AuditService audit, FieldCipher cipher) {
         this.vehicles = vehicles;
         this.residents = residents;
         this.access = access;
         this.audit = audit;
+        this.cipher = cipher;
     }
 
     @Transactional(readOnly = true)
@@ -47,10 +50,11 @@ public class VehicleService {
     public Vehicle registerMine(UUID condominiumId, String plate, String model, String color) {
         ResidentContext me = access.requireResident(condominiumId, "vehicle.create.self");
         String normalized = plate.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
-        if (vehicles.existsByCondominiumIdAndPlate(condominiumId, normalized)) {
+        String plateHash = cipher.blindIndex(normalized);
+        if (vehicles.existsByCondominiumIdAndPlateHash(condominiumId, plateHash)) {
             throw new ConflictException("Vehicle plate already registered");
         }
-        Vehicle vehicle = vehicles.save(new Vehicle(condominiumId, unitOf(me), normalized, model, color));
+        Vehicle vehicle = vehicles.save(new Vehicle(condominiumId, unitOf(me), normalized, plateHash, model, color));
         audit.record(me.actor().userId(), null, condominiumId, "vehicle.create", "vehicle",
                 vehicle.getId().toString(), AuditOutcome.SUCCESS);
         return vehicle;

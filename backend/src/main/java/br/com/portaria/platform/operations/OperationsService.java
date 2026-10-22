@@ -9,6 +9,7 @@ import br.com.portaria.platform.shared.ConnectivityLookup;
 import br.com.portaria.platform.shared.DeviceHealthLookup;
 import br.com.portaria.platform.shared.audit.AuditOutcome;
 import br.com.portaria.platform.shared.audit.AuditService;
+import br.com.portaria.platform.shared.crypto.FieldCipher;
 import br.com.portaria.platform.shared.error.ConflictException;
 import br.com.portaria.platform.shared.error.ForbiddenException;
 import br.com.portaria.platform.shared.error.NotFoundException;
@@ -53,12 +54,13 @@ public class OperationsService {
     private final Clock clock;
     private final DeviceHealthLookup deviceHealth;
     private final ConnectivityLookup connectivity;
+    private final FieldCipher cipher;
 
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
                              IncidentRepository incidents, MembershipRepository memberships,
                              ResidentRepository residents, CommercialService commercial, AccessService access,
                              AuditService audit, Clock clock, DeviceHealthLookup deviceHealth,
-                             ConnectivityLookup connectivity) {
+                             ConnectivityLookup connectivity, FieldCipher cipher) {
         this.shifts = shifts;
         this.calls = calls;
         this.events = events;
@@ -71,6 +73,7 @@ public class OperationsService {
         this.clock = clock;
         this.deviceHealth = deviceHealth;
         this.connectivity = connectivity;
+        this.cipher = cipher;
     }
 
     // ---- turnos ----
@@ -197,7 +200,21 @@ public class OperationsService {
     @Transactional(readOnly = true)
     public List<MembershipRepository.OnDutyOperator> onDutyOperators(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.OPERATE, "operator.list");
-        return memberships.findOnDutyOperators(condominiumId);
+        // a consulta nativa devolve o nome cifrado: decifra aqui
+        return memberships.findOnDutyOperators(condominiumId).stream()
+                .<MembershipRepository.OnDutyOperator>map(o -> new MembershipRepository.OnDutyOperator() {
+                    @Override
+                    public UUID getId() {
+                        return o.getId();
+                    }
+
+                    @Override
+                    public String getDisplayName() {
+                        return cipher.decrypt(o.getDisplayName());
+                    }
+                })
+                .sorted(java.util.Comparator.comparing(MembershipRepository.OnDutyOperator::getDisplayName))
+                .toList();
     }
 
     // ---- incidentes ----

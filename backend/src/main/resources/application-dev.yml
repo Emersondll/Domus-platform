@@ -10,6 +10,11 @@ portaria:
     seed-enabled: true
   credentials:
     hmac-secret: dev-only-secret-do-not-use-in-production-0123456789
+  crypto:
+    # SOMENTE desenvolvimento: chaves públicas no repositório, não protegem nada.
+    keys: dev1:ZGV2LW9ubHktZmllbGQta2V5LTAxMjM0NTY3ODktYWI=
+    blind-index-key: dev-only-blind-index-key-do-not-use-in-production-01
+    migrate-on-start: true
   devices:
     simulator-enabled: true
   agent:

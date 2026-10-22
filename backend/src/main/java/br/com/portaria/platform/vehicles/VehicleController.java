@@ -52,13 +52,13 @@ public class VehicleController {
 
     @GetMapping("/vehicles")
     public PageResponse<VehicleResponse> list(@PathVariable UUID condominiumId,
-                                              @PageableDefault(size = 50, sort = "plate") Pageable pageable) {
+                                              @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, pageable), VehicleResponse::from);
     }
 
     @GetMapping("/me/vehicles")
     public PageResponse<VehicleResponse> listMine(@PathVariable UUID condominiumId,
-                                                  @PageableDefault(size = 50, sort = "plate") Pageable pageable) {
+                                                  @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), VehicleResponse::from);
     }
 

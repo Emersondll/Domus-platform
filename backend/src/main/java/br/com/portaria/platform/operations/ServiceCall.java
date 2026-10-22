@@ -1,9 +1,11 @@
 package br.com.portaria.platform.operations;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import br.com.portaria.platform.shared.crypto.EncryptedStringConverter;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ public class ServiceCall {
     @Column(nullable = false, updatable = false)
     private String source;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "caller_name", updatable = false)
     private String callerName;
 

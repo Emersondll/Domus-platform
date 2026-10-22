@@ -1,6 +1,8 @@
 package br.com.portaria.platform.vehicles;
 
+import br.com.portaria.platform.shared.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -21,8 +23,13 @@ public class Vehicle {
     @Column(name = "unit_id", nullable = false, updatable = false)
     private UUID unitId;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false)
     private String plate;
+
+    /** Índice cego (HMAC) da placa normalizada: permite a unicidade sem expor a placa. */
+    @Column(name = "plate_hash")
+    private String plateHash;
 
     private String model;
 
@@ -34,11 +41,12 @@ public class Vehicle {
     protected Vehicle() {
     }
 
-    public Vehicle(UUID condominiumId, UUID unitId, String plate, String model, String color) {
+    public Vehicle(UUID condominiumId, UUID unitId, String plate, String plateHash, String model, String color) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
         this.unitId = unitId;
         this.plate = plate;
+        this.plateHash = plateHash;
         this.model = model;
         this.color = color;
     }

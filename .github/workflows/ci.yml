@@ -123,14 +123,26 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: maven
+      # O resolvedor de POM do OSV não conhece versões recém-publicadas (falha silenciosa no backend).
+      # O SBOM CycloneDX gerado pelo Maven traz as versões já resolvidas de verdade.
+      - name: SBOM das dependências Java
+        run: |
+          for m in backend agent; do
+            mvn -B -q -f $m/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeBom \
+              -DoutputFormat=json -DoutputName=bom -DincludeTestScope=false
+          done
       - name: Vulnerabilidades em dependências (OSV)
         uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
         with:
           scan-args: |-
             --lockfile=web/package-lock.json
-            --recursive
-            ./backend
-            ./agent
+            --sbom=backend/target/bom.json
+            --sbom=agent/target/bom.json
       - name: Segredos versionados
         uses: gitleaks/gitleaks-action@v2
         env:

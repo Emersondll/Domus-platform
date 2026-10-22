@@ -4,7 +4,7 @@ O código próprio deste repositório é licenciado sob a [Licença MIT](LICENSE
 
 | Componente | Licença | Onde está o detalhe |
 |---|---|---|
-| Dependências Maven do backend (154) e do agente (6) | Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0, CC0 (logback e jakarta.*: usamos a opção EPL-2.0) | `docs/inventory/maven-*-THIRD-PARTY.txt` |
+| Dependências Maven do backend (155) e do agente (6) | Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0, CC0 (logback e jakarta.*: usamos a opção EPL-2.0) | `docs/inventory/maven-*-THIRD-PARTY.txt` |
 | Dependências npm que entram nos bundles | MIT, ISC | `docs/inventory/npm-production-licenses.txt` |
 | Imagens de contêiner usadas no deploy (PostgreSQL, Keycloak, Caddy, Prometheus, Grafana, Temurin) | Licenças próprias de cada projeto; **o Grafana OSS é AGPL-3.0** | `docs/inventory/README.md` |
 
@@ -17,7 +17,7 @@ Nenhum código dos repositórios de referência foi copiado (ver `docs/reference
 - **Agente (jar):** `META-INF/domus/` traz `LICENSE`, este arquivo e o inventário; o `NOTICE` das dependências Apache é consolidado pelo shade.
 - **Backend (jar):** `META-INF/domus/` com os mesmos arquivos; cada dependência mantém a própria licença dentro do jar aninhado.
 - **Web (painel e app do morador):** `/licenses.txt` em cada bundle, gerado no build por `web/scripts/gen-licenses.mjs` com o texto de licença de cada dependência de produção.
-- Textos completos: `docs/inventory/Apache-2.0.txt` e `docs/inventory/MIT-notices.txt`.
+- Textos completos: `docs/inventory/Apache-2.0.txt`, `EPL-2.0.txt` e `MIT-notices.txt`. Os 42 jars do backend sem arquivo de licença próprio estão listados, com licença e página do projeto, em `docs/inventory/backend-jars-without-license-files.txt`.
 
 ## Marcas de terceiros
 Dahua, Intelbras, ONVIF, Keycloak, Grafana, Prometheus, Caddy, PostgreSQL e demais nomes citados nesta documentação e no código

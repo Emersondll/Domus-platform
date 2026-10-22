@@ -1,11 +1,13 @@
 # Inventário de dependências e licenças
 
-Gerado em 2026-10-20 a partir das próprias ferramentas de build.
+Regenerado em 2026-10-22 a partir das próprias ferramentas de build.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `maven-backend-THIRD-PARTY.txt` | 154 dependências de runtime do backend (`license-maven-plugin`) |
+| `maven-backend-THIRD-PARTY.txt` | 155 dependências de runtime do backend (`license-maven-plugin`) |
 | `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
+| `backend-jars-without-license-files.txt` | 42 jars do backend sem arquivo de licença próprio, com licença e página do projeto |
+| `Apache-2.0.txt`, `EPL-2.0.txt`, `MIT-notices.txt` | textos de licença que acompanham os artefatos |
 | `npm-production-licenses.txt` | dependências npm que entram nos bundles (somente MIT/ISC) |
 
 Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPL no relatório são **duplo licenciamento** com opção permissiva

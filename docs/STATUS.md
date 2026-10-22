@@ -20,8 +20,8 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 | `scripts/restore-drill.sh` | PASS: 16 tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
-| `scripts/load-test.py` (mesma máquina, piso) | após a criptografia de campos: leitura ~900–1.500 req/s (inclusive `GET condomínios`, que não tem dado pessoal), escrita ~1.600 req/s; p95 21–36 ms; 0 erros; 0 timeouts. **Menor que a rodada anterior (3.000+) também nos endpoints sem criptografia, com a máquina carregada (k3s); não foi isolado o efeito da cifra: medir em máquina limpa** |
-| CI (`.github/workflows/ci.yml`) | rodou no GitHub e falhou (teste dependente de ordem e `osv-scanner@v2` inexistente); **corrigido localmente, ainda não reexecutado** |
+| `scripts/load-test.py` (mesma máquina, piso) | após a criptografia de campos: leitura ~900–1.500 req/s (inclusive `GET condomínios`, que não tem dado pessoal), escrita ~1.600 req/s; p95 21–36 ms; 0 erros; 0 timeouts. **A/B/A/B/A/B contra o jar anterior à cifra (2026-10-22): sem diferença além do ruído (±40% entre rodadas do mesmo jar); cifra ≈2 µs/op. A queda de 3.000 req/s vinha do ambiente. Dimensionar produção em hardware dedicado** |
+| CI (`.github/workflows/ci.yml`) | **verde em 2026-10-22 (7 jobs)**: backend, agente, web, compose, CodeQL (Java 26 e JS/TS), OSV (via SBOM CycloneDX: 417 pacotes, sem achados) e gitleaks. A rodada achou e corrigiu vulnerabilidades reais de dependências (Boot 4.0.9, Jackson 3.1.7/2.21.7, OpenTelemetry 1.62.0, assertj 3.27.7) |
 
 ## Concluído e verificado
 - **Fundação:** multi-tenant (empresa → condomínio → bloco → unidade → morador) com 404 entre tenants, FKs compostas, papéis por
@@ -77,7 +77,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 8. **Administração e relatórios:** não existem telas para administrador da plataforma, da empresa e síndico (só há API); relatórios por condomínio/exportação; planos, contratos e limites.
 9. Instalador/pacote (.deb) do agente e suporte a outros sistemas além de Linux/systemd.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
-11. **CI:** reexecutar após as correções (CodeQL com Java 26 ainda não validado). Licença MIT (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local.
+11. **CI:** validado em 2026-10-22. Licença MIT (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local e fora do histórico.
 
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).

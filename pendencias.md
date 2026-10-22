@@ -17,7 +17,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
 | `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
 | `scripts/restore-drill.sh` | PASS |
-| CI no GitHub | **falhou na primeira execução; corrigido localmente e ainda não reexecutado** |
+| CI no GitHub | **verde (7 jobs)** em 2026-10-22 |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -39,8 +39,8 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 ### Abertos / riscos conhecidos
 | # | Item | Impacto | Como tratar |
 |---|---|---|---|
-| B1 | **CI não reexecutado** após as correções; o CodeQL com Java 26 nunca foi validado | o pipeline pode continuar vermelho | rodar no GitHub e corrigir o que aparecer |
-| B2 | **Desempenho após a criptografia de campos não foi isolado**: o teste de carga deu ~900–1.500 req/s (antes 3.000+), inclusive em endpoint sem dado pessoal, com a máquina carregada | pode haver custo real da cifra ou ruído de ambiente | repetir `scripts/load-test.py` em máquina limpa, com e sem cifra |
+| ~~B1~~ | CI | **RESOLVIDO (2026-10-22):** 7 jobs verdes (backend, agente, web, compose, CodeQL Java e JS/TS, OSV+gitleaks). Corrigido: CodeQL por linguagem, vulnerabilidades reais (Boot 4.0.9, Jackson, OpenTelemetry 1.62, assertj) e o OSV, que não resolvia o POM do backend e agora usa SBOM CycloneDX |
+| ~~B2~~ | Desempenho após a criptografia | **RESOLVIDO (2026-10-22):** A/B/A/B/A/B na mesma máquina (jar anterior à cifra × atual): sem diferença além do ruído (±40% entre rodadas, mesmo com o mesmo jar); a cifra custa ~2 µs/op (≈0,1 ms por página de 20 moradores, ~1% da requisição). A queda de 3.000 req/s vinha do ambiente (k3s, navegador). Medição em hardware dedicado continua desejável para dimensionar produção |
 | B3 | **Placas passaram a ser listadas por data de cadastro** (a ordenação por placa cifrada seria aleatória) | mudança de comportamento da API | ordenar no cliente ou criar coluna de ordenação não sensível, se for necessário |
 | B4 | **E-mail do usuário deixou de ser único** e não há busca nem ordenação por nome/e-mail | provisionamento depende só do `sub` do provedor | aceitável; documentado |
 | B5 | **Trocar `BLIND_INDEX_KEY` quebra a unicidade das placas** já cadastradas | duplicidade silenciosa | não trocar; se precisar, procedimento de reindexação |
@@ -51,8 +51,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | B10 | Em Keycloak já existente, o mapper de audiência precisa ser adicionado, senão os logins recebem 401 | falha no upgrade | passo documentado em `docs/operations.md` |
 
 ## 4. Pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)
-1. **Validar o CI** (B1) e corrigir o que aparecer.
-2. **Medir o desempenho em máquina limpa** (B2).
+1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 3. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
 4. **Telas de administração** para administrador da plataforma, da empresa e síndico (hoje só existe API).
 5. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
@@ -103,9 +102,9 @@ Dependências sem AGPL/SSPL; CNPJs do seed inválidos de propósito; nenhum cabe
 | L1 | **Marca "Domus"**: nenhuma busca de anterioridade feita | busca no INPI (classes de software/segurança) antes do uso comercial; avaliar nome alternativo |
 | ~~L2~~ | ~~Histórico do GitHub continha as skills de terceiros e o `CLAUDE.md`~~ | **RESOLVIDO (2026-10-22):** histórico reescrito e enviado com `force push` (`main` = `88f7a3b`). Resta, se quiser, pedir ao suporte do GitHub a limpeza de objetos órfãos e refazer clones antigos |
 | L3 | **Código com assistência de IA**: titularidade e semelhança acidental variam por jurisdição | revisão humana documentada e varredura ampla (ScanCode/FOSSA/Black Duck) antes do lançamento |
-| L4 | **Inventário de licenças** é de 2026-10-20 | regenerar a cada release (comandos em `docs/inventory/README.md`) |
+| ~~L4~~ | Inventário de licenças | regenerado em 2026-10-22; repetir a cada release (comandos em `docs/inventory/README.md`) |
 | L5 | **Grafana (AGPL-3.0)** e **LGPD** | parecer jurídico (ver D1) |
-| ~~L6~~ parcial | Texto de licença de cada dependência Java dentro dos jars: o agente leva Apache-2.0, MIT (SLF4J) e NOTICE; o backend depende do que cada jar aninhado traz | conferir com `license-maven-plugin` (`download-licenses`) antes de distribuir binários |
+| ~~L6~~ | Texto de licença das dependências Java nos jars | **RESOLVIDO (2026-10-22):** conferido no jar real: 99 de 141 jars trazem licença; os 42 restantes estão listados com licença e página do projeto em `docs/inventory/backend-jars-without-license-files.txt`, empacotado em `META-INF/domus/`. Nenhuma dependência AGPL/GPL-only |
 
 ## 8. Como validar localmente
 ```bash

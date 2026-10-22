@@ -95,15 +95,17 @@ Dependências sem AGPL/SSPL; CNPJs do seed inválidos de propósito; nenhum cabe
 - Nota de proveniência/clean-room em `docs/reference-analysis/DAHUA_SOURCES.md` (GPL-3.0 do `node-dahua-api`: nada copiado, nunca adicionar como dependência).
 - `docs/reference-analysis/LICENSES.md` reescrito de forma neutra, sem apontar falhas de repositórios de terceiros.
 
+**Resolvido nesta rodada:** L2 (histórico) e, no que cabe ao código, os avisos de licença nos artefatos (L6 parcial: agente completo, backend por conferir).
+
 **Em aberto (decisão do titular ou externo):**
 | # | Item | Ação |
 |---|---|---|
 | L1 | **Marca "Domus"**: nenhuma busca de anterioridade feita | busca no INPI (classes de software/segurança) antes do uso comercial; avaliar nome alternativo |
-| L2 | **Histórico do GitHub** ainda contém as skills de terceiros (MIT, com aviso no mesmo commit) e o `CLAUDE.md` | só reescrever histórico (irreversível, `force push`) se você quiser |
+| ~~L2~~ | ~~Histórico do GitHub continha as skills de terceiros e o `CLAUDE.md`~~ | **RESOLVIDO (2026-10-22):** histórico reescrito e enviado com `force push` (`main` = `88f7a3b`). Resta, se quiser, pedir ao suporte do GitHub a limpeza de objetos órfãos e refazer clones antigos |
 | L3 | **Código com assistência de IA**: titularidade e semelhança acidental variam por jurisdição | revisão humana documentada e varredura ampla (ScanCode/FOSSA/Black Duck) antes do lançamento |
 | L4 | **Inventário de licenças** é de 2026-10-20 | regenerar a cada release (comandos em `docs/inventory/README.md`) |
 | L5 | **Grafana (AGPL-3.0)** e **LGPD** | parecer jurídico (ver D1) |
-| L6 | Texto de licença de cada dependência Java dentro dos jars: o agente leva Apache-2.0, MIT (SLF4J) e NOTICE; o backend depende do que cada jar aninhado traz | conferir com `license-maven-plugin` (`download-licenses`) antes de distribuir binários |
+| ~~L6~~ parcial | Texto de licença de cada dependência Java dentro dos jars: o agente leva Apache-2.0, MIT (SLF4J) e NOTICE; o backend depende do que cada jar aninhado traz | conferir com `license-maven-plugin` (`download-licenses`) antes de distribuir binários |
 
 ## 8. Como validar localmente
 ```bash

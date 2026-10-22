@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>br.com.portaria</groupId>
+    <groupId>br.com.domus</groupId>
     <artifactId>platform</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>portaria-platform</name>

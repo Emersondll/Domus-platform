@@ -20,9 +20,9 @@ done
 ok "dois jars gerados"
 
 echo "== chaves e lançamento assinado da 1.1.0"
-java -cp "$WORK/agent-1.1.0.jar" br.com.portaria.agent.update.SignTool genkey "$WORK/keys" >/dev/null
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/keys" >/dev/null
 PUB=$(cat "$WORK/keys/release-public.key")
-java -cp "$WORK/agent-1.1.0.jar" br.com.portaria.agent.update.SignTool sign "$WORK/agent-1.1.0.jar" 1.1.0 stable "$WORK/keys/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z"
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/agent-1.1.0.jar" 1.1.0 stable "$WORK/keys/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z"
 ok "manifest.json assinado"
 
 PORT=$((20000 + RANDOM % 20000))
@@ -54,9 +54,9 @@ before=$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)
 sed -i 's/"version":"1.1.0"/"version":"9.9.9"/' "$WORK/release/manifest.json"
 set +e; timeout 15 agent/install/portaria-agent-run.sh > "$WORK/run3.log" 2>&1; set -e
 grep -q "update manifest rejected: invalid signature" "$WORK/run3.log" && ok "manifesto adulterado recusado (assinatura inválida)" || { cat "$WORK/run3.log"; die "adulterado não foi recusado"; }
-java -cp "$WORK/agent-1.1.0.jar" br.com.portaria.agent.update.SignTool genkey "$WORK/evil" >/dev/null
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/evil" >/dev/null
 cp "$WORK/agent-1.1.0.jar" "$WORK/evil-9.9.9.jar"
-java -cp "$WORK/agent-1.1.0.jar" br.com.portaria.agent.update.SignTool sign "$WORK/evil-9.9.9.jar" 9.9.9 stable "$WORK/evil/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" >/dev/null
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/evil-9.9.9.jar" 9.9.9 stable "$WORK/evil/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" >/dev/null
 set +e; timeout 15 agent/install/portaria-agent-run.sh > "$WORK/run4.log" 2>&1; set -e
 grep -q "update manifest rejected: invalid signature" "$WORK/run4.log" && ok "manifesto assinado por outra chave recusado" || { cat "$WORK/run4.log"; die "outra chave não foi recusada"; }
 [ "$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)" = "$before" ] && ok "o jar em disco não mudou"

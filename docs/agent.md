@@ -47,8 +47,8 @@ Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com
   reinicia pelo launcher. Se a versão nova encerrar em menos de 60 s por 3 vezes seguidas, o launcher restaura o `.previous`; se ficar de pé, confirma.
 - **Publicar uma versão** (na máquina de quem lança, chave privada offline): defina a versão (`mvn versions:set -DnewVersion=1.2.0`; versões `SNAPSHOT` nunca se atualizam),
   `mvn -f agent/pom.xml package`, depois
-  `java -cp agent/target/agent-1.2.0.jar br.com.portaria.agent.update.SignTool genkey ./chaves` (uma vez; a pública vai para os agentes) e
-  `java -cp agent/target/agent-1.2.0.jar br.com.portaria.agent.update.SignTool sign agent/target/agent-1.2.0.jar 1.2.0 stable ./chaves/release-private.key ./release [notBefore]`;
+  `java -cp agent/target/agent-1.2.0.jar br.com.domus.agent.update.SignTool genkey ./chaves` (uma vez; a pública vai para os agentes) e
+  `java -cp agent/target/agent-1.2.0.jar br.com.domus.agent.update.SignTool sign agent/target/agent-1.2.0.jar 1.2.0 stable ./chaves/release-private.key ./release [notBefore]`;
   publique o conteúdo de `./release` na `PORTARIA_UPDATE_URL`.
 - **Provas:** `UpdateTest` (14 cenários), `scripts/test-agent-launcher.sh` e `scripts/e2e-agent-update.sh` (jars reais: 1.0.0 → 1.1.0 → reinício → confirmação; manifesto adulterado e de outra chave recusados).
 

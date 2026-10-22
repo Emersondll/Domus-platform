@@ -15,6 +15,16 @@ fontes públicas **não oficiais**. O adaptador continua **não validado**, e a 
 | Evento `AccessControl` com `UserID` e `Status` (1 = concedido) | Nenhuma fonte encontrada | **Hipótese**; o código só confirma comando se o `UserID` devolvido for `portaria-<commandId>` |
 | Evento `DoorStatus` com `Status` `Open`/`Close` | Nenhuma fonte encontrada | **Hipótese**; só informativo, nunca confirma comando |
 
+## Proveniência e implementação independente (clean-room)
+- O formato do fluxo de eventos (`Code=...;action=...;index=...;data={...}`) é parte do protocolo do equipamento, que é fato técnico, e não expressão
+  criativa de quem o documentou. Ele foi **lido** em material público apenas para entender o protocolo.
+- O módulo `node-dahua-api` está sob **GPL-3.0**. **Nenhum código dele foi copiado, traduzido ou adaptado**: a implementação deste repositório
+  (`DahuaEventStream`, `DahuaEventMapper`, `DigestAuth`) é em outra linguagem, com estrutura própria, e foi verificada por varredura de trechos
+  (0 trechos coincidentes, 2026-10-22). Regras daqui em diante: **não adicionar esse módulo como dependência, não portar seu código e não
+  colar trechos de fóruns**; ao ajustar o mapeador, usar apenas o que for observado no equipamento (fixtures sem dados pessoais).
+- Se um dia a Dahua/Intelbras fornecer a documentação oficial sob NDA, **verificar se o NDA permite publicar o que dela se derive**
+  antes de citar trechos em `docs/`.
+
 ## O que isso muda
 - Relato de usuário de uma controladora **ASI6213S-PW**: `eventManager.cgi` **não entregou** os eventos de reconhecimento facial e ele recorreu a
   `snapManager.cgi?action=attachFileProc`. Em alguns modelos a assinatura pode não funcionar como aqui; o plano B é o equipamento enviar eventos

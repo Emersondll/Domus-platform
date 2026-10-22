@@ -17,3 +17,6 @@ backups/
 # Configuração local do agente (não versionar)
 .claude/
 CLAUDE.md
+
+# Gerado no build (web/scripts/gen-licenses.mjs)
+web/*/public/licenses.txt

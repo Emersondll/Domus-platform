@@ -109,6 +109,27 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Avisos de licença acompanham o artefato distribuído (MIT do projeto e componentes de terceiros). -->
+            <resource>
+                <directory>${project.basedir}/..</directory>
+                <targetPath>META-INF/domus</targetPath>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>THIRD_PARTY_NOTICES.md</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/../docs/inventory</directory>
+                <targetPath>META-INF/domus/inventory</targetPath>
+                <includes>
+                    <include>*.txt</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

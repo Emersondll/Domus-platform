@@ -28,9 +28,11 @@ MIT vier a ser incorporado, o aviso de copyright será preservado em `THIRD_PART
 | Contingência local | nenhum | Ausente | **Desenvolver** (Fase 7) |
 | Central de operadores | nenhum | portaria.live tem só painel de registro | **Desenvolver** (Fase 4) |
 
-## Riscos observados nas referências (não replicar)
+## Lições de projeto adotadas (requisitos próprios, não replicar escolhas das referências)
 
-- Portarius: `jwt.Parse` não valida o método de assinatura (risco de confusão de algoritmo); tags GORM malformadas;
-  bloco/apartamento como texto de tamanho fixo (1 e 2 caracteres).
-- portaria.live: stack sem manutenção desde 2021; sem isolamento entre condomínios.
-- Porteiro-IA: sem licença; poucos commits (11); criptografia citada no README não foi validada.
+- Autenticação: validar algoritmo, emissor e audiência do token, e separar autenticação (token) de autorização (associações).
+- Modelagem: nomes de bloco e unidade com tamanho adequado; isolamento por condomínio garantido no banco, não só na aplicação.
+- Manutenção: preferir pilha atual e com suporte; testes automatizados desde o início.
+- Segurança e privacidade: toda afirmação de criptografia ou conformidade precisa de teste ou evidência; nada é declarado sem prova.
+
+Esta seção descreve decisões deste produto. Ela não avalia nem julga os projetos de referência, que foram usados somente como fonte de requisitos.

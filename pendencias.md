@@ -84,7 +84,28 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | D10 | Licença do projeto | **decidido: MIT** |
 | D11 | `.claude/` e `CLAUDE.md` fora do Git | **decidido: só locais** |
 
-## 7. Como validar localmente
+## 7. Auditoria de proveniência e licenças (2026-10-22)
+**Medido:** varredura de trechos (janelas normalizadas de 4 linhas e linhas longas) dos 288 arquivos de texto versionados contra os 3 repositórios de
+referência e contra o `node-dahua-api` (GPL-3.0): **0 coincidências**; o controle positivo (fork contra original) detectou 2.927, então a ferramenta funciona.
+Dependências sem AGPL/SSPL; CNPJs do seed inválidos de propósito; nenhum cabeçalho de copyright de terceiros nos arquivos próprios.
+
+**Aplicado (somente documentação e build):**
+- Avisos de licença dentro dos artefatos: `META-INF/domus/` nos jars do agente e do backend (+ transformadores Apache LICENSE/NOTICE no shade do agente) e `/licenses.txt` nos bundles web (`web/scripts/gen-licenses.mjs`).
+- Aviso de marcas de terceiros (uso nominativo, sem afiliação, sem conformidade ONVIF/homologação) em `THIRD_PARTY_NOTICES.md`.
+- Nota de proveniência/clean-room em `docs/reference-analysis/DAHUA_SOURCES.md` (GPL-3.0 do `node-dahua-api`: nada copiado, nunca adicionar como dependência).
+- `docs/reference-analysis/LICENSES.md` reescrito de forma neutra, sem apontar falhas de repositórios de terceiros.
+
+**Em aberto (decisão do titular ou externo):**
+| # | Item | Ação |
+|---|---|---|
+| L1 | **Marca "Domus"**: nenhuma busca de anterioridade feita | busca no INPI (classes de software/segurança) antes do uso comercial; avaliar nome alternativo |
+| L2 | **Histórico do GitHub** ainda contém as skills de terceiros (MIT, com aviso no mesmo commit) e o `CLAUDE.md` | só reescrever histórico (irreversível, `force push`) se você quiser |
+| L3 | **Código com assistência de IA**: titularidade e semelhança acidental variam por jurisdição | revisão humana documentada e varredura ampla (ScanCode/FOSSA/Black Duck) antes do lançamento |
+| L4 | **Inventário de licenças** é de 2026-10-20 | regenerar a cada release (comandos em `docs/inventory/README.md`) |
+| L5 | **Grafana (AGPL-3.0)** e **LGPD** | parecer jurídico (ver D1) |
+| L6 | Texto de licença de cada dependência Java dentro dos jars: o agente leva Apache-2.0, MIT (SLF4J) e NOTICE; o backend depende do que cada jar aninhado traz | conferir com `license-maven-plugin` (`download-licenses`) antes de distribuir binários |
+
+## 8. Como validar localmente
 ```bash
 docker compose up -d postgres
 mvn -f backend/pom.xml verify && mvn -f agent/pom.xml test

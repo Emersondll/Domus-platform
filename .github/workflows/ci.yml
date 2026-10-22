@@ -44,6 +44,8 @@ jobs:
           java-version: "26"
           cache: maven
       - run: mvn -B -f agent/pom.xml verify
+      - name: Launcher do agente (rollback de atualização)
+        run: scripts/test-agent-launcher.sh
 
   web:
     name: Painel e app do morador (testes + build)

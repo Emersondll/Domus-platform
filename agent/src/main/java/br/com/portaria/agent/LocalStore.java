@@ -249,6 +249,16 @@ public final class LocalStore implements AutoCloseable {
         }
     }
 
+    /** Há entrada autorizada cujo registro ainda não foi finalizado? (não reiniciar o agente enquanto isso for verdade) */
+    public synchronized boolean hasPendingReservations() throws StorageException {
+        try (Statement s = db.createStatement(); ResultSet rs = s.executeQuery("SELECT count(*) FROM outbox WHERE ready = 0")) {
+            rs.next();
+            return rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            throw new StorageException("hasPendingReservations", e);
+        }
+    }
+
     public synchronized List<OutboxEvent> readyBatch(int limit) throws StorageException {
         List<OutboxEvent> out = new ArrayList<>();
         try (PreparedStatement p = db.prepareStatement(

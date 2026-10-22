@@ -8,7 +8,8 @@ User=portaria-agent
 Group=portaria-agent
 # O arquivo de ambiente guarda os segredos do agente; permissao 600, dono root ou portaria-agent.
 EnvironmentFile=/etc/portaria-agent/agent.env
-ExecStart=/usr/bin/java -jar /opt/portaria-agent/agent.jar
+# O launcher (root, não gravável pelo agente) roda o jar em /var/lib/portaria-agent/bin e desfaz atualização que não se sustente.
+ExecStart=/opt/portaria-agent/portaria-agent-run.sh
 Restart=always
 RestartSec=5
 # Endurecimento basico

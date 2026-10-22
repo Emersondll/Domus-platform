@@ -1,5 +1,8 @@
 package br.com.portaria.agent;
 
+import br.com.portaria.agent.update.AgentUpdater;
+import br.com.portaria.agent.update.UpdateConfig;
+import br.com.portaria.agent.update.UpdateVerifier;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.concurrent.Executors;
@@ -52,6 +55,19 @@ public final class Main {
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleWithFixedDelay(sync::cycle, 0, cfg.syncInterval().toSeconds(), TimeUnit.SECONDS);
+        UpdateConfig.fromEnv(cfg.dataDir()).ifPresent(u -> {
+            AgentUpdater updater = new AgentUpdater(u.baseUrl(), new UpdateVerifier(u.publicKey(), u.channel(), 200L << 20),
+                    AgentUpdater.runningVersion(), u.jarPath(), u.pending(), () -> {
+                        try {
+                            return !store.hasPendingReservations();
+                        } catch (LocalStore.StorageException e) {
+                            return false;
+                        }
+                    }, () -> System.exit(75), clock); // 75 = reinício pedido; o systemd/launcher sobe a nova versão
+            scheduler.scheduleWithFixedDelay(updater::checkOnce, u.firstCheck().toSeconds(), u.interval().toSeconds(), TimeUnit.SECONDS);
+            log.info("Automatic updates enabled (channel {}, every {} h, running {})", u.channel(), u.interval().toHours(),
+                    AgentUpdater.runningVersion());
+        });
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             scheduler.shutdown();
             api.close();

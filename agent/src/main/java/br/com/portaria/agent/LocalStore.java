@@ -41,32 +41,42 @@ public final class LocalStore implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(LocalStore.class);
 
+    private static final String KEY_CHECK = "keycheck";
+    private static final String KEY_CHECK_VALUE = "portaria-agent-store";
+    private static final String SECRET_META = "apiKey";
+
     private final Connection db;
     private final boolean recovered;
+    private final StoreCipher cipher;
 
-    private LocalStore(Connection db, boolean recovered) {
+    private LocalStore(Connection db, boolean recovered, StoreCipher cipher) {
         this.db = db;
         this.recovered = recovered;
+        this.cipher = cipher;
     }
 
-    public static LocalStore open(Path file) throws StorageException {
+    /**
+     * Abre (ou cria) o armazenamento. Política, eventos e a chave de API ficam cifrados em repouso. Chave diferente da usada
+     * antes é erro explícito e o arquivo NÃO é movido nem recriado (recriar perderia os usos offline ainda não sincronizados).
+     */
+    static LocalStore open(Path file, StoreCipher cipher) throws StorageException {
         try {
             Files.createDirectories(file.getParent());
-            return init(file, false);
+            return init(file, false, cipher);
         } catch (SQLException | IOException first) {
             log.error("Local store unreadable ({}); moving it aside and starting a new one", first.getMessage());
             try {
                 if (Files.exists(file)) {
                     Files.move(file, file.resolveSibling(file.getFileName() + ".corrupt-" + System.currentTimeMillis()));
                 }
-                return init(file, true);
+                return init(file, true, cipher);
             } catch (SQLException | IOException second) {
                 throw new StorageException("Cannot create local store", second);
             }
         }
     }
 
-    private static LocalStore init(Path file, boolean recovered) throws SQLException {
+    private static LocalStore init(Path file, boolean recovered, StoreCipher cipher) throws SQLException, StorageException {
         Connection c = DriverManager.getConnection("jdbc:sqlite:" + file);
         try (Statement s = c.createStatement()) {
             try (ResultSet rs = s.executeQuery("PRAGMA integrity_check")) {
@@ -82,11 +92,72 @@ public final class LocalStore implements AutoCloseable {
             s.execute("CREATE TABLE IF NOT EXISTS outbox(event_id TEXT PRIMARY KEY, type TEXT NOT NULL, "
                     + "credential_id TEXT, payload TEXT NOT NULL, created_at TEXT NOT NULL, ready INTEGER NOT NULL)");
             s.execute("CREATE TABLE IF NOT EXISTS seen_commands(command_id TEXT PRIMARY KEY, at TEXT NOT NULL)");
-        } catch (SQLException e) {
+            verifyKeyAndMigrate(c, cipher);
+        } catch (SQLException | StorageException e) {
             c.close();
             throw e;
         }
-        return new LocalStore(c, recovered);
+        return new LocalStore(c, recovered, cipher);
+    }
+
+    /** Confere a chave pelo valor-sentinela e cifra o que ainda estiver em texto puro (armazenamento de versão anterior). */
+    private static void verifyKeyAndMigrate(Connection c, StoreCipher cipher) throws SQLException, StorageException {
+        try (Statement s = c.createStatement()) {
+            String check = null;
+            try (ResultSet rs = s.executeQuery("SELECT v FROM meta WHERE k = '" + KEY_CHECK + "'")) {
+                if (rs.next()) {
+                    check = rs.getString(1);
+                }
+            }
+            if (check != null) {
+                try {
+                    if (!KEY_CHECK_VALUE.equals(cipher.decrypt(check, KEY_CHECK))) {
+                        throw new IllegalStateException("mismatch");
+                    }
+                } catch (IllegalStateException wrong) {
+                    throw new StorageException("PORTARIA_STORE_KEY does not match the key that encrypted this store; "
+                            + "refusing to open it (the file was left untouched)", wrong);
+                }
+            }
+            try (PreparedStatement p = c.prepareStatement("INSERT OR REPLACE INTO meta(k, v) VALUES (?, ?)")) {
+                p.setString(1, KEY_CHECK);
+                p.setString(2, cipher.encrypt(KEY_CHECK_VALUE, KEY_CHECK));
+                p.executeUpdate();
+            }
+            // legado em texto puro -> cifrado
+            try (ResultSet rs = s.executeQuery("SELECT json FROM policy WHERE id = 1")) {
+                if (rs.next() && !cipher.isEncrypted(rs.getString(1))) {
+                    try (PreparedStatement p = c.prepareStatement("UPDATE policy SET json = ? WHERE id = 1")) {
+                        p.setString(1, cipher.encrypt(rs.getString(1), "policy"));
+                        p.executeUpdate();
+                    }
+                }
+            }
+            List<String[]> legacy = new ArrayList<>();
+            try (ResultSet rs = s.executeQuery("SELECT event_id, payload FROM outbox")) {
+                while (rs.next()) {
+                    if (!cipher.isEncrypted(rs.getString(2))) {
+                        legacy.add(new String[] {rs.getString(1), rs.getString(2)});
+                    }
+                }
+            }
+            for (String[] row : legacy) {
+                try (PreparedStatement p = c.prepareStatement("UPDATE outbox SET payload = ? WHERE event_id = ?")) {
+                    p.setString(1, cipher.encrypt(row[1], "outbox:" + row[0]));
+                    p.setString(2, row[0]);
+                    p.executeUpdate();
+                }
+            }
+            try (ResultSet rs = s.executeQuery("SELECT v FROM meta WHERE k = '" + SECRET_META + "'")) {
+                if (rs.next() && !cipher.isEncrypted(rs.getString(1))) {
+                    try (PreparedStatement p = c.prepareStatement("UPDATE meta SET v = ? WHERE k = ?")) {
+                        p.setString(1, cipher.encrypt(rs.getString(1), "meta:" + SECRET_META));
+                        p.setString(2, SECRET_META);
+                        p.executeUpdate();
+                    }
+                }
+            }
+        }
     }
 
     public boolean recoveredFromCorruption() {
@@ -97,7 +168,8 @@ public final class LocalStore implements AutoCloseable {
 
     public synchronized Optional<StoredPolicy> loadPolicy() throws StorageException {
         try (Statement s = db.createStatement(); ResultSet rs = s.executeQuery("SELECT json, signature FROM policy")) {
-            return rs.next() ? Optional.of(new StoredPolicy(rs.getString(1), rs.getString(2))) : Optional.empty();
+            return rs.next() ? Optional.of(new StoredPolicy(decrypt(rs.getString(1), "policy"), rs.getString(2)))
+                    : Optional.empty();
         } catch (SQLException e) {
             throw new StorageException("loadPolicy", e);
         }
@@ -107,7 +179,7 @@ public final class LocalStore implements AutoCloseable {
         try (PreparedStatement p = db.prepareStatement(
                 "INSERT INTO policy(id, json, signature) VALUES (1, ?, ?) "
                         + "ON CONFLICT(id) DO UPDATE SET json = excluded.json, signature = excluded.signature")) {
-            p.setString(1, json);
+            p.setString(1, cipher.encrypt(json, "policy"));
             p.setString(2, signature);
             p.executeUpdate();
         } catch (SQLException e) {
@@ -153,9 +225,25 @@ public final class LocalStore implements AutoCloseable {
      * porta abriu, o uso permanece consumido e a central sinaliza para revisão humana.
      */
     public synchronized int recoverReservations() throws StorageException {
+        // O payload está cifrado: lê, troca o tipo e grava de novo em Java (não dá para usar json_set no SQLite).
         try (Statement s = db.createStatement()) {
-            return s.executeUpdate("UPDATE outbox SET ready = 1, type = 'OFFLINE_ENTRY_UNCERTAIN', "
-                    + "payload = json_set(payload, '$.type', 'OFFLINE_ENTRY_UNCERTAIN') WHERE ready = 0");
+            List<String[]> pending = new ArrayList<>();
+            try (ResultSet rs = s.executeQuery("SELECT event_id, payload FROM outbox WHERE ready = 0")) {
+                while (rs.next()) {
+                    pending.add(new String[] {rs.getString(1), rs.getString(2)});
+                }
+            }
+            for (String[] row : pending) {
+                var json = (tools.jackson.databind.node.ObjectNode) Json.MAPPER.readTree(decrypt(row[1], "outbox:" + row[0]));
+                json.put("type", "OFFLINE_ENTRY_UNCERTAIN");
+                try (PreparedStatement p = db.prepareStatement(
+                        "UPDATE outbox SET ready = 1, type = 'OFFLINE_ENTRY_UNCERTAIN', payload = ? WHERE event_id = ?")) {
+                    p.setString(1, cipher.encrypt(Json.MAPPER.writeValueAsString(json), "outbox:" + row[0]));
+                    p.setString(2, row[0]);
+                    p.executeUpdate();
+                }
+            }
+            return pending.size();
         } catch (SQLException e) {
             throw new StorageException("recoverReservations", e);
         }
@@ -164,11 +252,11 @@ public final class LocalStore implements AutoCloseable {
     public synchronized List<OutboxEvent> readyBatch(int limit) throws StorageException {
         List<OutboxEvent> out = new ArrayList<>();
         try (PreparedStatement p = db.prepareStatement(
-                "SELECT payload FROM outbox WHERE ready = 1 ORDER BY created_at, rowid LIMIT ?")) {
+                "SELECT event_id, payload FROM outbox WHERE ready = 1 ORDER BY created_at, rowid LIMIT ?")) {
             p.setInt(1, limit);
             try (ResultSet rs = p.executeQuery()) {
                 while (rs.next()) {
-                    out.add(fromJson(rs.getString(1)));
+                    out.add(fromJson(decrypt(rs.getString(2), "outbox:" + rs.getString(1))));
                 }
             }
             return out;
@@ -209,7 +297,7 @@ public final class LocalStore implements AutoCloseable {
         try (PreparedStatement p = db.prepareStatement("SELECT v FROM meta WHERE k = ?")) {
             p.setString(1, key);
             try (ResultSet rs = p.executeQuery()) {
-                return rs.next() ? Optional.of(rs.getString(1)) : Optional.empty();
+                return rs.next() ? Optional.of(decrypt(rs.getString(1), "meta:" + key)) : Optional.empty();
             }
         } catch (SQLException e) {
             throw new StorageException("meta", e);
@@ -220,7 +308,7 @@ public final class LocalStore implements AutoCloseable {
         try (PreparedStatement p = db.prepareStatement(
                 "INSERT INTO meta(k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v")) {
             p.setString(1, key);
-            p.setString(2, value);
+            p.setString(2, SECRET_META.equals(key) ? cipher.encrypt(value, "meta:" + key) : value);
             p.executeUpdate();
         } catch (SQLException e) {
             throw new StorageException("putMeta", e);
@@ -275,12 +363,21 @@ public final class LocalStore implements AutoCloseable {
             p.setString(1, e.eventId().toString());
             p.setString(2, e.type());
             p.setString(3, e.credentialId() == null ? null : e.credentialId().toString());
-            p.setString(4, Json.MAPPER.writeValueAsString(e.toMap()));
+            p.setString(4, cipher.encrypt(Json.MAPPER.writeValueAsString(e.toMap()), "outbox:" + e.eventId()));
             p.setString(5, e.occurredAt().toString());
             p.setInt(6, ready);
             p.executeUpdate();
         } catch (SQLException ex) {
             throw new StorageException("insert outbox", ex);
+        }
+    }
+
+    /** Decifra convertendo falha de chave/adulteração em erro de armazenamento (quem chama falha fechado). */
+    private String decrypt(String stored, String context) throws StorageException {
+        try {
+            return cipher.decrypt(stored, context);
+        } catch (IllegalStateException e) {
+            throw new StorageException("Stored data cannot be decrypted", e);
         }
     }
 

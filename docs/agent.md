@@ -49,8 +49,11 @@ central com `kill -9`, valida offline e confere a reconciliação.
   A janela é limitada pela validade da política e vira conflito auditável. Reduza o TTL se o risco for inaceitável.
 - **Quota offline** é por agente: dois agentes/entradas offline ao mesmo tempo podem estourar uma credencial multiuso
   (detectado como `QUOTA_EXCEEDED` na volta).
-- **Dados em repouso:** o SQLite não é criptografado (proteja com permissões 600 e disco cifrado); a política contém as
-  assinaturas esperadas dos tokens ativos.
+- **Dados em repouso:** política (contém as assinaturas dos QR Codes ativos), fila de eventos e chave de API ficam cifradas (AES-256-GCM, chave derivada de
+  `PORTARIA_STORE_KEY`, ≥ 32 caracteres, obrigatória). O contexto da linha entra como dado autenticado: mover um valor cifrado para outra linha é detectado.
+  **Chave diferente da usada antes = o agente se recusa a iniciar e não toca no arquivo** (recriar perderia usos offline não sincronizados); guarde uma cópia
+  da chave fora da máquina. Armazenamento de versão anterior (texto puro) é cifrado na primeira abertura. Mantenha o arquivo com permissão 600 e o disco cifrado;
+  a chave fica no `agent.env` (600), então quem tem root na máquina continua capaz de ler tudo.
 - **Corrupção** do arquivo perde eventos ainda não sincronizados (o arquivo ruim é preservado como `.corrupt-<ts>`).
 - **Transporte:** autenticação por chave sobre TLS; mTLS com certificado por dispositivo é evolução futura.
 - **Atualização segura** (binário assinado + verificação) **não implementada**: hoje a atualização é manual; publique

@@ -23,6 +23,7 @@ import javax.crypto.spec.SecretKeySpec;
 final class TestKit {
 
     static final String SECRET = "test-policy-secret-for-the-agent";
+    static final StoreCipher STORE_CIPHER = StoreCipher.fromSecret("test-store-key-0123456789-abcdefghijklmnop");
     static final UUID AGENT = UUID.randomUUID();
     static final UUID CONDO = UUID.randomUUID();
 
@@ -181,7 +182,7 @@ final class TestKit {
         }
 
         void boot() throws Exception {
-            store = LocalStore.open(dir.resolve("agent.db"));
+            store = LocalStore.open(dir.resolve("agent.db"), STORE_CIPHER);
             store.recoverReservations();
             PolicyVerifier verifier = new PolicyVerifier(SECRET, AGENT);
             monitor = new ConnectivityMonitor(clock);

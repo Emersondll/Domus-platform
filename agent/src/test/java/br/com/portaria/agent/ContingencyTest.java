@@ -254,7 +254,7 @@ class ContingencyTest {
     void aCorruptedStoreIsSetAsideAndRecreatedVisibly() throws Exception {
         Path file = dir.resolve("agent.db");
         Files.write(file, "this is definitely not a sqlite database, it is garbage".repeat(50).getBytes());
-        try (LocalStore store = LocalStore.open(file)) {
+        try (LocalStore store = LocalStore.open(file, TestKit.STORE_CIPHER)) {
             assertThat(store.recoveredFromCorruption()).isTrue();
             assertThat(store.isWritable()).isTrue();
             assertThat(store.loadPolicy()).isEmpty();

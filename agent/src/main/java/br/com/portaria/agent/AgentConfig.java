@@ -12,19 +12,20 @@ import java.util.UUID;
  * @param apiKey         chave do agente (recebida no cadastro; rotacionável)
  * @param policySecret   segredo de verificação da política (recebido no cadastro)
  * @param dataDir        diretório dos dados locais (SQLite)
+ * @param storeKey       segredo (>= 32 caracteres) que cifra o armazenamento local em repouso
  * @param localKey       chave exigida pela API local do leitor
  * @param localPort      porta da API local (somente 127.0.0.1)
  * @param syncInterval   intervalo do ciclo de sincronização
  * @param requestTimeout tempo máximo de cada chamada à central
  */
 public record AgentConfig(String centralUrl, UUID agentId, String apiKey, String policySecret, Path dataDir,
-                          String localKey, int localPort, Duration syncInterval, Duration requestTimeout) {
+                          String storeKey, String localKey, int localPort, Duration syncInterval, Duration requestTimeout) {
 
     static AgentConfig fromEnv() {
         return new AgentConfig(required("PORTARIA_CENTRAL_URL"), UUID.fromString(required("PORTARIA_AGENT_ID")),
                 required("PORTARIA_AGENT_KEY"), required("PORTARIA_POLICY_SECRET"),
                 Path.of(System.getenv().getOrDefault("PORTARIA_DATA_DIR", "/var/lib/portaria-agent")),
-                required("PORTARIA_LOCAL_KEY"), Integer.parseInt(System.getenv().getOrDefault("PORTARIA_LOCAL_PORT", "8099")),
+                required("PORTARIA_STORE_KEY"), required("PORTARIA_LOCAL_KEY"), Integer.parseInt(System.getenv().getOrDefault("PORTARIA_LOCAL_PORT", "8099")),
                 Duration.ofSeconds(Long.parseLong(System.getenv().getOrDefault("PORTARIA_SYNC_SECONDS", "10"))),
                 Duration.ofSeconds(Long.parseLong(System.getenv().getOrDefault("PORTARIA_TIMEOUT_SECONDS", "5"))));
     }

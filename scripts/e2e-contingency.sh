@@ -46,7 +46,7 @@ TOKEN=$(echo "$INV" | jget "d['token']"); INV_ID=$(echo "$INV" | jget "d['id']")
 
 step "Agente no ar (sincroniza política)"
 PORTARIA_CENTRAL_URL=$BASE PORTARIA_AGENT_ID=$AGENT_ID PORTARIA_AGENT_KEY=$AGENT_KEY PORTARIA_POLICY_SECRET=$POLICY_SECRET \
-PORTARIA_DATA_DIR=$WORK/agent-data PORTARIA_LOCAL_KEY=local-secret-key PORTARIA_LOCAL_PORT=8099 PORTARIA_SYNC_SECONDS=2 PORTARIA_TIMEOUT_SECONDS=2 \
+PORTARIA_DATA_DIR=$WORK/agent-data PORTARIA_STORE_KEY=e2e-store-key-0123456789-abcdefghijklmnop PORTARIA_LOCAL_KEY=local-secret-key PORTARIA_LOCAL_PORT=8099 PORTARIA_SYNC_SECONDS=2 PORTARIA_TIMEOUT_SECONDS=2 \
   nohup java -jar "$ROOT/agent/target/agent-0.1.0-SNAPSHOT.jar" >"$WORK/agent.log" 2>&1 &
 echo $! >"$WORK/agent.pid"
 wait_for "agent online" "d['connectivity']=='ONLINE'"

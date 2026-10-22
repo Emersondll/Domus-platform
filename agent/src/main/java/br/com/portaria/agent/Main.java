@@ -21,7 +21,7 @@ public final class Main {
     public static void main(String[] args) throws Exception {
         AgentConfig cfg = AgentConfig.fromEnv();
         Clock clock = Clock.systemUTC();
-        LocalStore store = LocalStore.open(cfg.dataDir().resolve("agent.db"));
+        LocalStore store = LocalStore.open(cfg.dataDir().resolve("agent.db"), StoreCipher.fromSecret(cfg.storeKey()));
         if (store.recoveredFromCorruption()) {
             log.error("Local store was corrupted and has been recreated; unsynchronized events may have been lost");
         }

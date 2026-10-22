@@ -7,12 +7,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.domus.platform.identity.AppUser;
-import br.com.domus.platform.identity.AppUserRepository;
-import br.com.domus.platform.identity.BootstrapAdmin;
-import br.com.domus.platform.identity.Membership;
-import br.com.domus.platform.identity.MembershipRepository;
-import br.com.domus.platform.identity.Role;
+import br.com.domus.platform.identity.entity.AppUser;
+import br.com.domus.platform.identity.repository.AppUserRepository;
+import br.com.domus.platform.identity.service.BootstrapAdmin;
+import br.com.domus.platform.identity.entity.Membership;
+import br.com.domus.platform.identity.repository.MembershipRepository;
+import br.com.domus.platform.identity.entity.Role;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

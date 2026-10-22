@@ -1,10 +1,10 @@
 package br.com.domus.platform.shared.tenant;
 
-import br.com.domus.platform.identity.AppUser;
-import br.com.domus.platform.identity.AppUserRepository;
-import br.com.domus.platform.identity.Membership;
-import br.com.domus.platform.identity.MembershipRepository;
-import br.com.domus.platform.identity.Role;
+import br.com.domus.platform.identity.entity.AppUser;
+import br.com.domus.platform.identity.repository.AppUserRepository;
+import br.com.domus.platform.identity.entity.Membership;
+import br.com.domus.platform.identity.repository.MembershipRepository;
+import br.com.domus.platform.identity.entity.Role;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ForbiddenException;

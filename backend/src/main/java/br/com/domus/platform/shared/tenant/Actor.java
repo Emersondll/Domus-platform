@@ -1,6 +1,6 @@
 package br.com.domus.platform.shared.tenant;
 
-import br.com.domus.platform.identity.Membership;
+import br.com.domus.platform.identity.entity.Membership;
 import java.util.List;
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-# Status do projeto — 2026-10-20
+# Status do projeto — 2026-10-22
 
 Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.7, Java 26), painel da central e app do
 morador (React + TypeScript), agente local de contingência (Java + SQLite). **Fases 0–8 executadas.**
@@ -7,9 +7,10 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml clean verify` | **83 testes** (3 unitários + 80 integração com PostgreSQL real), 0 falhas |
-| `mvn -f agent/pom.xml clean package` | **16 testes**, 0 falhas; jar executável gerado |
-| `cd web && npm test` / `npm run build` | **10** (painel: 5 UI + 5 OIDC/PKCE) + **4** (app do morador); build com checagem de tipos ok |
+| `mvn -f backend/pom.xml verify` | **114 testes** (28 unitários + 86 integração com PostgreSQL real), 0 falhas |
+| `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
+| `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
+| `cd web && npm test` / `npm run build` | **19** (painel) + **5** (app do morador); build com checagem de tipos ok |
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
@@ -17,8 +18,8 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 | `scripts/restore-drill.sh` | PASS: 16 tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
-| `scripts/load-test.py` (mesma máquina, piso) | leitura ~3.000–3.700 req/s; escrita ~1.900–2.300 req/s; p95 16–54 ms; 0 erros; 0 timeouts do pool |
-| CI (`.github/workflows/ci.yml`) | **não executado** (só validado como YAML e `docker compose config`) |
+| `scripts/load-test.py` (mesma máquina, piso) | após a criptografia de campos: leitura ~900–1.500 req/s (inclusive `GET condomínios`, que não tem dado pessoal), escrita ~1.600 req/s; p95 21–36 ms; 0 erros; 0 timeouts. **Menor que a rodada anterior (3.000+) também nos endpoints sem criptografia, com a máquina carregada (k3s); não foi isolado o efeito da cifra: medir em máquina limpa** |
+| CI (`.github/workflows/ci.yml`) | rodou no GitHub e falhou (teste dependente de ordem e `osv-scanner@v2` inexistente); **corrigido localmente, ainda não reexecutado** |
 
 ## Concluído e verificado
 - **Fundação:** multi-tenant (empresa → condomínio → bloco → unidade → morador) com 404 entre tenants, FKs compostas, papéis por
@@ -44,6 +45,13 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
   regressão (`PoolStarvationIT`); métricas de negócio que nunca atualizavam (`ResultSet` sem `next()`); healthcheck do contêiner; testes que
   "passavam" sem rodar (failsafe).
 
+- **Dados pessoais cifrados (AES-256-GCM em nível de campo):** nome, e-mail, telefone, nome do visitante/chamador, placa; placa única por índice cego; chaves rotacionáveis;
+  migração de dados legados (`FieldCipherTest`, `FieldEncryptionIT`, drill de restauração, E2E). Armazenamento do agente cifrado em repouso (política, fila, chave de API),
+  recusa chave errada sem apagar nada (`StoreEncryptionTest`).
+- **Atualização segura do agente:** manifesto assinado (Ed25519), anti-retrocesso, hash/tamanho, instalação atômica e rollback pelo launcher (`UpdateTest`, scripts acima).
+- **Audiência do token** (`aud=portaria-api`) e **renovação silenciosa do token** nos apps.
+- **Tema Domus** nos dois apps e no login do Keycloak.
+
 ## Simulado (somente desenvolvimento/teste)
 - Login `/dev/token` e seed fictício (`DevSeed`, perfil `dev`; não existe em produção nem nos bundles de produção).
 - Dispositivos `SIMULATOR`; controladora do agente (`SimulatedDoor`); central falsa nos testes do agente (contrato idêntico ao da API real,
@@ -54,27 +62,20 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
   Provado por `scripts/verify_keycloak.py` (token de outro cliente → 401; token do fluxo real do front → aceito).
 
 ## Pendente / não feito (em ordem de impacto)
-1. **Hardware real:** nenhum adaptador testado com equipamento (controladoras, câmeras, interfones); o primeiro fabricante (`DAHUA_CGI`, família Dahua/Intelbras, Digest)
-   tem comando `openDoor` e assinatura de eventos (`eventManager.cgi`, reconexão com espera, detecção de fluxo mudo). 17 testes (14 unitários e 3 de integração)
-   passam contra um equipamento falso que valida o Digest de verdade, inclusive ponta a ponta com o banco (confirma só se o evento devolver o
-   `UserID=portaria-<commandId>`; senão `UNKNOWN`). **A documentação oficial não foi obtida** (NDA/solicitação ao fabricante): as fontes são
-   públicas e não oficiais e várias suposições (campos `Status`/`UserID`, `heartbeat`) estão **não confirmadas**; ver
-   `docs/reference-analysis/DAHUA_SOURCES.md` e o roteiro de campo. Falta teste em equipamento, teste com perda de conectividade durante o comando e
-   eleição de líder entre instâncias (cada instância abre sua própria conexão de eventos).
+1. **Hardware real:** nenhum adaptador testado com equipamento; `DAHUA_CGI` (Dahua/Intelbras, Digest + `eventManager.cgi`) passa em 17 testes contra um equipamento falso, mas a
+   **documentação oficial não foi obtida** (NDA) e várias suposições estão não confirmadas (`docs/reference-analysis/DAHUA_SOURCES.md`, com roteiro de campo). Falta teste com perda de
+   conectividade durante o comando e eleição de líder entre instâncias.
 2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
-4. **Navegador:** `scripts/e2e-browser.py` (Chromium/Playwright, login de desenvolvimento) cobre os fluxos do morador e do operador; falta exercitar o login
-   OIDC/PKCE e a renovação silenciosa do token **num navegador contra o Keycloak real** (o PKCE e a API já são provados por `verify_keycloak.py`; a renovação tem 9 testes unitários).
-5. **mTLS** por agente/dispositivo; criptografia de campos pessoais e do SQLite do agente;
-   WAF/DDoS; pentest independente; varredura de imagens.
-6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos são por instância (precisam de Redis/lock distribuído);
-   PostgreSQL sem réplica/PITR; RTO/RPO não medidos em produção.
-7. **LGPD:** decisões jurídicas/operacionais (base legal, DPO, RIPD, contratos controlador/operador, retenção final) — ver `docs/lgpd.md`;
-   política para dados de visitantes; retenção/acesso a gravações quando houver vídeo.
-8. **Atualização segura do agente** (binário assinado + verificação) e instalador; hoje manual.
-9. Operador-chefe/relatórios por condomínio e exportação de relatórios (só há listagens e auditoria); cadastro de planos/contratos/limites.
+4. **Navegador:** falta exercitar o login OIDC/PKCE e a renovação do token **num navegador contra o Keycloak real** (o E2E de navegador usa o login de desenvolvimento).
+5. **Segurança restante:** mTLS por agente/dispositivo; WAF/DDoS; pentest independente; varredura de imagens de contêiner; criptografia de armazenamento do banco/disco (a de campos já existe);
+   rotação da chave de lançamento do agente; chaves de criptografia em gerenciador de segredos/KMS (hoje variável de ambiente).
+6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos por instância (Redis/lock distribuído); cada instância abre sua conexão de eventos Dahua; PostgreSQL sem réplica/PITR; RTO/RPO não medidos.
+7. **LGPD:** decisões jurídicas/operacionais (base legal, DPO, RIPD, contratos, retenção final) — `docs/lgpd.md`; política para dados de visitantes; gravações quando houver vídeo.
+8. **Administração e relatórios:** não existem telas para administrador da plataforma, da empresa e síndico (só há API); relatórios por condomínio/exportação; planos, contratos e limites.
+9. Instalador/pacote (.deb) do agente e suporte a outros sistemas além de Linux/systemd.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
-11. CI: rodou no GitHub e acusou 2 falhas (teste dependente de ordem e versão inexistente do osv-scanner), corrigidas localmente; falta confirmar numa nova execução. Licença do projeto: MIT (`LICENSE`); skills do agente ficam só na máquina local (`.claude/` no `.gitignore`).
+11. **CI:** reexecutar após as correções (CodeQL com Java 26 ainda não validado). Licença MIT (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local.
 
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).

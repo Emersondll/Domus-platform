@@ -51,22 +51,26 @@ Opcionais: Prometheus/Grafana `docker compose -f docker-compose.yml -f docker-co
 ## Testes e provas
 
 ```bash
-mvn -f backend/pom.xml verify          # 83 testes (Testcontainers: precisa do Docker)
-mvn -f agent/pom.xml test              # 16 testes (sem Docker)
-cd web && npm test                     # 14 testes de UI/OIDC
+mvn -f backend/pom.xml verify          # 114 testes (Testcontainers: precisa do Docker)
+mvn -f agent/pom.xml test              # 36 testes (sem Docker)
+cd web && npm test                     # 24 testes de UI/OIDC/renovação de token
 
 mvn -f backend/pom.xml package -DskipTests && mvn -f agent/pom.xml package
 ./scripts/e2e-contingency.sh           # queda real da central + agente local
 python3 scripts/verify_keycloak.py     # login de navegador, MFA, PKCE e API (precisa do Keycloak dev)
 ./scripts/restore-drill.sh             # backup -> restauração -> verificações
+python3 scripts/e2e-browser.py         # navegador real (Playwright): morador e operador
+./scripts/e2e-agent-update.sh          # atualização assinada do agente com jars reais
+./scripts/test-agent-launcher.sh       # rollback do launcher do agente
 python3 scripts/load-test.py           # latência/vazão (API com perfil dev e limites de taxa elevados)
 ```
 
 ## Estrutura
 
 ```
-backend/   API (pacotes por domínio: shared, identity, commercial, residents, vehicles, parcels, reservations, access,
-           notifications, operations, devices, agent, privacy, dev)
+backend/   API, pacote br.com.domus.platform: um pacote por domínio (identity, commercial, residents, vehicles, parcels, reservations,
+           access, notifications, operations, devices, agent, privacy, dev) dividido em controller/service/repository/entity (ADR 0007);
+           shared/ com auditoria, tenant, criptografia, erros e observabilidade
 web/       painel da central e app do morador (React + TypeScript, cliente OIDC compartilhado)
 agent/     agente local de contingência (Java, SQLite)
 deploy/    produção: Caddy (TLS), Keycloak (realm com MFA), Prometheus/Grafana, compose de produção
@@ -74,7 +78,7 @@ scripts/   backup, restauração, drill, provas ponta a ponta, teste de carga
 docs/      STATUS, operação, segurança, LGPD, agente, ADRs, análise dos repositórios de referência, inventário de licenças
 ```
 
-Documentação: [STATUS](docs/STATUS.md) · [Operação](docs/operations.md) · [Segurança](docs/security.md) · [LGPD](docs/lgpd.md) ·
+Documentação: [Pendências](pendencias.md) · [STATUS](docs/STATUS.md) · [Operação](docs/operations.md) · [Segurança](docs/security.md) · [LGPD](docs/lgpd.md) ·
 [Agente local](docs/agent.md) · [ADRs](docs/adr) · [Licenças das referências](docs/reference-analysis/LICENSES.md) · [Inventário](docs/inventory/README.md)
 
 ## Licença

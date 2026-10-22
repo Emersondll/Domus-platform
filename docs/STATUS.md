@@ -4,6 +4,8 @@ Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (
 morador (React + TypeScript), agente local de contingência (Java + SQLite). **Fases 0–8 executadas.**
 **Isto NÃO é "pronto para produção"**: nada foi testado com hardware real e há lacunas listadas abaixo.
 
+> Painel de acompanhamento de bugs, pendências e decisões em aberto: [`pendencias.md`](../pendencias.md).
+
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|

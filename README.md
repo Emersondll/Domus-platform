@@ -83,4 +83,4 @@ Documentação: [Pendências](pendencias.md) · [STATUS](docs/STATUS.md) · [Ope
 
 ## Licença
 
-[MIT](LICENSE). Avisos de componentes de terceiros em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[Apache 2.0](LICENSE). Avisos de componentes de terceiros em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

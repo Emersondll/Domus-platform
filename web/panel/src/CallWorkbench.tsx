@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
+import { VisitAuthorization } from "./VisitAuthorization";
 import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type Command, type Device, type OnDuty } from "./types";
 
 /** Atendimento selecionado: histórico, desfecho com justificativa, transferência e (futuro) abertura de porta. */
@@ -71,6 +72,9 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
       <p>
         Origem: {call.source} · Status: {call.status}
       </p>
+
+      <VisitAuthorization token={token} call={call}
+        onApproved={(visitor) => setDoorReason((r) => r || `Morador autorizou pelo app (visitante: ${visitor})`)} />
 
       <h3>Abrir porta</h3>
       <label htmlFor="door-device">Dispositivo</label>

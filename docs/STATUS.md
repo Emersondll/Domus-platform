@@ -9,7 +9,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **117 testes** (28 unitários + 89 integração com PostgreSQL real), 0 falhas |
+| `mvn -f backend/pom.xml verify` | **124 testes** (30 unitários + 94 integração com PostgreSQL real), 0 falhas |
 | `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
 | `cd web && npm test` / `npm run build` | **19** (painel) + **5** (app do morador); build com checagem de tipos ok |

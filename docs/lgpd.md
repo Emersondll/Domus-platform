@@ -32,3 +32,6 @@
 4. Transferência internacional (provedores de nuvem/IdP/WhatsApp) e cláusulas contratuais.
 5. Retenção de imagens e áudios quando houver gravação; acesso e justificativa para consulta.
 6. Tratamento de dados de crianças/adolescentes e de terceiros (visitantes) cadastrados por moradores.
+
+## Pedidos de autorização de visitante (visit_request)
+O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_request.visitor_name`), como nas demais tabelas. O pedido expira em 5 minutos sem resposta; o registro permanece para auditoria e deve entrar na política de retenção que o controlador definir (D1).

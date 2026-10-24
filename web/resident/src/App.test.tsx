@@ -13,6 +13,7 @@ let myCalls: unknown[] = [];
 let myParcels: unknown[] = [];
 let myInvitations: unknown[] = [];
 let myHistory: unknown[] = [];
+let myVisitRequests: unknown[] = [];
 
 /** Substitui apenas a rede (fetch); UI, validações do cliente e geração do QR rodam de verdade. */
 function fakeApi() {
@@ -32,6 +33,9 @@ function fakeApi() {
         validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE",
         token: "11111111-1111-1111-1111-111111111111.sig" }, 201);
     if (url.endsWith("/me/invitations")) return json(page(myInvitations));
+    if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
+    if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
+    if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
     if (url.endsWith("/me/calls") && method === "POST") return json({ id: "c1" }, 201);
     if (url.endsWith("/me/calls")) return json(page(myCalls));
     if (url.endsWith("/me/parcels")) return json(page(myParcels));
@@ -60,6 +64,7 @@ describe("resident app", () => {
     myParcels = [];
     myInvitations = [];
     myHistory = [];
+    myVisitRequests = [];
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -98,14 +103,14 @@ describe("resident app", () => {
   });
 
   it("shows the progress of the call and the outcome after the doorman closes it", async () => {
-    myCalls = [{ id: "c1", status: "CLOSED", createdAt: new Date().toISOString(), assignedAt: null, closedAt: new Date().toISOString(), outcome: "ENTRY_DENIED" }];
+    myCalls = [{ id: "c1", source: "RESIDENT_APP", status: "CLOSED", createdAt: new Date().toISOString(), assignedAt: null, closedAt: new Date().toISOString(), outcome: "ENTRY_DENIED" }];
     await openTab("Início");
     expect(await screen.findByText(/Entrada não autorizada pela portaria/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Chamar a central" })).toBeEnabled();
   });
 
   it("blocks a second call while one is still being handled", async () => {
-    myCalls = [{ id: "c1", status: "ASSIGNED", createdAt: new Date().toISOString(), assignedAt: new Date().toISOString(), closedAt: null, outcome: null }];
+    myCalls = [{ id: "c1", source: "RESIDENT_APP", status: "ASSIGNED", createdAt: new Date().toISOString(), assignedAt: new Date().toISOString(), closedAt: null, outcome: null }];
     await openTab("Início");
     expect(await screen.findByText(/Em atendimento pela central/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Chamar a central" })).toBeDisabled();
@@ -140,5 +145,44 @@ describe("resident app", () => {
     myParcels = [{ id: "p1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null }];
     await openTab("Encomendas");
     expect(await screen.findByText(/A retirar na portaria \(1\)/)).toBeInTheDocument();
+  });
+
+  it("lets the resident authorize or deny a visitor waiting at the gate, and says the operator still opens the door", async () => {
+    myVisitRequests = [{ id: "vr1", unitId: "u1", visitorName: "Tia Maria", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 300000).toISOString(), decidedAt: null }];
+    const user = await openTab("Início");
+    expect(await screen.findByText(/Tia Maria/)).toBeInTheDocument();
+    expect(screen.getByText(/quem libera a entrada é o operador/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Autorizar" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/me/visit-requests/vr1/approve"))).toBe(true));
+  });
+
+  it("does not show requests that were already answered or expired", async () => {
+    myVisitRequests = [{ id: "vr1", unitId: "u1", visitorName: "Tia Maria", kind: "VISITOR", status: "EXPIRED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null }];
+    await openTab("Início");
+    await screen.findByRole("button", { name: "Chamar a central" });
+    expect(screen.queryByRole("button", { name: "Autorizar" })).not.toBeInTheDocument();
+  });
+
+  it("asks for confirmation before sending a panic alert and only then calls the API", async () => {
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Alerta de pânico" }));
+    expect(calls.some((c) => c.url.endsWith("/me/panic"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Confirmar pânico" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/me/panic"))).toBe(true));
+  });
+
+  it("can cancel the panic confirmation without sending anything", async () => {
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Alerta de pânico" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(calls.some((c) => c.url.endsWith("/me/panic"))).toBe(false);
+    expect(screen.getByRole("button", { name: "Alerta de pânico" })).toBeEnabled();
+  });
+
+  it("disables a second panic alert while the first one is still being handled", async () => {
+    myCalls = [{ id: "c9", source: "PANIC", status: "QUEUED", createdAt: new Date().toISOString(), assignedAt: null, closedAt: null, outcome: null }];
+    await openTab("Início");
+    expect(await screen.findByText(/Seu alerta de pânico/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alerta de pânico" })).toBeDisabled();
   });
 });

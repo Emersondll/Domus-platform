@@ -6,6 +6,7 @@ export function useCondoList<T>(token: string, path: string, pollMs?: number) {
   const [items, setItems] = useState<T[]>([]);
   const [error, setError] = useState<string | null>(null);
   const reload = useCallback(async () => {
+    if (!path) return; // caminho vazio = nada a carregar
     try {
       setItems((await request<Page<T>>(token, "GET", path))?.items ?? []);
       setError(null);

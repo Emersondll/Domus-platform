@@ -11,7 +11,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 |---|---|---|
 | Cadastro de moradores, visitantes e prestadores | Feito | Moradores por API/painel; visitantes via convite |
 | Pré-autorização de visitantes (QR Code, validade, usos) | Feito | Visitante recorrente = convite com vários usos |
-| Autorização de entrada pelo celular (visitante sem convite) | Lote A | Operador pede, morador aprova ou nega no app |
+| Autorização de entrada pelo celular (visitante sem convite) | **Feito** | Operador pede, morador aprova ou nega no app (prazo de 5 min); a resposta não abre a porta |
 | Registro de entradas **e saídas** | Parcial | Há entradas; falta registrar a saída (lote B) |
 | Gestão de veículos | Feito | Placa cifrada, índice cego |
 | Histórico de acessos | Feito | Sem fotos |
@@ -22,7 +22,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Recurso | Situação | Observação |
 |---|---|---|
 | Notificações de visitantes e retorno da chamada | Feito | |
-| Aprovar/negar visitante pelo celular | Lote A | |
+| Aprovar/negar visitante pelo celular | **Feito** | |
 | Abertura remota de portão pelo morador | Lote B | Só se o condomínio habilitar; mesma regra "aceito ≠ aberto" |
 | Interfone móvel (voz/vídeo) | Externo | SIP/WebRTC e servidor de mídia |
 | Consulta de registros de acesso | Feito | |
@@ -41,7 +41,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Câmeras: lista e estado | Feito | |
 | Câmeras: vídeo ao vivo (RTSP/ONVIF) | Externo | Câmeras e servidor de mídia |
 | Abertura automatizada de acessos | Parcial | Comando físico com confirmação por evento; automação por regra (lote C) |
-| Alerta de pânico | Lote A | Botão no app do morador; botão físico é externo |
+| Alerta de pânico | **Feito** | Botão com confirmação no app; entra na fila com prioridade e abre incidente de severidade alta. Botão físico é externo |
 | Reconhecimento facial, biometria, placas (LPR) | Externo | Equipamento + base legal LGPD (dado sensível); não se implementa por software próprio sem decisão |
 | Portaria virtual / remota | Feito | Central de operadores multicondomínio, fila, turnos, contingência offline |
 
@@ -65,7 +65,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Telas de administração (plataforma, empresa, síndico) | Falta | Pendência 5 |
 
 ## Ordem
-- **Lote A:** autorização do visitante pelo celular e botão de pânico.
+- **Lote A (feito em 2026-10-23):** autorização do visitante pelo celular e botão de pânico.
 - **Lote B:** saída de visitantes, relatórios de acesso, comunicados e mensagens, livro de turno, comprovante, abertura remota pelo morador (opcional por condomínio).
 - **Lote C:** liberação de recursos por plano, documentos, medições, regras de automação.
 - **Externo:** vídeo, interfone, fotos, facial/biometria/placas, assembleias, push/e-mail/WhatsApp.

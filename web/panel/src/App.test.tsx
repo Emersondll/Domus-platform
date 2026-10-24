@@ -4,12 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 const overview = [
-  { condominiumId: "c1", name: "Residencial Sol", queuedCalls: 2, assignedCalls: 1, openIncidents: 0,
+  { condominiumId: "c1", name: "Residencial Sol", queuedCalls: 2, assignedCalls: 1, openIncidents: 0, queuedPanics: 1,
     deviceHealth: "NOT_IMPLEMENTED", connectivity: "NOT_IMPLEMENTED" },
 ];
 let commandState = "SENT";
 let parcelList: unknown[] = [];
 let posted: { url: string; body: unknown }[] = [];
+let visitStatus = "PENDING";
 const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", callerName: "Entregador",
   status: "ASSIGNED", assignedUserId: "u1", createdAt: new Date().toISOString(), outcome: null };
 
@@ -19,6 +20,8 @@ function fakeApi() {
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (init?.method === "POST") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
+    if (url.includes("/visit-requests?callId=")) return pg([{ id: "vr1", unitId: "un1", callId: "k1", visitorName: "Tia Maria", kind: "VISITOR", status: visitStatus, createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null }]);
+    if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr2" });
     if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }]);
     if (url.endsWith("/parcels") && init?.method === "POST") return json({ id: "p9" });
     if (url.includes("/parcels/") && url.endsWith("/pickup")) return json({ id: "p1" });
@@ -56,6 +59,7 @@ describe("operator panel", () => {
   beforeEach(() => {
     commandState = "SENT";
     posted = [];
+    visitStatus = "PENDING";
     parcelList = [];
     vi.stubGlobal("fetch", fakeApi());
   });
@@ -148,5 +152,32 @@ describe("operator panel", () => {
     expect(await screen.findByText(/Vídeo ao vivo não integrado/)).toBeInTheDocument();
     expect(await screen.findByText("Câmera garagem")).toBeInTheDocument();
     expect(screen.queryByText("Portão principal")).not.toBeInTheDocument();
+  });
+
+  it("highlights a panic alert waiting in the queue", async () => {
+    await login();
+    expect(await screen.findByText(/PÂNICO na fila: 1/)).toBeInTheDocument();
+  });
+
+  it("asks the resident to authorize a visitor and never treats the answer as an opened door", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Entregador/ }));
+    const ask = await screen.findByRole("button", { name: "Pedir autorização ao morador" });
+    expect(ask).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Unidade visitada"), "un1");
+    await user.type(screen.getByLabelText("Nome do visitante"), "Tia Maria");
+    await user.click(ask);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visit-requests"))?.body).toEqual({ unitId: "un1", visitorName: "Tia Maria", kind: "VISITOR", callId: "k1" }));
+    expect(screen.getByText(/não abre a porta sozinha/)).toBeInTheDocument();
+    expect(screen.queryByText(/Porta aberta/)).not.toBeInTheDocument();
+  });
+
+  it("prefills the door justification when the resident approves, without opening anything", async () => {
+    visitStatus = "APPROVED";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Entregador/ }));
+    expect(await screen.findByText(/AUTORIZADO pelo morador/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Justificativa da abertura")).toHaveValue("Morador autorizou pelo app (visitante: Tia Maria)"));
+    expect(posted.some((p) => p.url.endsWith("/open"))).toBe(false);
   });
 });

@@ -56,7 +56,7 @@ public class OperationsService {
 
     /** Resumo operacional de um condomínio. */
     public record Overview(Condominium condominium, long queuedCalls, long assignedCalls, long openIncidents,
-                           String deviceHealth, String connectivity) {
+                           long queuedPanics, String deviceHealth, String connectivity) {
     }
 
     private final ShiftRepository shifts;
@@ -146,6 +146,29 @@ public class OperationsService {
         ResidentContext me = access.requireResident(condominiumId, "call.create.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
         return enqueue(condominiumId, unitId, "RESIDENT_APP", callerName, me.actor().userId());
+    }
+
+    /**
+     * Alerta de pânico do morador: entra na fila com prioridade e abre um incidente de severidade alta. Repetir o
+     * alerta enquanto o anterior não foi encerrado devolve o mesmo (não enche a fila de duplicatas).
+     */
+    @Transactional
+    public ServiceCall raisePanic(UUID condominiumId) {
+        ResidentContext me = access.requireResident(condominiumId, "panic.raise");
+        UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
+        Optional<ServiceCall> open = calls.findFirstByCondominiumIdAndUnitIdAndSourceAndStatusNot(condominiumId, unitId,
+                "PANIC", ServiceCall.CLOSED);
+        if (open.isPresent()) {
+            return open.get();
+        }
+        ServiceCall call = enqueue(condominiumId, unitId, "PANIC", null, me.actor().userId());
+        incidents.save(new Incident(condominiumId, call.getId(), "HIGH", "Alerta de pânico",
+                "Acionado pelo app do morador.", me.actor().userId(), now()));
+        audit.record(me.actor().userId(), null, condominiumId, "panic.raise", "call", call.getId().toString(),
+                AuditOutcome.SUCCESS);
+        notifyResident(call, "PANIC_RECEIVED",
+                "Alerta de pânico recebido", "A central foi avisada e vai atender com prioridade.");
+        return call;
     }
 
     @Transactional
@@ -292,7 +315,7 @@ public class OperationsService {
                 .map(c -> new Overview(c, calls.countByStatus(c.getId(), ServiceCall.QUEUED),
                         calls.countByStatus(c.getId(), ServiceCall.ASSIGNED),
                         incidents.countByCondominiumIdAndStatus(c.getId(), Incident.OPEN),
-                        deviceHealth.healthSummary(c.getId()), connectivity.connectivitySummary(c.getId())))
+                        calls.countQueuedPanics(c.getId()), deviceHealth.healthSummary(c.getId()), connectivity.connectivitySummary(c.getId())))
                 .toList();
     }
 
@@ -308,7 +331,7 @@ public class OperationsService {
 
     /** Só pedidos feitos pelo app geram retorno: quem pediu precisa saber que foi atendido e como terminou. */
     private void notifyResident(ServiceCall call, String type, String title, String body) {
-        if ("RESIDENT_APP".equals(call.getSource()) && call.getUnitId() != null) {
+        if (("RESIDENT_APP".equals(call.getSource()) || "PANIC".equals(call.getSource())) && call.getUnitId() != null) {
             notifications.notifyUnit(call.getCondominiumId(), call.getUnitId(), type, title, body);
         }
     }

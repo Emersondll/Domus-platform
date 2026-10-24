@@ -183,6 +183,36 @@ try:
         expect(pan.get_by_text("Nenhum atendimento em andamento.")).to_be_visible()
         check("operador encerra o segundo atendimento (a lista fica vazia)", True)
 
+        # autorização de visitante pelo celular
+        expect(res.get_by_role("button", name="Chamar a central")).to_be_enabled(timeout=15000)
+        res.get_by_role("button", name="Chamar a central").click()
+        pan.get_by_role("button", name="Atender próxima").click()
+        pan.get_by_label("Nome do visitante").fill("Tia E2E")
+        pan.get_by_role("button", name="Pedir autorização ao morador").click()
+        expect(res.get_by_text("Tia E2E").first).to_be_visible(timeout=15000)
+        res.get_by_role("button", name="Autorizar").click()
+        expect(pan.get_by_text("AUTORIZADO pelo morador")).to_be_visible(timeout=15000)
+        check("morador autoriza o visitante pelo app e a portaria vê 'AUTORIZADO'", True)
+        expect(pan.get_by_label("Justificativa da abertura")).to_have_value(re.compile("Morador autorizou pelo app"))
+        check("a justificativa da abertura vem preenchida, mas a porta não abre sozinha",
+              pan.get_by_text("Porta aberta — confirmado").count() == 0)
+        pan.get_by_role("button", name="Encerrar atendimento").click()
+        expect(pan.get_by_text("Nenhum atendimento em andamento.")).to_be_visible()
+
+        # alerta de pânico: confirmação, prioridade e retorno ao morador
+        expect(res.get_by_role("button", name="Alerta de pânico")).to_be_enabled(timeout=15000)
+        res.get_by_role("button", name="Alerta de pânico").click()
+        res.get_by_role("button", name="Confirmar pânico").click()
+        expect(res.get_by_text("Seu alerta de pânico")).to_be_visible()
+        expect(pan.get_by_text(re.compile("PÂNICO na fila"))).to_be_visible(timeout=15000)
+        check("pânico aparece em destaque na central", True)
+        pan.get_by_role("button", name="Atender próxima").click()
+        expect(pan.get_by_text("PÂNICO", exact=True).first).to_be_visible()
+        expect(res.get_by_text("Em atendimento pela central")).to_be_visible(timeout=15000)
+        check("o morador vê que o pânico foi atendido", True)
+        pan.get_by_role("button", name="Encerrar atendimento").click()
+        expect(pan.get_by_text("Nenhum atendimento em andamento.")).to_be_visible()
+
         # mesa do condomínio: encomendas, visitantes, portas e câmeras
         pan.get_by_role("button", name=re.compile("Residencial Sol")).click()
         pan.get_by_label("Unidade").select_option(index=1)

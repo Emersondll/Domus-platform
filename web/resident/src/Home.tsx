@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
-import type { Invitation, MyCall, Notification, Parcel } from "./types";
+import type { Invitation, MyCall, Notification, Parcel, VisitRequest } from "./types";
 import { errorText, useList } from "./useApi";
 
 const POLL_MS = 5000;
@@ -30,18 +30,44 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
   const calls = useList<MyCall>(token, `${base}/calls`, POLL_MS);
   const parcels = useList<Parcel>(token, `${base}/parcels`, POLL_MS);
   const invitations = useList<Invitation>(token, `${base}/invitations`, POLL_MS);
+  const visitRequests = useList<VisitRequest>(token, `${base}/visit-requests`, POLL_MS);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmingPanic, setConfirmingPanic] = useState(false);
 
   const latest = calls.items[0];
   const progress = latest ? callProgress(latest) : null;
   const pendingParcels = parcels.items.filter((p) => p.status === "RECEIVED").length;
   const expected = invitations.items.filter((i) => isExpected(i)).length;
   const callActive = latest !== undefined && !progress?.done;
+  const panicActive = callActive && latest.source === "PANIC";
+  const waiting = visitRequests.items.filter((r) => r.status === "PENDING");
 
   async function callCentral() {
     setMsg(null);
     try {
       await request(token, "POST", `${base}/calls`, { callerName: null });
+      calls.reload();
+    } catch (err) {
+      setMsg(errorText(err));
+    }
+  }
+
+  async function answer(id: string, decision: "approve" | "deny") {
+    setMsg(null);
+    try {
+      await request(token, "POST", `${base}/visit-requests/${id}/${decision}`);
+      visitRequests.reload();
+    } catch (err) {
+      setMsg(errorText(err));
+      visitRequests.reload();
+    }
+  }
+
+  async function panic() {
+    setMsg(null);
+    try {
+      await request(token, "POST", `${base}/panic`);
+      setConfirmingPanic(false);
       calls.reload();
     } catch (err) {
       setMsg(errorText(err));
@@ -56,6 +82,16 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
   return (
     <section aria-label="Início">
       <h2>Início</h2>
+      {waiting.map((r) => (
+        <div key={r.id} className="visit-request" role="alert">
+          <strong>{r.visitorName}</strong> {r.kind === "SERVICE_PROVIDER" ? "(prestador) " : ""}está na portaria e aguarda a sua autorização.
+          <div className="actions">
+            <button onClick={() => answer(r.id, "approve")}>Autorizar</button>
+            <button className="danger" onClick={() => answer(r.id, "deny")}>Negar</button>
+          </div>
+          <small>Autorizar avisa a portaria; quem libera a entrada é o operador.</small>
+        </div>
+      ))}
       <div className="summary">
         <button className="card" onClick={() => onNavigate("Encomendas")} aria-label="Encomendas a retirar">
           <strong>{pendingParcels}</strong>
@@ -68,10 +104,19 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       </div>
 
       <button onClick={callCentral} disabled={callActive}>Chamar a central</button>
+      {confirmingPanic ? (
+        <div className="panic-confirm" role="group" aria-label="Confirmar alerta de pânico">
+          <p><strong>Enviar alerta de pânico para a central?</strong> Use apenas em emergência.</p>
+          <button className="danger" onClick={panic}>Confirmar pânico</button>
+          <button onClick={() => setConfirmingPanic(false)}>Cancelar</button>
+        </div>
+      ) : (
+        <button className="danger" onClick={() => setConfirmingPanic(true)} disabled={panicActive}>Alerta de pânico</button>
+      )}
       {msg && <p role="alert" className="error">{msg}</p>}
       {latest && progress && (
         <p role="status" className={progress.done ? "call-status done" : "call-status"}>
-          <strong>Sua chamada · {new Date(latest.createdAt).toLocaleTimeString()}</strong> {progress.label}
+          <strong>{latest.source === "PANIC" ? "Seu alerta de pânico" : "Sua chamada"} · {new Date(latest.createdAt).toLocaleTimeString()}</strong> {progress.label}
         </p>
       )}
 

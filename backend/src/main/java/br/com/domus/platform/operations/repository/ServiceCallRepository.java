@@ -18,12 +18,15 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
 
     Page<ServiceCall> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
+    Optional<ServiceCall> findFirstByCondominiumIdAndUnitIdAndSourceAndStatusNot(UUID condominiumId, UUID unitId,
+                                                                                String source, String status);
+
     Page<ServiceCall> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
 
     Page<ServiceCall> findByAssignedUserIdAndStatus(UUID userId, String status, Pageable pageable);
 
     /**
-     * Assume atomicamente a chamada mais antiga da fila entre os condomínios informados. Com
+     * Assume atomicamente a chamada mais antiga da fila (alertas de pânico passam na frente) entre os condomínios informados. Com
      * {@code FOR UPDATE SKIP LOCKED}, dois operadores simultâneos nunca recebem a mesma chamada.
      *
      * @return o ID da chamada assumida, se houver
@@ -32,7 +35,7 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
             UPDATE service_call SET status = 'ASSIGNED', assigned_user_id = :userId, assigned_at = :now
             WHERE id = (SELECT id FROM service_call
                         WHERE status = 'QUEUED' AND condominium_id IN (:condominiumIds)
-                        ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
+                        ORDER BY (source = 'PANIC') DESC, created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
             RETURNING id
             """, nativeQuery = true)
     Optional<UUID> claimNext(@Param("userId") UUID userId, @Param("condominiumIds") Collection<UUID> condominiumIds,
@@ -41,4 +44,8 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
     @Query(value = "SELECT count(*) FROM service_call WHERE condominium_id = :c AND status = :status",
             nativeQuery = true)
     long countByStatus(@Param("c") UUID condominiumId, @Param("status") String status);
+
+    @Query(value = "SELECT count(*) FROM service_call WHERE condominium_id = :c AND status = 'QUEUED' AND source = 'PANIC'",
+            nativeQuery = true)
+    long countQueuedPanics(@Param("c") UUID condominiumId);
 }

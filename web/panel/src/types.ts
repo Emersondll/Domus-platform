@@ -4,6 +4,7 @@ export type Overview = {
   queuedCalls: number;
   assignedCalls: number;
   openIncidents: number;
+  queuedPanics: number;
   deviceHealth: string;
   connectivity: string;
 };
@@ -44,3 +45,5 @@ export type Visitor = { id: string; unitId: string; fullName: string; kind: stri
 export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };
 export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null };
 export type CommandRow = { id: string; deviceId: string; state: string; failureReason: string | null; requestedAt: string };
+
+export type VisitRequest = { id: string; unitId: string; callId: string | null; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null };

@@ -99,16 +99,17 @@ public class OperationsController {
      * Visão da chamada para o morador: sem operador responsável nem justificativa.
      *
      * @param id         identificador da chamada
+     * @param source     RESIDENT_APP (chamada) ou PANIC (alerta de pânico)
      * @param status     QUEUED (aguardando), ASSIGNED (em atendimento) ou CLOSED (encerrada)
      * @param createdAt  quando o pedido foi feito
      * @param assignedAt quando um operador assumiu
      * @param closedAt   quando foi encerrada
      * @param outcome    desfecho (RESOLVED, ENTRY_GRANTED, ENTRY_DENIED, NO_ANSWER, FALSE_ALARM)
      */
-    public record MyCallResponse(UUID id, String status, Instant createdAt, Instant assignedAt, Instant closedAt,
+    public record MyCallResponse(UUID id, String source, String status, Instant createdAt, Instant assignedAt, Instant closedAt,
                                  String outcome) {
         static MyCallResponse from(ServiceCall c) {
-            return new MyCallResponse(c.getId(), c.getStatus(), c.getCreatedAt(), c.getAssignedAt(), c.getClosedAt(),
+            return new MyCallResponse(c.getId(), c.getSource(), c.getStatus(), c.getCreatedAt(), c.getAssignedAt(), c.getClosedAt(),
                     c.getOutcome());
         }
     }
@@ -159,11 +160,13 @@ public class OperationsController {
      * @param queuedCalls      atendimentos na fila
      * @param assignedCalls    atendimentos em andamento
      * @param openIncidents    incidentes abertos
+     * @param queuedPanics     alertas de pânico aguardando atendimento (têm prioridade na fila)
      * @param deviceHealth     resumo da saúde dos dispositivos (NO_DEVICES, ONLINE n/n, DEGRADED x/n, UNKNOWN n/n)
      * @param connectivity     conectividade do agente local: NO_AGENT, ONLINE ou OFFLINE (com eventos pendentes)
      */
     public record OverviewResponse(UUID condominiumId, String name, long queuedCalls, long assignedCalls,
-                                   long openIncidents, String deviceHealth, String connectivity) {
+                                   long openIncidents, long queuedPanics, String deviceHealth,
+                                   String connectivity) {
     }
 
     @PostMapping("/operator/shifts/start")
@@ -197,7 +200,7 @@ public class OperationsController {
     @GetMapping("/operator/overview")
     public List<OverviewResponse> overview() {
         return service.overview().stream().map(o -> new OverviewResponse(o.condominium().getId(),
-                o.condominium().getName(), o.queuedCalls(), o.assignedCalls(), o.openIncidents(),
+                o.condominium().getName(), o.queuedCalls(), o.assignedCalls(), o.openIncidents(), o.queuedPanics(),
                 o.deviceHealth(), o.connectivity())).toList();
     }
 
@@ -212,6 +215,12 @@ public class OperationsController {
     public CallResponse createResidentCall(@PathVariable UUID condominiumId,
                                            @Valid @RequestBody ResidentCallRequest r) {
         return CallResponse.from(service.createCallAsResident(condominiumId, r.callerName()));
+    }
+
+    @PostMapping("/condominiums/{condominiumId}/me/panic")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MyCallResponse panic(@PathVariable UUID condominiumId) {
+        return MyCallResponse.from(service.raisePanic(condominiumId));
     }
 
     @GetMapping("/condominiums/{condominiumId}/me/calls")

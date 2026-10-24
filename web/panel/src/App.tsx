@@ -123,7 +123,7 @@ export function App() {
           {calls.map((c) => (
             <li key={c.id}>
               <button onClick={() => setSelectedCall(c.id)}>
-                {c.callerName ?? "(sem nome)"} · {c.source}
+                {c.source === "PANIC" ? <span className="badge err">PÂNICO</span> : null} {c.callerName ?? "(sem nome)"} · {c.source}
               </button>
             </li>
           ))}

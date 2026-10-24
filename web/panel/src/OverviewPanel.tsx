@@ -32,6 +32,7 @@ export function OverviewPanel({
             <span>Fila: {o.queuedCalls}</span>
             <span>Em atendimento: {o.assignedCalls}</span>
             <span>Incidentes abertos: {o.openIncidents}</span>
+            {o.queuedPanics > 0 && <span className="badge err">PÂNICO na fila: {o.queuedPanics}</span>}
             <Pending label="Dispositivos" value={o.deviceHealth} />
             <Pending label="Conectividade" value={o.connectivity} />
           </button>

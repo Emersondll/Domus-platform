@@ -35,3 +35,10 @@
 
 ## Pedidos de autorização de visitante (visit_request)
 O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_request.visitor_name`), como nas demais tabelas. O pedido expira em 5 minutos sem resposta; o registro permanece para auditoria e deve entrar na política de retenção que o controlador definir (D1).
+
+## Lote B: saída, relatório, comunicados, livro de turno e abertura remota
+- **Saída de visitante:** `access_attempt.exited_at` guarda quando a portaria registrou a saída e quem registrou. Entra na mesma política de retenção do histórico de acessos (D1).
+- **Relatório e CSV de acessos:** contém o nome do visitante (dado pessoal, decifrado só na leitura autorizada). Exige acesso de leitura ao condomínio, tem período máximo de 31 dias e 5.000 linhas, e **cada exportação grava auditoria** (`access.report.export`). Células iniciadas por `=`, `+`, `-`, `@` são neutralizadas contra injeção de fórmula em planilhas. O arquivo baixado sai do controle da plataforma: orientar quem exporta sobre guarda e descarte.
+- **Livro de turno:** o texto é livre e pode citar pessoas; fica **cifrado em nível de campo** (`shift_log_entry.text`). A tela avisa para registrar fatos e evitar dados pessoais além do necessário. Prazo de retenção: decisão do controlador (D1).
+- **Comunicados:** conteúdo institucional para todos os moradores; não deve conter dado pessoal de terceiros. Fica registrado com autor e data.
+- **Abertura remota pelo morador:** recurso **opcional, desligado por padrão**; só o síndico o habilita e apenas nas portas marcadas. Cada pedido gera comando auditado, com limite de frequência por morador. É decisão do condomínio ativá-lo e comunicar as regras de uso aos moradores; a plataforma não presume que a porta abriu sem evento do equipamento.

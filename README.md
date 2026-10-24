@@ -51,9 +51,9 @@ Opcionais: Prometheus/Grafana `docker compose -f docker-compose.yml -f docker-co
 ## Testes e provas
 
 ```bash
-mvn -f backend/pom.xml verify          # 124 testes (Testcontainers: precisa do Docker)
+mvn -f backend/pom.xml verify          # 131 testes (Testcontainers: precisa do Docker)
 mvn -f agent/pom.xml test              # 36 testes (sem Docker)
-cd web && npm test                     # 40 testes de UI/OIDC/renovação de token
+cd web && npm test                     # 50 testes de UI/OIDC/renovação de token
 
 mvn -f backend/pom.xml package -DskipTests && mvn -f agent/pom.xml package
 ./scripts/e2e-contingency.sh           # queda real da central + agente local

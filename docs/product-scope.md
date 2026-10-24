@@ -12,7 +12,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Cadastro de moradores, visitantes e prestadores | Feito | Moradores por API/painel; visitantes via convite |
 | Pré-autorização de visitantes (QR Code, validade, usos) | Feito | Visitante recorrente = convite com vários usos |
 | Autorização de entrada pelo celular (visitante sem convite) | **Feito** | Operador pede, morador aprova ou nega no app (prazo de 5 min); a resposta não abre a porta |
-| Registro de entradas **e saídas** | Parcial | Há entradas; falta registrar a saída (lote B) |
+| Registro de entradas **e saídas** | **Feito** | A portaria registra a saída; a tela mostra quem está no local |
 | Gestão de veículos | Feito | Placa cifrada, índice cego |
 | Histórico de acessos | Feito | Sem fotos |
 | Histórico com **fotos** | Externo | Exige câmera e política de retenção de imagem (LGPD) |
@@ -23,16 +23,16 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 |---|---|---|
 | Notificações de visitantes e retorno da chamada | Feito | |
 | Aprovar/negar visitante pelo celular | **Feito** | |
-| Abertura remota de portão pelo morador | Lote B | Só se o condomínio habilitar; mesma regra "aceito ≠ aberto" |
+| Abertura remota de portão pelo morador | **Feito** | Desligada por padrão; duas travas (política do condomínio, ligada pelo síndico, e porta marcada); 1 abertura a cada 30 s por morador; mesma regra "aceito ≠ aberto" |
 | Interfone móvel (voz/vídeo) | Externo | SIP/WebRTC e servidor de mídia |
 | Consulta de registros de acesso | Feito | |
-| Comunicação com portaria, zelador e síndico | Lote B | Mensagens e comunicados |
+| Comunicação com portaria, zelador e síndico | Parcial | Comunicados para todos os moradores: **feito**. Mensagens individuais (conversa morador ↔ portaria): **falta** |
 
 ## 3. Correspondências e entregas
 | Recurso | Situação | Observação |
 |---|---|---|
 | Registro, notificação, controle de retirada | Feito | |
-| Comprovante/ticket imprimível | Lote B | Impressão pelo navegador; impressora térmica é externo |
+| Comprovante/ticket imprimível | **Feito** | Impressão pelo navegador; impressora térmica é externo |
 
 ## 4. Segurança e automação
 | Recurso | Situação | Observação |
@@ -50,10 +50,10 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 |---|---|---|
 | Moradores e unidades | Feito | Falta tela de administração (pendência 5) |
 | Reserva de áreas comuns | Feito | |
-| Livro de ocorrências | Parcial | Há ocorrências; falta o livro de turno (lote B) |
-| Comunicados internos | Lote B | |
+| Livro de ocorrências | **Feito** | Ocorrências + livro de turno (registros e passagens, texto cifrado) |
+| Comunicados internos | **Feito** | Publica no painel; chega como aviso no app |
 | Documentos | Lote C | Exige decisão de armazenamento de arquivos |
-| Relatórios de acessos | Lote B | Tela e exportação CSV |
+| Relatórios de acessos | **Feito** | Tela por período (máx. 31 dias) e CSV (máx. 5.000 linhas, auditado, com proteção contra injeção de fórmula) |
 | Medições de água e energia | Lote C | |
 | Assembleias virtuais | Externo | Exige vídeo e validade jurídica de votação |
 
@@ -66,6 +66,6 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 
 ## Ordem
 - **Lote A (feito em 2026-10-23):** autorização do visitante pelo celular e botão de pânico.
-- **Lote B:** saída de visitantes, relatórios de acesso, comunicados e mensagens, livro de turno, comprovante, abertura remota pelo morador (opcional por condomínio).
+- **Lote B (feito em 2026-10-24, exceto mensagens individuais):** saída de visitantes, relatórios de acesso e CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio). **Resta do lote:** mensagens individuais morador ↔ portaria.
 - **Lote C:** liberação de recursos por plano, documentos, medições, regras de automação.
 - **Externo:** vídeo, interfone, fotos, facial/biometria/placas, assembleias, push/e-mail/WhatsApp.

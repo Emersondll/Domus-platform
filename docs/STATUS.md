@@ -1,4 +1,4 @@
-# Status do projeto — 2026-10-22
+# Status do projeto — 2026-10-24
 
 Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.7, Java 26), painel da central e app do
 morador (React + TypeScript), agente local de contingência (Java + SQLite). **Fases 0–8 executadas.**
@@ -9,15 +9,15 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **124 testes** (30 unitários + 94 integração com PostgreSQL real), 0 falhas |
+| `mvn -f backend/pom.xml verify` | **131 testes** (30 unitários + 101 integração com PostgreSQL real), 0 falhas |
 | `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
-| `cd web && npm test` / `npm run build` | **19** (painel) + **5** (app do morador); build com checagem de tipos ok |
+| `cd web && npm test` / `npm run build` | **30** (painel) + **20** (app do morador); build com checagem de tipos ok |
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
-| `scripts/e2e-browser.py` (navegador real) | OK: chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; sem token em storage; sem erros de console |
-| `scripts/restore-drill.sh` | PASS: 16 tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
+| `scripts/e2e-browser.py` (navegador real) | OK (31 verificações, 2026-10-24): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
+| `scripts/restore-drill.sh` | PASS (11 migrações, V1–V11): tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
 | `scripts/load-test.py` (mesma máquina, piso) | após a criptografia de campos: leitura ~900–1.500 req/s (inclusive `GET condomínios`, que não tem dado pessoal), escrita ~1.600 req/s; p95 21–36 ms; 0 erros; 0 timeouts. **A/B/A/B/A/B contra o jar anterior à cifra (2026-10-22): sem diferença além do ruído (±40% entre rodadas do mesmo jar); cifra ≈2 µs/op. A queda de 3.000 req/s vinha do ambiente. Dimensionar produção em hardware dedicado** |

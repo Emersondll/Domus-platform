@@ -1,5 +1,5 @@
 import { request } from "../../shared/src/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CommandRow, DeviceFull } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 
@@ -19,6 +19,33 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
   const [error, setError] = useState<string | null>(null);
   const doors = devices.items.filter((d) => d.kind !== "CAMERA");
   const name = (id: string) => devices.items.find((d) => d.id === id)?.name ?? "dispositivo";
+
+  const [remoteOpen, setRemoteOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    request<{ enabled: boolean }>(token, "GET", `${base}/remote-open`)
+      .then((r) => setRemoteOpen(r?.enabled ?? false))
+      .catch(() => setRemoteOpen(null));
+  }, [token, base]);
+
+  async function togglePolicy() {
+    setError(null);
+    try {
+      const r = await request<{ enabled: boolean }>(token, "PUT", `${base}/remote-open`, { enabled: !remoteOpen });
+      setRemoteOpen(r?.enabled ?? false);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  async function toggleDevice(d: DeviceFull) {
+    setError(null);
+    try {
+      await request(token, "PUT", `${base}/devices/${d.id}/resident-openable`, { allowed: !d.residentOpenable });
+      await devices.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   async function refreshStatus(id: string) {
     setError(null);
@@ -41,10 +68,25 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
             <span className={d.status === "ONLINE" ? "badge ok" : "badge warn"}>{d.status === "ONLINE" ? "online" : d.status === "OFFLINE" ? "offline" : "desconhecido"}</span>
             {d.lastSeenAt && <small> visto {new Date(d.lastSeenAt).toLocaleString()}</small>}{" "}
             <button onClick={() => refreshStatus(d.id)}>Atualizar estado</button>
+            {remoteOpen && d.kind === "ACCESS_CONTROLLER" && (
+              <button onClick={() => toggleDevice(d)} aria-pressed={!!d.residentOpenable}>
+                {d.residentOpenable ? "Bloquear abertura pelo morador" : "Liberar abertura pelo morador"}
+              </button>
+            )}
           </li>
         ))}
         {doors.length === 0 && <li>Nenhum dispositivo cadastrado.</li>}
       </ul>
+      {remoteOpen !== null && (
+        <div aria-label="Abertura remota pelo morador">
+          <h3>Abertura remota pelo morador</h3>
+          <p>
+            Situação: <span className={remoteOpen ? "badge pending" : "badge ok"}>{remoteOpen ? "habilitada" : "desligada"}</span>{" "}
+            <button onClick={togglePolicy}>{remoteOpen ? "Desligar" : "Habilitar"}</button>
+          </p>
+          <p className="hint">Opcional e desligada por padrão. Só o síndico altera. Mesmo habilitada, só abre as portas marcadas abaixo; cada abertura é registrada e só vale como "aberta" com a confirmação do equipamento.</p>
+        </div>
+      )}
       <p className="hint">Para abrir uma porta, use o botão "Abrir porta" dentro do atendimento: é lá que a justificativa e a base de autorização são registradas.</p>
       <h3>Últimos comandos</h3>
       <ul>

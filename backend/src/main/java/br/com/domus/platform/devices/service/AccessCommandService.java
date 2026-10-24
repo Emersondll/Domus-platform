@@ -14,13 +14,16 @@ import br.com.domus.platform.shared.config.CorrelationIdFilter;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.ForbiddenException;
 import br.com.domus.platform.shared.error.NotFoundException;
+import br.com.domus.platform.shared.error.TooManyRequestsException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
+import br.com.domus.platform.shared.tenant.ResidentContext;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -51,6 +54,7 @@ public class AccessCommandService {
     private final DeviceAdapters adapters;
     private final OperationsService operations;
     private final CredentialService credentials;
+    private final RemoteOpenService remoteOpen;
     private final AccessService access;
     private final AuditService audit;
     private final Clock clock;
@@ -59,7 +63,8 @@ public class AccessCommandService {
     private final MeterRegistry meters;
 
     public AccessCommandService(AccessCommandRepository commands, DeviceService devices, DeviceAdapters adapters,
-                                OperationsService operations, CredentialService credentials, AccessService access,
+                                OperationsService operations, CredentialService credentials, RemoteOpenService remoteOpen,
+                                AccessService access,
                                 AuditService audit, Clock clock, PlatformTransactionManager txManager,
                                 @Value("${portaria.devices.confirmation-timeout:PT15S}") Duration confirmationTimeout,
                                 MeterRegistry meters) {
@@ -68,6 +73,7 @@ public class AccessCommandService {
         this.adapters = adapters;
         this.operations = operations;
         this.credentials = credentials;
+        this.remoteOpen = remoteOpen;
         this.access = access;
         this.audit = audit;
         this.clock = clock;
@@ -105,8 +111,60 @@ public class AccessCommandService {
             deny(actor, condominiumId, deviceId, "no-fresh-grant");
         }
 
-        AccessCommand command = persistPending(condominiumId, deviceId, actor, callId, attemptId, justification,
-                idempotencyKey);
+        return dispatch(actor, condominiumId, device, adapter, idempotencyKey, () -> new AccessCommand(condominiumId,
+                deviceId, actor.userId(), callId, attemptId, justification.trim(), idempotencyKey,
+                MDC.get(CorrelationIdFilter.MDC_KEY), Instant.now(clock)));
+    }
+
+    /** Janela mínima entre duas aberturas remotas do mesmo morador. */
+    static final Duration RESIDENT_OPEN_COOLDOWN = Duration.ofSeconds(30);
+
+    /**
+     * Abertura remota pelo morador. Exige as duas travas (política do condomínio ligada e dispositivo marcado), usa
+     * o próprio morador autenticado como base de autorização, limita a frequência e passa pelo mesmo caminho do
+     * comando do operador: "aceito" não é "aberto", só o evento do dispositivo confirma, sem retry automático.
+     */
+    public AccessCommand openForResident(UUID condominiumId, UUID deviceId, String idempotencyKey) {
+        ResidentContext me = access.requireResident(condominiumId, "door.open.resident");
+        AccessCommand existing = commands.findByCondominiumIdAndIdempotencyKey(condominiumId, idempotencyKey)
+                .orElse(null);
+        if (existing != null) {
+            return replay(existing, me.actor(), deviceId);
+        }
+        if (!remoteOpen.isEnabled(condominiumId)) {
+            throw new NotFoundException("Remote open is not available");
+        }
+        Device device = devices.find(condominiumId, deviceId);
+        DeviceAdapter adapter = adapters.find(device.getAdapter())
+                .orElseThrow(() -> new ConflictException("Adapter not available"));
+        if (!device.isResidentOpenable() || !"ACCESS_CONTROLLER".equals(device.getKind())
+                || !adapter.capabilities().contains(DeviceAdapter.Capability.OPEN_DOOR)) {
+            throw new NotFoundException("Remote open is not available");
+        }
+        Instant now = Instant.now(clock);
+        if (commands.countByRequestedByAndRequestedAtAfter(me.actor().userId(), now.minus(RESIDENT_OPEN_COOLDOWN)) > 0) {
+            audit.record(me.actor().userId(), null, condominiumId, "door.open.resident.throttled", "device",
+                    deviceId.toString(), AuditOutcome.DENIED);
+            throw new TooManyRequestsException("Wait a few seconds before opening again");
+        }
+        return dispatch(me.actor(), condominiumId, device, adapter, idempotencyKey, () -> AccessCommand.byResident(
+                condominiumId, deviceId, me.actor().userId(), "Abertura remota pelo morador", idempotencyKey,
+                MDC.get(CorrelationIdFilter.MDC_KEY), now));
+    }
+
+    /** Estado de um comando pedido pelo próprio morador; os de outros são 404. */
+    @Transactional(readOnly = true)
+    public AccessCommand getMine(UUID condominiumId, UUID commandId) {
+        ResidentContext me = access.requireResident(condominiumId, "command.read.self");
+        return commands.findByIdAndCondominiumId(commandId, condominiumId)
+                .filter(c -> c.getRequestedBy().equals(me.actor().userId()) && c.isRequestedByResident())
+                .orElseThrow(() -> new NotFoundException("Command not found"));
+    }
+
+    private AccessCommand dispatch(Actor actor, UUID condominiumId, Device device, DeviceAdapter adapter,
+                                   String idempotencyKey, Supplier<AccessCommand> factory) {
+        UUID deviceId = device.getId();
+        AccessCommand command = persistPending(condominiumId, deviceId, actor, idempotencyKey, factory);
         DeviceAdapter.DeviceDescriptor descriptor = DeviceService.descriptor(device);
 
         if (adapter.getStatus(descriptor).health() == DeviceAdapter.Health.OFFLINE) {
@@ -158,12 +216,10 @@ public class AccessCommandService {
         return expired;
     }
 
-    private AccessCommand persistPending(UUID condominiumId, UUID deviceId, Actor actor, UUID callId,
-                                         UUID attemptId, String justification, String idempotencyKey) {
+    private AccessCommand persistPending(UUID condominiumId, UUID deviceId, Actor actor, String idempotencyKey,
+                                         Supplier<AccessCommand> factory) {
         try {
-            return tx.execute(status -> commands.saveAndFlush(new AccessCommand(condominiumId, deviceId,
-                    actor.userId(), callId, attemptId, justification.trim(), idempotencyKey,
-                    MDC.get(CorrelationIdFilter.MDC_KEY), Instant.now(clock))));
+            return tx.execute(status -> commands.saveAndFlush(factory.get()));
         } catch (DataIntegrityViolationException e) {
             // Idempotência concorrente ou credencial já usada por outro comando.
             AccessCommand winner = commands.findByCondominiumIdAndIdempotencyKey(condominiumId, idempotencyKey)

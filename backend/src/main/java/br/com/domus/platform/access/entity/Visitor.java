@@ -44,6 +44,10 @@ public class Visitor {
         this.kind = kind;
     }
 
+    public UUID getCondominiumId() {
+        return condominiumId;
+    }
+
     public UUID getId() {
         return id;
     }

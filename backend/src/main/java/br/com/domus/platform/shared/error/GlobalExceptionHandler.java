@@ -29,6 +29,11 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "conflict", ex.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    ProblemDetail tooMany(TooManyRequestsException ex) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "too-many-requests", ex.getMessage());
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail integrity(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "conflict", "The request conflicts with existing data");

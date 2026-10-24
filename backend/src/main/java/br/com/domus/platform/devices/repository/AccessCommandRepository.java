@@ -22,6 +22,8 @@ public interface AccessCommandRepository extends JpaRepository<AccessCommand, UU
 
     Optional<AccessCommand> findByCondominiumIdAndIdempotencyKey(UUID condominiumId, String idempotencyKey);
 
+    long countByRequestedByAndRequestedAtAfter(UUID requestedBy, Instant after);
+
     Page<AccessCommand> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
     @Transactional

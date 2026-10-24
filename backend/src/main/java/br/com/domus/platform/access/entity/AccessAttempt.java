@@ -39,6 +39,12 @@ public class AccessAttempt {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 
+    @Column(name = "exited_at")
+    private Instant exitedAt;
+
+    @Column(name = "exit_registered_by_user_id")
+    private UUID exitRegisteredByUserId;
+
     protected AccessAttempt() {
     }
 
@@ -81,5 +87,15 @@ public class AccessAttempt {
 
     public Instant getOccurredAt() {
         return occurredAt;
+    }
+
+    public Instant getExitedAt() {
+        return exitedAt;
+    }
+
+    /** Registra a saída de uma entrada concedida; a regra de estado fica no serviço. */
+    public void registerExit(UUID userId, Instant at) {
+        this.exitedAt = at;
+        this.exitRegisteredByUserId = userId;
     }
 }

@@ -1,6 +1,8 @@
 package br.com.domus.platform.access.repository;
 
 import br.com.domus.platform.access.entity.AccessAttempt;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,4 +29,22 @@ public interface AccessAttemptRepository extends JpaRepository<AccessAttempt, UU
             """)
     Page<AccessAttempt> findByUnit(@Param("condominiumId") UUID condominiumId, @Param("unitId") UUID unitId,
                                    Pageable pageable);
+
+    Optional<AccessAttempt> findByIdAndCondominiumId(UUID id, UUID condominiumId);
+
+    /** Entradas concedidas ainda sem saída registrada (quem está no local). */
+    @Query("""
+            SELECT a FROM AccessAttempt a
+            WHERE a.condominiumId = :condominiumId AND a.result = 'GRANTED' AND a.exitedAt IS NULL
+            """)
+    Page<AccessAttempt> findOnSite(@Param("condominiumId") UUID condominiumId, Pageable pageable);
+
+    /** Tentativas do período, com filtro opcional de resultado (GRANTED/DENIED). */
+    @Query("""
+            SELECT a FROM AccessAttempt a
+            WHERE a.condominiumId = :condominiumId AND a.occurredAt >= :from AND a.occurredAt < :to
+              AND (:result IS NULL OR a.result = :result)
+            """)
+    Page<AccessAttempt> findInPeriod(@Param("condominiumId") UUID condominiumId, @Param("from") Instant from,
+                                     @Param("to") Instant to, @Param("result") String result, Pageable pageable);
 }

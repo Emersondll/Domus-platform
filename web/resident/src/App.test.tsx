@@ -14,6 +14,9 @@ let myParcels: unknown[] = [];
 let myInvitations: unknown[] = [];
 let myHistory: unknown[] = [];
 let myVisitRequests: unknown[] = [];
+let myDoors: unknown[] = [];
+let openStatus = 202;
+let cmdState = "CONFIRMED";
 
 /** Substitui apenas a rede (fetch); UI, validações do cliente e geração do QR rodam de verdade. */
 function fakeApi() {
@@ -33,6 +36,10 @@ function fakeApi() {
         validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE",
         token: "11111111-1111-1111-1111-111111111111.sig" }, 201);
     if (url.endsWith("/me/invitations")) return json(page(myInvitations));
+    if (url.endsWith("/me/doors")) return json(myDoors);
+    if (url.endsWith("/me/doors/d1/open")) return openStatus === 202 ? json({ id: "cm1", state: "PENDING" }, 202) : json({ detail: "x" }, openStatus);
+    if (url.endsWith("/me/commands/cm1")) return json({ id: "cm1", deviceId: "d1", state: cmdState, failureReason: null });
+    if (url.endsWith("/me/announcements")) return json(page([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]));
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
     if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
@@ -65,6 +72,9 @@ describe("resident app", () => {
     myInvitations = [];
     myHistory = [];
     myVisitRequests = [];
+    myDoors = [];
+    openStatus = 202;
+    cmdState = "CONFIRMED";
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -184,5 +194,43 @@ describe("resident app", () => {
     await openTab("Início");
     expect(await screen.findByText(/Seu alerta de pânico/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Alerta de pânico" })).toBeDisabled();
+  });
+
+  it("lists the condominium announcements", async () => {
+    await openTab("Avisos");
+    expect(await screen.findByText("Manutenção")).toBeInTheDocument();
+    expect(screen.getByText("Caixa d'água na sexta")).toBeInTheDocument();
+  });
+
+  it("offers no door button unless the condominium enabled remote opening", async () => {
+    await openTab("Início");
+    await screen.findByRole("button", { name: "Chamar a central" });
+    expect(screen.queryByRole("heading", { name: "Abrir portão" })).not.toBeInTheDocument();
+  });
+
+  it("only says the door opened after the device confirmed it", async () => {
+    myDoors = [{ id: "d1", name: "Social", entrance: "portaria" }];
+    cmdState = "CONFIRMED";
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Abrir Social" }));
+    expect(await screen.findByText(/Porta aberta \(confirmado pelo equipamento\)/)).toBeInTheDocument();
+    const open = calls.find((c) => c.method === "POST" && c.url.endsWith("/me/doors/d1/open"));
+    expect(JSON.parse(open!.body!).idempotencyKey).toBeTruthy();
+  });
+
+  it("states that the door did NOT open when the command failed", async () => {
+    myDoors = [{ id: "d1", name: "Social", entrance: "portaria" }];
+    cmdState = "FAILED";
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Abrir Social" }));
+    expect(await screen.findByText(/A porta NÃO abriu/)).toBeInTheDocument();
+  });
+
+  it("asks the resident to wait when the opening is throttled", async () => {
+    myDoors = [{ id: "d1", name: "Social", entrance: "portaria" }];
+    openStatus = 429;
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Abrir Social" }));
+    expect(await screen.findByText(/Aguarde alguns segundos/)).toBeInTheDocument();
   });
 });

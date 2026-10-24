@@ -1,5 +1,7 @@
-import type { Attempt, Unit, Visitor } from "./types";
-import { useCondoList } from "./useCondoList";
+import { useState } from "react";
+import { request } from "../../shared/src/api";
+import type { AccessRow, Attempt, Unit, Visitor } from "./types";
+import { errorMessage, useCondoList } from "./useCondoList";
 
 /** Visitantes cadastrados e as últimas tentativas de entrada validadas na portaria. */
 export function DeskVisitors({ token, condominiumId }: { token: string; condominiumId: string }) {
@@ -8,9 +10,33 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const attempts = useCondoList<Attempt>(token, `${base}/access/attempts?size=20&sort=occurredAt,desc`, 10000);
   const units = useCondoList<Unit>(token, `${base}/units?size=200`);
   const unitNumber = (id: string) => units.items.find((u) => u.id === id)?.number ?? "?";
+  const onSite = useCondoList<AccessRow>(token, `${base}/access/on-site?size=100`, 10000);
+  const [error, setError] = useState<string | null>(null);
+
+  async function registerExit(attemptId: string) {
+    setError(null);
+    try {
+      await request(token, "POST", `${base}/access/entries/${attemptId}/exit`);
+      await onSite.reload();
+      await attempts.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   return (
     <div aria-label="Visitantes">
+      <h3>No local agora ({onSite.items.length})</h3>
+      {error && <p role="alert" className="error">{error}</p>}
+      <ul>
+        {onSite.items.map((r) => (
+          <li key={r.attemptId}>
+            {r.visitorName ?? "Visitante"}{r.unitLabel ? ` · unidade ${r.unitLabel}` : ""} · entrou {new Date(r.occurredAt).toLocaleTimeString()} · {r.entrance}{" "}
+            <button onClick={() => registerExit(r.attemptId)}>Registrar saída</button>
+          </li>
+        ))}
+        {onSite.items.length === 0 && <li>Ninguém no local.</li>}
+      </ul>
       <h3>Entradas recentes</h3>
       <ul>
         {attempts.items.map((a) => (

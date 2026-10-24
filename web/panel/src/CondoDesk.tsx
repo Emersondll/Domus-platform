@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { DeskAnnouncements } from "./DeskAnnouncements";
 import { DeskCameras } from "./DeskCameras";
 import { DeskDoors } from "./DeskDoors";
 import { DeskParcels } from "./DeskParcels";
+import { DeskReports } from "./DeskReports";
+import { DeskShiftLog } from "./DeskShiftLog";
 import { DeskVisitors } from "./DeskVisitors";
 import { IncidentsPanel } from "./IncidentsPanel";
 
-const TABS = ["Encomendas", "Visitantes", "Portas", "Câmeras", "Ocorrências"] as const;
+const TABS = ["Encomendas", "Visitantes", "Portas", "Câmeras", "Ocorrências", "Livro de turno", "Comunicados", "Relatórios"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Mesa do condomínio selecionado: o que a portaria acompanha além da fila de chamadas. */
@@ -24,6 +27,9 @@ export function CondoDesk({ token, condominiumId, name }: { token: string; condo
       {tab === "Portas" && <DeskDoors token={token} condominiumId={condominiumId} />}
       {tab === "Câmeras" && <DeskCameras token={token} condominiumId={condominiumId} />}
       {tab === "Ocorrências" && <IncidentsPanel token={token} condominiumId={condominiumId} />}
+      {tab === "Livro de turno" && <DeskShiftLog token={token} condominiumId={condominiumId} />}
+      {tab === "Comunicados" && <DeskAnnouncements token={token} condominiumId={condominiumId} />}
+      {tab === "Relatórios" && <DeskReports token={token} condominiumId={condominiumId} />}
     </section>
   );
 }

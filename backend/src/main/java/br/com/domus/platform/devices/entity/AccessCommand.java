@@ -34,6 +34,9 @@ public class AccessCommand {
     @Column(name = "attempt_id", updatable = false)
     private UUID attemptId;
 
+    @Column(name = "requested_by_resident", nullable = false, updatable = false)
+    private boolean requestedByResident;
+
     @Column(nullable = false, updatable = false)
     private String justification;
 
@@ -76,6 +79,20 @@ public class AccessCommand {
         this.idempotencyKey = idempotencyKey;
         this.correlationId = correlationId;
         this.requestedAt = requestedAt;
+    }
+
+    /** Comando cuja base de autorização é o próprio morador autenticado (abertura remota habilitada). */
+    public static AccessCommand byResident(UUID condominiumId, UUID deviceId, UUID residentUserId,
+                                           String justification, String idempotencyKey, String correlationId,
+                                           Instant requestedAt) {
+        AccessCommand c = new AccessCommand(condominiumId, deviceId, residentUserId, null, null, justification,
+                idempotencyKey, correlationId, requestedAt);
+        c.requestedByResident = true;
+        return c;
+    }
+
+    public boolean isRequestedByResident() {
+        return requestedByResident;
     }
 
     public UUID getId() {

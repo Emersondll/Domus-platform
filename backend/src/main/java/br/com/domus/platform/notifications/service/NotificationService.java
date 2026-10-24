@@ -28,6 +28,8 @@ public class NotificationService {
     /** Retorno do atendimento ao morador; não depende de preferência, é a resposta ao pedido dele. */
     /** Pedido da portaria para o morador autorizar um visitante; essencial, não depende de preferência. */
     public static final String VISIT_REQUEST = "VISIT_REQUEST";
+    /** Comunicado do condomínio; essencial, não depende de preferência. */
+    public static final String ANNOUNCEMENT = "ANNOUNCEMENT";
     public static final String CALL_ASSIGNED = "CALL_ASSIGNED";
     public static final String CALL_CLOSED = "CALL_CLOSED";
 
@@ -60,6 +62,15 @@ public class NotificationService {
             if (enabled) {
                 notifications.save(new Notification(userId, condominiumId, type, title, body, now));
             }
+        }
+    }
+
+    /** Notifica todos os moradores com acesso ao app no condomínio (comunicados). */
+    @Transactional
+    public void notifyCondominium(UUID condominiumId, String type, String title, String body) {
+        Instant now = Instant.now(clock);
+        for (UUID userId : residents.findUserIdsOfCondominium(condominiumId)) {
+            notifications.save(new Notification(userId, condominiumId, type, title, body, now));
         }
     }
 

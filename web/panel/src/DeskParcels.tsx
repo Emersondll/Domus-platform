@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Parcel, Unit } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
@@ -14,6 +14,13 @@ export function DeskParcels({ token, condominiumId }: { token: string; condomini
   const [picking, setPicking] = useState<string | null>(null);
   const [pickedBy, setPickedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const [receipt, setReceipt] = useState<Parcel | null>(null);
+  useEffect(() => {
+    if (!receipt) return;
+    window.print(); // impressão pelo navegador; impressora térmica dedicada é item externo
+    setReceipt(null);
+  }, [receipt]);
 
   const unitNumber = (id: string) => units.items.find((u) => u.id === id)?.number ?? "?";
   const pending = parcels.items.filter((p) => p.status === "RECEIVED");
@@ -31,6 +38,17 @@ export function DeskParcels({ token, condominiumId }: { token: string; condomini
 
   return (
     <div aria-label="Encomendas">
+      {receipt && (
+        <section className="print-only" aria-label="Comprovante de encomenda">
+          <h2>Comprovante de recebimento de encomenda</h2>
+          <p>Unidade: {unitNumber(receipt.unitId)}</p>
+          <p>Transportadora: {receipt.carrier ?? "—"}</p>
+          <p>Descrição: {receipt.description ?? "—"}</p>
+          <p>Recebida em: {new Date(receipt.receivedAt).toLocaleString()}</p>
+          <p>Código: {receipt.id.slice(0, 8).toUpperCase()}</p>
+          <p>Assinatura de quem retirou: ________________________________</p>
+        </section>
+      )}
       <h3>Registrar chegada</h3>
       <label htmlFor="parcel-unit">Unidade</label>
       <select id="parcel-unit" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
@@ -79,7 +97,8 @@ export function DeskParcels({ token, condominiumId }: { token: string; condomini
               </span>
             ) : (
               <button onClick={() => { setPicking(p.id); setPickedBy(""); }}>Entregar</button>
-            )}
+            )}{" "}
+            <button onClick={() => setReceipt(p)}>Imprimir comprovante</button>
           </li>
         ))}
         {pending.length === 0 && <li>Nenhuma encomenda aguardando.</li>}

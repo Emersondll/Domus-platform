@@ -9,7 +9,7 @@ O login aqui é o de desenvolvimento; o fluxo OIDC/PKCE contra o Keycloak real �
 Requisitos: `pip install playwright && playwright install chromium`, Postgres em 5433 (docker compose up -d postgres),
 jar do backend (mvn -f backend/pom.xml package -DskipTests), Node >= 22.12 e `npm install` em web/.
 """
-import glob, os, re, secrets, shutil, signal, subprocess, sys, time, urllib.request
+import glob, json, os, re, secrets, shutil, signal, subprocess, sys, time, urllib.request
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -50,6 +50,17 @@ def wait_http(url, seconds=90):
         except Exception:
             time.sleep(1)
     raise SystemExit(f"não subiu: {url}")
+
+
+def api(method, path, subject, body=None):
+    """Chamada direta à API com o token de desenvolvimento do `subject` (apoio de preparação do cenário)."""
+    token = json.load(urllib.request.urlopen(f"http://localhost:8081/dev/token?subject={subject}"))["access_token"]
+    req = urllib.request.Request(f"http://localhost:8081{path}", method=method,
+                                 data=None if body is None else json.dumps(body).encode(),
+                                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as r:
+        raw = r.read()
+    return json.loads(raw) if raw else None
 
 
 def cleanup():
@@ -167,7 +178,7 @@ try:
         pan.get_by_role("button", name="Atender próxima").click()
         # espera o atendimento anterior sair da tela (a bancada nova nasce sem comando e sem dispositivo escolhido)
         expect(pan.get_by_text("Porta aberta — confirmado")).to_have_count(0)
-        expect(pan.locator("#door-device option", has_text="garagem")).to_have_count(1)
+        expect(pan.locator("#door-device option", has_text="garagem")).to_have_count(1, timeout=20000)
         options = pan.locator("#door-device option").all_text_contents()
         garage = next(o for o in options if "garagem" in o)
         pan.locator("#door-device").select_option(label=garage)
@@ -234,6 +245,65 @@ try:
         pan.get_by_role("tab", name="Câmeras").click()
         expect(pan.get_by_text("Vídeo ao vivo não integrado")).to_be_visible()
         check("mesa do condomínio: portas e câmeras (com aviso honesto de vídeo)", True)
+
+        # Lote B: comunicados, livro de turno, saída de visitante, relatório/CSV e abertura remota
+        condo = api("GET", "/api/v1/me/residencies", "resident-sol")[0]["condominiumId"]
+        base = f"/api/v1/condominiums/{condo}"
+        pan.get_by_role("tab", name="Comunicados").click()
+        pan.get_by_label("Título").fill("Manutenção E2E")
+        pan.get_by_label("Mensagem").fill("Caixa d'água na sexta às 9h")
+        pan.get_by_role("button", name="Publicar para todos os moradores").click()
+        expect(pan.get_by_text("Comunicado publicado.")).to_be_visible()
+        res.get_by_role("button", name="Avisos").click()
+        expect(res.get_by_text("Manutenção E2E").first).to_be_visible(timeout=20000)
+        check("comunicado publicado na portaria aparece em Avisos do morador", True)
+
+        pan.get_by_role("tab", name="Livro de turno").click()
+        pan.get_by_label("Texto").fill("Ronda das 22h concluída sem ocorrências")
+        pan.get_by_role("button", name="Registrar", exact=True).click()
+        expect(pan.get_by_text("Ronda das 22h concluída sem ocorrências")).to_be_visible()
+        check("livro de turno: registro aparece no histórico", True)
+
+        inv = api("POST", f"{base}/me/invitations", "resident-sol", {
+            "visitorName": "Visitante Saida E2E", "kind": "VISITOR", "maxUses": 1,
+            "validFrom": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "validUntil": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3600))})
+        ok = api("POST", f"{base}/access/validate", "operator-sol", {"token": inv["token"], "entrance": "portaria"})
+        check("entrada do visitante validada (API de apoio)", ok["granted"] is True)
+        pan.get_by_role("tab", name="Visitantes").click()
+        expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_be_visible(timeout=15000)
+        row = pan.get_by_role("listitem").filter(has_text="Visitante Saida E2E")
+        row.get_by_role("button", name="Registrar saída").click()
+        expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_have_count(0, timeout=15000)
+        check("visitante no local tem a saída registrada e some da lista", True)
+
+        pan.get_by_role("tab", name="Relatórios").click()
+        pan.get_by_role("button", name="Consultar").click()
+        expect(pan.get_by_text(re.compile("Visitante Saida E2E")).first).to_be_visible()
+        expect(pan.get_by_text(re.compile("saiu"))).to_be_visible()
+        with pan.expect_download() as dl:
+            pan.get_by_role("button", name="Exportar CSV").click()
+        csv_path = dl.value.path()
+        content = open(csv_path, encoding="utf-8").read()
+        check("relatório mostra a saída e o CSV baixa com o visitante", "Visitante Saida E2E" in content
+              and content.startswith("data_hora,entrada"))
+
+        # abertura remota pelo morador: desligada por padrão; síndico liga a política e marca a porta
+        res.get_by_role("button", name="Convites").click()
+        res.get_by_role("button", name="Início").click()
+        expect(res.get_by_role("button", name="Chamar a central")).to_be_visible()
+        check("com a política desligada o morador não vê 'Abrir portão'",
+              res.get_by_role("heading", name="Abrir portão").count() == 0)
+        devices = api("GET", f"{base}/devices?size=50", "manager-sol")["items"]
+        door = next(d for d in devices if d["name"] == "Portão principal")
+        api("PUT", f"{base}/remote-open", "manager-sol", {"enabled": True})
+        api("PUT", f"{base}/devices/{door['id']}/resident-openable", "manager-sol", {"allowed": True})
+        res.get_by_role("button", name="Convites").click()
+        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Abrir Portão principal").click()
+        expect(res.get_by_text("Porta aberta (confirmado pelo equipamento).")).to_be_visible(timeout=20000)
+        check("morador abre o portão pelo app e só vê 'aberta' com a confirmação do equipamento", True)
+        api("PUT", f"{base}/remote-open", "manager-sol", {"enabled": False})
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]))

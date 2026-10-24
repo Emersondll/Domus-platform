@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Invitation, MyCall, Notification, Parcel, VisitRequest } from "./types";
+import { RemoteDoors } from "./RemoteDoors";
 import { errorText, useList } from "./useApi";
 
 const POLL_MS = 5000;
@@ -113,6 +114,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       ) : (
         <button className="danger" onClick={() => setConfirmingPanic(true)} disabled={panicActive}>Alerta de pânico</button>
       )}
+      <RemoteDoors token={token} condo={condo} />
       {msg && <p role="alert" className="error">{msg}</p>}
       {latest && progress && (
         <p role="status" className={progress.done ? "call-status done" : "call-status"}>

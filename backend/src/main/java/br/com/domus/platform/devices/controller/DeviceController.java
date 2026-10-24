@@ -63,12 +63,13 @@ public class DeviceController {
      * @param status     UNKNOWN, ONLINE ou OFFLINE
      * @param lastSeenAt última vez em que esteve online
      * @param apiKey     chave de API do dispositivo; presente somente na criação ou rotação
+     * @param residentOpenable se o morador pode pedir a abertura deste dispositivo (exige a política do condomínio ligada)
      */
     public record DeviceResponse(UUID id, String name, String kind, String adapter, String entrance, String status,
-                                 Instant lastSeenAt, String apiKey) {
-        static DeviceResponse from(Device d, String apiKey) {
+                                 Instant lastSeenAt, String apiKey, boolean residentOpenable) {
+        public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
-                    d.getStatus(), d.getLastSeenAt(), apiKey);
+                    d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable());
         }
     }
 
@@ -94,7 +95,7 @@ public class DeviceController {
      */
     public record CommandResponse(UUID id, UUID deviceId, String state, String failureReason, String evidence,
                                   Instant requestedAt, Instant sentAt, Instant resolvedAt) {
-        static CommandResponse from(AccessCommand c) {
+        public static CommandResponse from(AccessCommand c) {
             return new CommandResponse(c.getId(), c.getDeviceId(), c.getState(), c.getFailureReason(),
                     c.getEvidence(), c.getRequestedAt(), c.getSentAt(), c.getResolvedAt());
         }

@@ -10,3 +10,6 @@ export type Profile = { fullName: string; email: string | null; phone: string | 
 export type Preferences = { parcelsEnabled: boolean; visitorArrivalEnabled: boolean };
 export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };
 export type VisitRequest = { id: string; unitId: string; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null };
+export type Announcement = { id: string; title: string; body: string; createdAt: string };
+export type Door = { id: string; name: string; entrance: string };
+export type DoorCommand = { id: string; deviceId: string; state: string; failureReason: string | null };

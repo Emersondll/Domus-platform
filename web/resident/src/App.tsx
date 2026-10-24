@@ -7,10 +7,11 @@ import { Visits } from "./Visits";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
 import { ProfilePage } from "./Profile";
+import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
 import type { Residency } from "./types";
 
-const TABS = ["Início", "Visitas", "Convites", "Encomendas", "Reservas", "Veículos", "Perfil"] as const;
+const TABS = ["Início", "Avisos", "Visitas", "Convites", "Encomendas", "Reservas", "Veículos", "Perfil"] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -103,6 +104,7 @@ export function App() {
       <main>
         {!condo && <p>Nenhuma residência vinculada a este usuário.</p>}
         {condo && tab === "Início" && <Home token={token} condo={condo} onNavigate={setTab} />}
+        {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
         {condo && tab === "Visitas" && <Visits token={token} condo={condo} />}
         {condo && tab === "Convites" && <Invitations token={token} condo={condo} />}
         {condo && tab === "Encomendas" && <Parcels token={token} condo={condo} />}

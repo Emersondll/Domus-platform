@@ -24,4 +24,11 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID> {
               AND r.unit_id = :unitId AND r.condominium_id = :condominiumId
             """, nativeQuery = true)
     List<UUID> findUserIdsOfUnit(@Param("unitId") UUID unitId, @Param("condominiumId") UUID condominiumId);
+
+    /** Usuários (com acesso ao app) de todos os moradores ativos do condomínio. */
+    @Query(value = """
+            SELECT DISTINCT m.user_id FROM membership m JOIN resident r ON r.id = m.resident_id
+            WHERE m.active AND r.active AND m.role = 'RESIDENT' AND r.condominium_id = :condominiumId
+            """, nativeQuery = true)
+    List<UUID> findUserIdsOfCondominium(@Param("condominiumId") UUID condominiumId);
 }

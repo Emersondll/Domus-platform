@@ -74,6 +74,10 @@ public class AccessCredential {
         this.revokedAt = when;
     }
 
+    public UUID getCondominiumId() {
+        return condominiumId;
+    }
+
     public UUID getId() {
         return id;
     }

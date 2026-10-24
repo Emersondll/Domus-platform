@@ -42,6 +42,9 @@ public class Device {
     @Column(nullable = false)
     private String status = "UNKNOWN";
 
+    @Column(name = "resident_openable", nullable = false)
+    private boolean residentOpenable;
+
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
@@ -65,6 +68,14 @@ public class Device {
         if ("ONLINE".equals(status)) {
             this.lastSeenAt = when;
         }
+    }
+
+    public void allowResidentOpen(boolean allowed) {
+        this.residentOpenable = allowed;
+    }
+
+    public boolean isResidentOpenable() {
+        return residentOpenable;
     }
 
     public void rotateKey(String newHash) {

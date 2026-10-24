@@ -17,6 +17,7 @@ import br.com.domus.platform.shared.ConnectivityLookup;
 import br.com.domus.platform.shared.DeviceHealthLookup;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.notifications.service.NotificationService;
 import br.com.domus.platform.shared.crypto.FieldCipher;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.ForbiddenException;
@@ -45,6 +46,14 @@ public class OperationsService {
     static final Set<String> SENSITIVE_OUTCOMES = Set.of("ENTRY_GRANTED", "ENTRY_DENIED");
     static final Set<String> OUTCOMES = Set.of("RESOLVED", "ENTRY_GRANTED", "ENTRY_DENIED", "NO_ANSWER", "FALSE_ALARM");
 
+    /** Texto mostrado ao morador por desfecho; não inclui a justificativa interna do operador. */
+    static final java.util.Map<String, String> OUTCOME_MESSAGES = java.util.Map.of(
+            "RESOLVED", "Atendimento concluído.",
+            "ENTRY_GRANTED", "Entrada liberada pela portaria.",
+            "ENTRY_DENIED", "Entrada não autorizada pela portaria.",
+            "NO_ANSWER", "A portaria não conseguiu contato.",
+            "FALSE_ALARM", "Chamado encerrado sem ocorrência.");
+
     /** Resumo operacional de um condomínio. */
     public record Overview(Condominium condominium, long queuedCalls, long assignedCalls, long openIncidents,
                            String deviceHealth, String connectivity) {
@@ -63,12 +72,14 @@ public class OperationsService {
     private final DeviceHealthLookup deviceHealth;
     private final ConnectivityLookup connectivity;
     private final FieldCipher cipher;
+    private final NotificationService notifications;
 
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
                              IncidentRepository incidents, MembershipRepository memberships,
                              ResidentRepository residents, CommercialService commercial, AccessService access,
                              AuditService audit, Clock clock, DeviceHealthLookup deviceHealth,
-                             ConnectivityLookup connectivity, FieldCipher cipher) {
+                             ConnectivityLookup connectivity, FieldCipher cipher,
+                             NotificationService notifications) {
         this.shifts = shifts;
         this.calls = calls;
         this.events = events;
@@ -82,6 +93,7 @@ public class OperationsService {
         this.deviceHealth = deviceHealth;
         this.connectivity = connectivity;
         this.cipher = cipher;
+        this.notifications = notifications;
     }
 
     // ---- turnos ----
@@ -150,6 +162,8 @@ public class OperationsService {
         id.ifPresent(callId -> {
             ServiceCall call = calls.findById(callId).orElseThrow();
             addEvent(call, actor.userId(), "CLAIMED", null);
+            notifyResident(call, NotificationService.CALL_ASSIGNED, "Sua chamada está sendo atendida",
+                    "Um operador da central assumiu o seu pedido.");
         });
         return id.flatMap(calls::findById);
     }
@@ -195,7 +209,16 @@ public class OperationsService {
         addEvent(call, actor.userId(), "CLOSED", outcome + (justification == null ? "" : ": " + justification));
         audit.record(actor.userId(), null, condominiumId, "call.close." + outcome, "call", callId.toString(),
                 AuditOutcome.SUCCESS);
+        notifyResident(call, NotificationService.CALL_CLOSED, "Sua chamada foi encerrada", OUTCOME_MESSAGES.get(outcome));
         return call;
+    }
+
+    /** Chamadas da unidade do morador (as mais recentes primeiro), sem expor o operador nem a justificativa. */
+    @Transactional(readOnly = true)
+    public Page<ServiceCall> myCalls(UUID condominiumId, Pageable pageable) {
+        ResidentContext me = access.requireResident(condominiumId, "call.list.self");
+        UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
+        return calls.findByCondominiumIdAndUnitId(condominiumId, unitId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -282,6 +305,13 @@ public class OperationsService {
     }
 
     // ---- internos ----
+
+    /** Só pedidos feitos pelo app geram retorno: quem pediu precisa saber que foi atendido e como terminou. */
+    private void notifyResident(ServiceCall call, String type, String title, String body) {
+        if ("RESIDENT_APP".equals(call.getSource()) && call.getUnitId() != null) {
+            notifications.notifyUnit(call.getCondominiumId(), call.getUnitId(), type, title, body);
+        }
+    }
 
     private ServiceCall enqueue(UUID condominiumId, UUID unitId, String source, String callerName, UUID actorId) {
         ServiceCall call = calls.save(new ServiceCall(condominiumId, unitId, source, callerName, now()));

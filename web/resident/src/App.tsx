@@ -3,13 +3,14 @@ import { devLogin, request, setUnauthorizedHandler } from "../../shared/src/api"
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { handleCallback, loadOidcConfig, logout, startLogin, type OidcConfig } from "../../shared/src/oidc";
 import { Home } from "./Home";
+import { Visits } from "./Visits";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
 import { ProfilePage } from "./Profile";
 import { Reservations } from "./Reservations";
 import type { Residency } from "./types";
 
-const TABS = ["Início", "Convites", "Encomendas", "Reservas", "Veículos", "Perfil"] as const;
+const TABS = ["Início", "Visitas", "Convites", "Encomendas", "Reservas", "Veículos", "Perfil"] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -101,7 +102,8 @@ export function App() {
       </header>
       <main>
         {!condo && <p>Nenhuma residência vinculada a este usuário.</p>}
-        {condo && tab === "Início" && <Home token={token} condo={condo} />}
+        {condo && tab === "Início" && <Home token={token} condo={condo} onNavigate={setTab} />}
+        {condo && tab === "Visitas" && <Visits token={token} condo={condo} />}
         {condo && tab === "Convites" && <Invitations token={token} condo={condo} />}
         {condo && tab === "Encomendas" && <Parcels token={token} condo={condo} />}
         {condo && tab === "Reservas" && <Reservations token={token} condo={condo} />}

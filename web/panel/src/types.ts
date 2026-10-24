@@ -37,3 +37,10 @@ export const OUTCOMES = ["RESOLVED", "ENTRY_GRANTED", "ENTRY_DENIED", "NO_ANSWER
 
 export type Device = { id: string; name: string; kind: string; entrance: string; status: string };
 export type Command = { id: string; state: string; failureReason: string | null; evidence: string | null };
+
+export type Unit = { id: string; blockId: string; number: string };
+export type Parcel = { id: string; unitId: string; carrier: string | null; description: string | null; status: string; receivedAt: string; pickedUpAt: string | null; pickedUpByName: string | null };
+export type Visitor = { id: string; unitId: string; fullName: string; kind: string };
+export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };
+export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null };
+export type CommandRow = { id: string; deviceId: string; state: string; failureReason: string | null; requestedAt: string };

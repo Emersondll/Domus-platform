@@ -96,6 +96,24 @@ public class OperationsController {
     }
 
     /**
+     * Visão da chamada para o morador: sem operador responsável nem justificativa.
+     *
+     * @param id         identificador da chamada
+     * @param status     QUEUED (aguardando), ASSIGNED (em atendimento) ou CLOSED (encerrada)
+     * @param createdAt  quando o pedido foi feito
+     * @param assignedAt quando um operador assumiu
+     * @param closedAt   quando foi encerrada
+     * @param outcome    desfecho (RESOLVED, ENTRY_GRANTED, ENTRY_DENIED, NO_ANSWER, FALSE_ALARM)
+     */
+    public record MyCallResponse(UUID id, String status, Instant createdAt, Instant assignedAt, Instant closedAt,
+                                 String outcome) {
+        static MyCallResponse from(ServiceCall c) {
+            return new MyCallResponse(c.getId(), c.getStatus(), c.getCreatedAt(), c.getAssignedAt(), c.getClosedAt(),
+                    c.getOutcome());
+        }
+    }
+
+    /**
      * @param type       tipo do evento
      * @param detail     detalhe/justificativa
      * @param actorUserId autor
@@ -194,6 +212,13 @@ public class OperationsController {
     public CallResponse createResidentCall(@PathVariable UUID condominiumId,
                                            @Valid @RequestBody ResidentCallRequest r) {
         return CallResponse.from(service.createCallAsResident(condominiumId, r.callerName()));
+    }
+
+    @GetMapping("/condominiums/{condominiumId}/me/calls")
+    public PageResponse<MyCallResponse> myCalls(@PathVariable UUID condominiumId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
+            Pageable pageable) {
+        return PageResponse.of(service.myCalls(condominiumId, pageable), MyCallResponse::from);
     }
 
     @GetMapping("/condominiums/{condominiumId}/calls")

@@ -77,6 +77,7 @@ section li button { margin-top: 8px; padding: 7px 16px; font-size: 13px; }
 .card, .card:hover { margin: 0; font-weight: 400; }
 
 .badge { display: inline-block; padding: 3px 10px; font-size: 12px; border-radius: 999px; }
+.badge.ok { color: var(--ok); border: 1px solid rgba(47, 191, 113, .55); background: rgba(47, 191, 113, .08); }
 .badge.pending, .badge.warn { color: var(--warn); border: 1px solid rgba(240, 179, 90, .55); background: rgba(240, 179, 90, .08); }
 .error { color: var(--err); } .hint { color: var(--warn); font-size: 13px; }
 .message { margin-top: 16px; padding: 12px 18px; border-radius: 14px; background: var(--surface-2); border-left: 4px solid var(--accent); }

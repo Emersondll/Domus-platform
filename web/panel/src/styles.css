@@ -5,8 +5,12 @@
 @media (min-width: 1000px) {
   .layout { grid-template-columns: minmax(300px, 1fr) minmax(480px, 1.5fr); grid-auto-flow: row; }
   .layout > section[aria-label="Meus atendimentos"] { grid-column: 1; grid-row: 4; }
-  .layout > section[aria-label="Incidentes"] { grid-column: 1; grid-row: 5; align-self: start; }
+  .layout > section[aria-label="Mesa do condomínio"] { grid-column: 1; grid-row: 5; align-self: start; }
   .layout > section[aria-label="Atendimento"] { grid-column: 2; grid-row: 4 / span 2; align-self: start; }
 }
 
 .layout section li button { margin: 0; padding: 0; background: none; border-radius: 0; font-size: 15px; font-weight: 600; text-align: left; width: 100%; color: var(--fg); }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+.tabs button { margin: 0; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--surface-2); color: var(--muted); border-radius: 999px; }
+.tabs button[aria-selected="true"] { background: var(--accent-strong); color: var(--fg); }

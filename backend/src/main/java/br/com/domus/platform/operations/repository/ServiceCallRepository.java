@@ -18,6 +18,8 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
 
     Page<ServiceCall> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
+    Page<ServiceCall> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
+
     Page<ServiceCall> findByAssignedUserIdAndStatus(UUID userId, String status, Pageable pageable);
 
     /**

@@ -8,13 +8,28 @@ const overview = [
     deviceHealth: "NOT_IMPLEMENTED", connectivity: "NOT_IMPLEMENTED" },
 ];
 let commandState = "SENT";
+let parcelList: unknown[] = [];
+let posted: { url: string; body: unknown }[] = [];
 const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", callerName: "Entregador",
   status: "ASSIGNED", assignedUserId: "u1", createdAt: new Date().toISOString(), outcome: null };
 
 /** Substitui apenas a rede (fetch): a UI e a lógica do cliente rodam de verdade. */
 function fakeApi() {
-  return vi.fn(async (url: string) => {
+  return vi.fn(async (url: string, init?: RequestInit) => {
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
+    if (init?.method === "POST") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
+    if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }]);
+    if (url.endsWith("/parcels") && init?.method === "POST") return json({ id: "p9" });
+    if (url.includes("/parcels/") && url.endsWith("/pickup")) return json({ id: "p1" });
+    if (url.includes("/parcels?")) return pg(parcelList);
+    if (url.includes("/visitors?")) return pg([{ id: "v1", unitId: "un1", fullName: "Tia Maria", kind: "VISITOR" }]);
+    if (url.includes("/access/attempts?")) return pg([{ id: "a1", credentialId: null, entrance: "portaria", result: "DENIED", reason: "EXPIRED", occurredAt: new Date().toISOString() }]);
+    if (url.includes("/commands?")) return pg([{ id: "cmd0", deviceId: "d1", state: "SENT", failureReason: null, requestedAt: new Date().toISOString() }]);
+    if (url.includes("/devices?")) return pg([
+      { id: "d1", name: "Portão principal", kind: "ACCESS_CONTROLLER", adapter: "SIMULATOR", entrance: "portaria", status: "ONLINE", lastSeenAt: null },
+      { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null },
+    ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
     if (url === "/api/v1/operator/overview") return json(overview);
     if (url === "/api/v1/operator/calls/mine") return json({ items: [call], page: 0, size: 50, totalElements: 1 });
@@ -40,6 +55,8 @@ async function login() {
 describe("operator panel", () => {
   beforeEach(() => {
     commandState = "SENT";
+    posted = [];
+    parcelList = [];
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -94,5 +111,42 @@ describe("operator panel", () => {
     await user.selectOptions(screen.getByLabelText("Operador de plantão"), "u2");
     await user.type(screen.getByLabelText("Motivo"), "fim de turno");
     expect(transfer).toBeEnabled();
+  });
+
+  it("registers a parcel for a unit and delivers it to whoever picks it up", async () => {
+    parcelList = [{ id: "p1", unitId: "un1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null, pickedUpByName: null }];
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.selectOptions(await screen.findByLabelText("Unidade"), "un1");
+    await user.type(screen.getByLabelText("Transportadora"), "Loggi");
+    await user.click(screen.getByRole("button", { name: "Registrar encomenda" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/parcels"))?.body).toEqual({ unitId: "un1", carrier: "Loggi", description: null }));
+    await user.click(await screen.findByRole("button", { name: "Entregar" }));
+    const confirm = screen.getByRole("button", { name: "Confirmar entrega" });
+    expect(confirm).toBeDisabled();
+    await user.type(screen.getByLabelText("Quem retirou"), "Dona Ana");
+    await user.click(confirm);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/pickup"))?.body).toEqual({ pickedUpByName: "Dona Ana" }));
+  });
+
+  it("shows visitors, entry attempts and door state without claiming an open door", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    expect(await screen.findByText(/Tia Maria/)).toBeInTheDocument();
+    expect(screen.getByText(/negada/)).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Portas" }));
+    expect(await screen.findByText("Portão principal")).toBeInTheDocument();
+    expect(screen.queryByText("Câmera garagem")).not.toBeInTheDocument();
+    expect(await screen.findByText(/aceito pelo equipamento, sem confirmação/)).toBeInTheDocument();
+  });
+
+  it("states that live video is not integrated and lists only cameras", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(await screen.findByText(/Vídeo ao vivo não integrado/)).toBeInTheDocument();
+    expect(await screen.findByText("Câmera garagem")).toBeInTheDocument();
+    expect(screen.queryByText("Portão principal")).not.toBeInTheDocument();
   });
 });

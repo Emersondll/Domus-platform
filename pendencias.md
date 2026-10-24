@@ -9,9 +9,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 114 testes (28 unitários + 86 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 117 testes (28 unitários + 89 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 24 testes (19 painel + 5 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 32 testes (22 painel + 10 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
 | `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
@@ -25,6 +25,16 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 - Segurança: Keycloak com MFA por papel, PKCE, **audiência do token**, **renovação silenciosa do token**, limitação de taxa, anti-SSRF/XXE, **criptografia de dados pessoais em nível de campo** (AES-256-GCM, índice cego para placa, rotação e migração), **armazenamento do agente cifrado em repouso**, **atualização segura do agente** (Ed25519, anti-retrocesso, rollback).
 - Operação: métricas, logs JSON, tracing opcional, backup com drill, stack de produção, **tema Domus** nos apps e no login do Keycloak.
 - Código: pacote raiz `br.com.domus.platform`; domínios divididos em `controller`/`service`/`repository`/`entity` ([ADR 0007](docs/adr/0007-organizacao-de-pacotes.md)).
+
+## 2.1 Fluxos de portaria (feedback do teste local, 2026-10-23)
+| Etapa | Situação |
+|---|---|
+| 1. Retorno da chamada ao morador | **Feito.** Notificação ao ser atendida e ao ser encerrada (com o desfecho, sem a justificativa interna), `GET me/calls`, status "aguardando / em atendimento / encerrada" na tela, atualização automática a cada 5 s, uma chamada ativa por vez |
+| 2. App do morador: início, visitas, encomendas | **Feito.** Cartões de encomendas a retirar e visitas esperadas, aba Visitas (esperadas, chegaram, histórico de entradas com o nome do convite), encomendas pendentes em destaque |
+| 3. Painel: encomendas e visitantes | **Feito.** "Mesa do condomínio": registrar chegada, entregar com nome de quem retirou, entradas recentes e visitantes |
+| 4. Painel: portas e dispositivos | **Parcial.** Estado das portas, atualização de estado e histórico de comandos (com "aceito ≠ aberto"). **Falta** abrir porta fora de um atendimento (hoje só dentro do atendimento, onde a justificativa e a base de autorização são registradas) |
+| 5. Câmeras | **Parcial.** Lista e estado das câmeras, com aviso explícito de que o vídeo ao vivo não está integrado. **Falta o vídeo**: exige câmeras RTSP e servidor de mídia (decisão externa) |
+| Fora do plano | Notificação push/e-mail/WhatsApp ao morador (D5); aderência a outros produtos de portaria depende de você descrever os fluxos desejados |
 
 ## 3. Bugs
 

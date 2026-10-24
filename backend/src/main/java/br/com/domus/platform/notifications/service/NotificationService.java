@@ -25,6 +25,9 @@ public class NotificationService {
 
     public static final String PARCEL_RECEIVED = "PARCEL_RECEIVED";
     public static final String VISITOR_ARRIVED = "VISITOR_ARRIVED";
+    /** Retorno do atendimento ao morador; não depende de preferência, é a resposta ao pedido dele. */
+    public static final String CALL_ASSIGNED = "CALL_ASSIGNED";
+    public static final String CALL_CLOSED = "CALL_CLOSED";
 
     private final NotificationRepository notifications;
     private final NotificationPreferenceRepository preferences;

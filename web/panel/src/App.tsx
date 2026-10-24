@@ -3,7 +3,7 @@ import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shar
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
 import { CallWorkbench } from "./CallWorkbench";
-import { IncidentsPanel } from "./IncidentsPanel";
+import { CondoDesk } from "./CondoDesk";
 import { Login } from "./Login";
 import { OverviewPanel } from "./OverviewPanel";
 import type { Call, Overview, Shift } from "./types";
@@ -132,7 +132,10 @@ export function App() {
       </section>
 
       {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh} />}
-      {selectedCondo && <IncidentsPanel key={selectedCondo} token={session.token} condominiumId={selectedCondo} />}
+      {selectedCondo && (
+        <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
+          name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"} />
+      )}
     </div>
   );
 }

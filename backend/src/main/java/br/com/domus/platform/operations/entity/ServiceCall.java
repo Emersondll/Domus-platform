@@ -106,6 +106,10 @@ public class ServiceCall {
         return createdAt;
     }
 
+    public Instant getAssignedAt() {
+        return assignedAt;
+    }
+
     public Instant getClosedAt() {
         return closedAt;
     }

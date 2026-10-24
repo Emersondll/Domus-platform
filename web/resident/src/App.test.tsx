@@ -9,6 +9,10 @@ const page = (items: unknown[]) => ({ items, page: 0, size: 50, totalElements: i
 
 let calls: { url: string; method: string; body?: string }[];
 let reservationStatus = 201;
+let myCalls: unknown[] = [];
+let myParcels: unknown[] = [];
+let myInvitations: unknown[] = [];
+let myHistory: unknown[] = [];
 
 /** Substitui apenas a rede (fetch); UI, validações do cliente e geração do QR rodam de verdade. */
 function fakeApi() {
@@ -27,11 +31,14 @@ function fakeApi() {
       return json({ id: "i1", visitorName: "Tia Maria", validFrom: new Date().toISOString(),
         validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE",
         token: "11111111-1111-1111-1111-111111111111.sig" }, 201);
-    if (url.endsWith("/me/invitations")) return json(page([]));
+    if (url.endsWith("/me/invitations")) return json(page(myInvitations));
+    if (url.endsWith("/me/calls") && method === "POST") return json({ id: "c1" }, 201);
+    if (url.endsWith("/me/calls")) return json(page(myCalls));
+    if (url.endsWith("/me/parcels")) return json(page(myParcels));
     if (url.endsWith("/me/profile")) return json({ fullName: "Fulano", email: null, phone: null });
     if (url.endsWith("/me/preferences") && method === "PUT") return json(JSON.parse(init!.body as string));
     if (url.endsWith("/me/preferences")) return json({ parcelsEnabled: true, visitorArrivalEnabled: true });
-    if (url.endsWith("/me/access-history")) return json(page([]));
+    if (url.endsWith("/me/access-history")) return json(page(myHistory));
     return json({}, 404);
   });
 }
@@ -49,6 +56,10 @@ describe("resident app", () => {
   beforeEach(() => {
     calls = [];
     reservationStatus = 201;
+    myCalls = [];
+    myParcels = [];
+    myInvitations = [];
+    myHistory = [];
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -84,5 +95,50 @@ describe("resident app", () => {
   it("states honestly that push/e-mail/WhatsApp are not integrated", async () => {
     await openTab("Início");
     expect(await screen.findByText(/push, e-mail e WhatsApp ainda não estão integrados/)).toBeInTheDocument();
+  });
+
+  it("shows the progress of the call and the outcome after the doorman closes it", async () => {
+    myCalls = [{ id: "c1", status: "CLOSED", createdAt: new Date().toISOString(), assignedAt: null, closedAt: new Date().toISOString(), outcome: "ENTRY_DENIED" }];
+    await openTab("Início");
+    expect(await screen.findByText(/Entrada não autorizada pela portaria/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chamar a central" })).toBeEnabled();
+  });
+
+  it("blocks a second call while one is still being handled", async () => {
+    myCalls = [{ id: "c1", status: "ASSIGNED", createdAt: new Date().toISOString(), assignedAt: new Date().toISOString(), closedAt: null, outcome: null }];
+    await openTab("Início");
+    expect(await screen.findByText(/Em atendimento pela central/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chamar a central" })).toBeDisabled();
+  });
+
+  it("summarizes parcels to pick up and expected visits on the home screen", async () => {
+    myParcels = [
+      { id: "p1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null },
+      { id: "p2", carrier: "Loggi", description: null, status: "PICKED_UP", receivedAt: new Date().toISOString(), pickedUpAt: new Date().toISOString() },
+    ];
+    myInvitations = [{ id: "i1", visitorName: "Tia Maria", validFrom: new Date().toISOString(), validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE", token: null }];
+    await openTab("Início");
+    expect(await screen.findByRole("button", { name: "Encomendas a retirar" })).toHaveTextContent("1");
+    expect(screen.getByRole("button", { name: "Visitas esperadas" })).toHaveTextContent("1");
+  });
+
+  it("lists expected visits, arrivals and the entry history with the visitor name", async () => {
+    myInvitations = [
+      { id: "i1", visitorName: "Tia Maria", validFrom: new Date().toISOString(), validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE", token: null },
+      { id: "i2", visitorName: "Seu João", validFrom: new Date().toISOString(), validUntil: new Date(Date.now() - 1000).toISOString(), maxUses: 1, useCount: 1, status: "ACTIVE", token: null },
+    ];
+    myHistory = [{ id: "a1", credentialId: "i2", entrance: "portaria", result: "GRANTED", reason: "OK", occurredAt: new Date().toISOString() }];
+    await openTab("Visitas");
+    expect(await screen.findByText("Tia Maria")).toBeInTheDocument();
+    expect(screen.queryByText(/Ninguém chegou ainda/)).not.toBeInTheDocument();
+    // "Seu João": uma vez em "Já chegaram" e outra no histórico, resolvido pelo credentialId do convite.
+    expect(screen.getAllByText(/Seu João/)).toHaveLength(2);
+    expect(screen.getByText(/liberado/)).toBeInTheDocument();
+  });
+
+  it("lists parcels waiting for pickup apart from the ones already collected", async () => {
+    myParcels = [{ id: "p1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null }];
+    await openTab("Encomendas");
+    expect(await screen.findByText(/A retirar na portaria \(1\)/)).toBeInTheDocument();
   });
 });

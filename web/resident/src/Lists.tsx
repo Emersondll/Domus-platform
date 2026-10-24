@@ -4,18 +4,30 @@ import type { Parcel, Vehicle } from "./types";
 import { errorText, useList } from "./useApi";
 
 export function Parcels({ token, condo }: { token: string; condo: string }) {
-  const { items } = useList<Parcel>(token, `/api/v1/condominiums/${condo}/me/parcels`);
+  const { items } = useList<Parcel>(token, `/api/v1/condominiums/${condo}/me/parcels`, 5000);
+  const pending = items.filter((p) => p.status === "RECEIVED");
+  const done = items.filter((p) => p.status !== "RECEIVED");
   return (
     <section aria-label="Encomendas">
       <h2>Encomendas</h2>
+      <h3>A retirar na portaria ({pending.length})</h3>
       <ul>
-        {items.map((p) => (
-          <li key={p.id}>
-            {p.carrier ?? "Encomenda"} · recebida {new Date(p.receivedAt).toLocaleString()} ·{" "}
-            {p.status === "RECEIVED" ? "aguardando retirada" : "retirada"}
+        {pending.map((p) => (
+          <li key={p.id} className="unread">
+            <strong>{p.carrier ?? "Encomenda"}</strong> {p.description ?? ""} · chegou {new Date(p.receivedAt).toLocaleString()}
           </li>
         ))}
-        {items.length === 0 && <li>Nenhuma encomenda.</li>}
+        {pending.length === 0 && <li>Nada para retirar.</li>}
+      </ul>
+      <h3>Já retiradas</h3>
+      <ul>
+        {done.map((p) => (
+          <li key={p.id}>
+            {p.carrier ?? "Encomenda"} · recebida {new Date(p.receivedAt).toLocaleString()}
+            {p.pickedUpAt ? ` · retirada ${new Date(p.pickedUpAt).toLocaleString()}` : ""}
+          </li>
+        ))}
+        {done.length === 0 && <li>Nenhuma ainda.</li>}
       </ul>
     </section>
   );

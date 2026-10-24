@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
 
 /** Carrega uma lista paginada e permite recarregar após uma ação. */
-export function useList<T>(token: string, path: string) {
+export function useList<T>(token: string, path: string, pollMs?: number) {
   const [items, setItems] = useState<T[]>([]);
   const [error, setError] = useState<string | null>(null);
   const reload = useCallback(async () => {
@@ -15,7 +15,10 @@ export function useList<T>(token: string, path: string) {
   }, [token, path]);
   useEffect(() => {
     reload();
-  }, [reload]);
+    if (!pollMs) return;
+    const id = setInterval(reload, pollMs);
+    return () => clearInterval(id);
+  }, [reload, pollMs]);
   return { items, error, reload };
 }
 

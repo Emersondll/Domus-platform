@@ -1,10 +1,11 @@
 export type Residency = { condominiumId: string; condominiumName: string; unitId: string; unitNumber: string; residentId: string };
 export type Notification = { id: string; type: string; title: string; body: string | null; createdAt: string; readAt: string | null };
 export type Invitation = { id: string; visitorName: string | null; validFrom: string; validUntil: string; maxUses: number; useCount: number; status: string; token: string | null };
-export type Parcel = { id: string; carrier: string | null; description: string | null; status: string; receivedAt: string };
+export type Parcel = { id: string; carrier: string | null; description: string | null; status: string; receivedAt: string; pickedUpAt: string | null };
+export type MyCall = { id: string; status: string; createdAt: string; assignedAt: string | null; closedAt: string | null; outcome: string | null };
 export type Area = { id: string; name: string; capacity: number };
 export type Reservation = { id: string; areaId: string; startAt: string; endAt: string; status: string };
 export type Vehicle = { id: string; plate: string; model: string | null; color: string | null };
 export type Profile = { fullName: string; email: string | null; phone: string | null };
 export type Preferences = { parcelsEnabled: boolean; visitorArrivalEnabled: boolean };
-export type Attempt = { id: string; entrance: string; result: string; reason: string; occurredAt: string };
+export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };

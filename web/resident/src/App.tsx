@@ -12,8 +12,11 @@ import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
 import type { Residency } from "./types";
 
-const TABS = ["Início", "Avisos", "Mensagens", "Visitas", "Convites", "Encomendas", "Reservas", "Veículos", "Perfil"] as const;
-type Tab = (typeof TABS)[number];
+/** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
+const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
+const MORE = ["Avisos", "Convites", "Reservas", "Veículos", "Perfil"] as const;
+type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
+const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
 export function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -104,6 +107,16 @@ export function App() {
       </header>
       <main>
         {!condo && <p>Nenhuma residência vinculada a este usuário.</p>}
+        {condo && tab === "Mais" && (
+          <section aria-label="Mais opções">
+            <h2>Mais opções</h2>
+            <div className="more-menu">
+              {MORE.map((t) => (
+                <button key={t} className="card" onClick={() => setTab(t)}>{t}</button>
+              ))}
+            </div>
+          </section>
+        )}
         {condo && tab === "Início" && <Home token={token} condo={condo} onNavigate={setTab} />}
         {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
         {condo && tab === "Mensagens" && <Messages token={token} condo={condo} />}
@@ -115,9 +128,10 @@ export function App() {
         {condo && tab === "Perfil" && <ProfilePage token={token} condo={condo} />}
       </main>
       <nav aria-label="Seções">
-        {TABS.map((t) => (
+        {PRIMARY.map((t) => (
           <button key={t} aria-current={tab === t} onClick={() => setTab(t)}>{t}</button>
         ))}
+        <button aria-current={isMore(tab)} onClick={() => setTab("Mais")}>Mais</button>
       </nav>
     </div>
   );

@@ -13,6 +13,8 @@
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
 .tabs button { margin: 0; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--surface-2); color: var(--muted); border-radius: 999px; }
+.tab-groups { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 8px 0 4px; }
+.tab-group-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .tabs button[aria-selected="true"] { background: var(--accent-strong); color: var(--fg); }
 
 /* Comprovante impresso pelo navegador: na impressão só aparece o bloco .print-only. */

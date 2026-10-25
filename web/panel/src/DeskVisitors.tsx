@@ -12,6 +12,24 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const unitNumber = (id: string) => units.items.find((u) => u.id === id)?.number ?? "?";
   const onSite = useCondoList<AccessRow>(token, `${base}/access/on-site?size=100`, 10000);
   const [error, setError] = useState<string | null>(null);
+  const [token_, setToken] = useState("");
+  const [entrance, setEntrance] = useState("portaria");
+  const [verdict, setVerdict] = useState<{ granted: boolean; reason: string; visitorName: string | null } | null>(null);
+
+  async function validate() {
+    setError(null);
+    setVerdict(null);
+    try {
+      const v = await request<{ granted: boolean; reason: string; visitorName: string | null }>(token, "POST",
+        `${base}/access/validate`, { token: token_.trim(), entrance: entrance.trim() });
+      setVerdict(v ?? null);
+      setToken("");
+      await onSite.reload();
+      await attempts.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   async function registerExit(attemptId: string) {
     setError(null);
@@ -26,6 +44,18 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
 
   return (
     <div aria-label="Visitantes">
+      <h3>Validar convite</h3>
+      <p className="hint">Cole o código do convite apresentado pelo visitante. A validação registra a entrada; ela não abre nenhuma porta.</p>
+      <label htmlFor="inv-token">Código do convite</label>
+      <input id="inv-token" value={token_} onChange={(e) => setToken(e.target.value)} />
+      <label htmlFor="inv-entrance">Entrada</label>
+      <input id="inv-entrance" maxLength={60} value={entrance} onChange={(e) => setEntrance(e.target.value)} />
+      <button disabled={!token_.trim() || !entrance.trim()} onClick={validate}>Validar</button>
+      {verdict && (
+        <p role="status" className={verdict.granted ? "badge ok" : "badge warn"}>
+          {verdict.granted ? `Entrada liberada${verdict.visitorName ? `: ${verdict.visitorName}` : ""} (a porta não é aberta por esta ação)` : `Entrada negada (${verdict.reason})`}
+        </p>
+      )}
       <h3>No local agora ({onSite.items.length})</h3>
       {error && <p role="alert" className="error">{error}</p>}
       <ul>

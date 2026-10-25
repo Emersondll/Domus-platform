@@ -61,6 +61,9 @@ async function openTab(name: string) {
   render(<App />);
   await user.click(await screen.findByRole("button", { name: /Entrar/ }));
   await screen.findByText(/Residencial Sol/);
+  if (["Avisos", "Convites", "Reservas", "Veículos", "Perfil"].includes(name)) {
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+  }
   await user.click(screen.getByRole("button", { name }));
   return user;
 }

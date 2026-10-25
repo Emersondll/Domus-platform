@@ -63,6 +63,12 @@ def api(method, path, subject, body=None):
     return json.loads(raw) if raw else None
 
 
+def more(page, name):
+    """Itens do app do morador que ficam em "Mais" (a barra inferior só traz o uso diário)."""
+    page.get_by_role("button", name="Mais").click()
+    page.get_by_role("button", name=name).click()
+
+
 def cleanup():
     for p in procs:
         try:
@@ -115,23 +121,23 @@ try:
         check("morador chama a central e vê 'aguardando'", True)
         expect(res.get_by_role("button", name="Chamar a central")).to_be_disabled()
         check("não dá para abrir uma segunda chamada enquanto uma está em andamento", True)
-        res.get_by_role("button", name="Convites").click()
+        more(res, "Convites")
         res.get_by_label("Nome do visitante").fill("Visitante E2E")
         res.get_by_role("button", name="Gerar convite").click()
         expect(res.get_by_alt_text("QR Code do convite")).to_be_visible()
         check("convite gera QR Code", True)
-        res.get_by_role("button", name="Veículos").click()
+        more(res, "Veículos")
         res.get_by_label("Placa").fill("E2E1A23")
         res.get_by_role("button", name="Cadastrar veículo").click()
         expect(res.get_by_text("E2E1A23")).to_be_visible()
         check("veículo cadastrado aparece na lista", True)
-        res.get_by_role("button", name="Perfil").click()
+        more(res, "Perfil")
         res.get_by_label("Telefone").fill("+55 11 98888-0000")
         res.get_by_role("button", name="Salvar contato").click()
         expect(res.get_by_text("Contato atualizado.")).to_be_visible()
         res.reload()
         res.get_by_role("button", name="Entrar como morador de teste").click()
-        res.get_by_role("button", name="Perfil").click()
+        more(res, "Perfil")
         expect(res.get_by_label("Telefone")).to_have_value("+55 11 98888-0000")
         check("contato salvo persiste após recarregar", True)
         tokens = res.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
@@ -164,7 +170,7 @@ try:
         expect(pan.get_by_text("Nenhum atendimento em andamento.")).to_be_visible()
         expect(res.get_by_text("Atendimento concluído.").first).to_be_visible(timeout=15000)
         check("morador recebe o desfecho quando a portaria encerra", True)
-        res.get_by_role("button", name="Convites").click()
+        more(res, "Convites")
         res.get_by_role("button", name="Visitas").click()
         expect(res.get_by_role("heading", name="Visitas")).to_be_visible()
         res.get_by_role("button", name="Encomendas").click()
@@ -254,9 +260,31 @@ try:
         pan.get_by_label("Mensagem").fill("Caixa d'água na sexta às 9h")
         pan.get_by_role("button", name="Publicar para todos os moradores").click()
         expect(pan.get_by_text("Comunicado publicado.")).to_be_visible()
-        res.get_by_role("button", name="Avisos").click()
+        more(res, "Avisos")
         expect(res.get_by_text("Manutenção E2E").first).to_be_visible(timeout=20000)
         check("comunicado publicado na portaria aparece em Avisos do morador", True)
+
+        # mensagens individuais: morador escreve, a portaria responde, o morador lê a resposta
+        res.get_by_role("button", name="Mensagens").click()
+        res.get_by_label("Nova mensagem").fill("Vou receber um prestador amanhã")
+        res.get_by_role("button", name="Enviar").click()
+        expect(res.get_by_text("Vou receber um prestador amanhã")).to_be_visible()
+        pan.get_by_role("tab", name="Mensagens").click()
+        expect(pan.get_by_text(re.compile("nova"))).to_be_visible(timeout=15000)
+        pan.get_by_role("button", name=re.compile("Morador")).first.click()
+        expect(pan.get_by_text("Vou receber um prestador amanhã")).to_be_visible()
+        pan.get_by_label("Resposta").fill("Combinado, avise o nome na portaria")
+        pan.get_by_role("button", name="Responder").click()
+        expect(res.get_by_text("Combinado, avise o nome na portaria")).to_be_visible(timeout=20000)
+        check("conversa morador <-> portaria nos dois sentidos", True)
+
+        # câmeras: o síndico cadastra (API de apoio) e a portaria vê a câmera, com o aviso de vídeo não integrado
+        api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
+                                                       "entrance": "portaria", "config": {}})
+        pan.get_by_role("tab", name="Câmeras").click()
+        expect(pan.get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
+        expect(pan.get_by_text("Vídeo ao vivo não integrado")).to_be_visible()
+        check("câmera cadastrada aparece na aba Câmeras com aviso honesto de vídeo", True)
 
         pan.get_by_role("tab", name="Livro de turno").click()
         pan.get_by_label("Texto").fill("Ronda das 22h concluída sem ocorrências")
@@ -268,8 +296,12 @@ try:
             "visitorName": "Visitante Saida E2E", "kind": "VISITOR", "maxUses": 1,
             "validFrom": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "validUntil": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3600))})
-        ok = api("POST", f"{base}/access/validate", "operator-sol", {"token": inv["token"], "entrance": "portaria"})
-        check("entrada do visitante validada (API de apoio)", ok["granted"] is True)
+        pan.get_by_role("tab", name="Visitantes").click()
+        pan.get_by_label("Código do convite").fill(inv["token"])
+        pan.get_by_role("button", name="Validar", exact=True).click()
+        expect(pan.get_by_text(re.compile("Entrada liberada: Visitante Saida E2E"))).to_be_visible()
+        check("portaria valida o convite pela tela (e a tela diz que a porta não abre)",
+              pan.get_by_text(re.compile("a porta não é aberta")).count() == 1)
         pan.get_by_role("tab", name="Visitantes").click()
         expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_be_visible(timeout=15000)
         row = pan.get_by_role("listitem").filter(has_text="Visitante Saida E2E")
@@ -289,7 +321,7 @@ try:
               and content.startswith("data_hora,entrada"))
 
         # abertura remota pelo morador: desligada por padrão; síndico liga a política e marca a porta
-        res.get_by_role("button", name="Convites").click()
+        more(res, "Convites")
         res.get_by_role("button", name="Início").click()
         expect(res.get_by_role("button", name="Chamar a central")).to_be_visible()
         check("com a política desligada o morador não vê 'Abrir portão'",
@@ -298,7 +330,7 @@ try:
         door = next(d for d in devices if d["name"] == "Portão principal")
         api("PUT", f"{base}/remote-open", "manager-sol", {"enabled": True})
         api("PUT", f"{base}/devices/{door['id']}/resident-openable", "manager-sol", {"allowed": True})
-        res.get_by_role("button", name="Convites").click()
+        more(res, "Convites")
         res.get_by_role("button", name="Início").click()
         res.get_by_role("button", name="Abrir Portão principal").click()
         expect(res.get_by_text("Porta aberta (confirmado pelo equipamento).")).to_be_visible(timeout=20000)

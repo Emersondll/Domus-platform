@@ -22,6 +22,7 @@ function fakeApi() {
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
+    if (url.endsWith("/access/validate")) return json({ granted: true, reason: "OK", unitId: "un1", visitorName: "Dona Rosa", attemptId: "e9" });
     if (url.endsWith("/exit") && init?.method === "POST") return json({ attemptId: "e1" });
     if (url.includes("/access/report?")) return pg([{ attemptId: "e2", occurredAt: new Date().toISOString(), entrance: "garagem", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Seu Jorge", exitedAt: null }]);
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
@@ -248,6 +249,33 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Resposta"), "Já libero");
     await user.click(reply);
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/messages/threads/ru1"))?.body).toEqual({ text: "Já libero" }));
+  });
+
+  it("validates a resident's invitation at the desk without implying the door opened", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    const validate = screen.getByRole("button", { name: "Validar" });
+    expect(validate).toBeDisabled();
+    await user.type(screen.getByLabelText("Código do convite"), "abc.def");
+    await user.click(validate);
+    expect(await screen.findByText(/Entrada liberada: Dona Rosa/)).toBeInTheDocument();
+    expect(screen.getByText(/a porta não é aberta/)).toBeInTheDocument();
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/access/validate"))?.body).toEqual({ token: "abc.def", entrance: "portaria" }));
+  });
+
+  it("groups the sections and lets the manager register a camera", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    for (const g of ["Rotina", "Segurança", "Comunicação", "Gestão"]) expect(screen.getByRole("group", { name: g })).toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(screen.getByText("Vídeo ao vivo não integrado")).toBeInTheDocument();
+    const register = screen.getByRole("button", { name: "Cadastrar câmera" });
+    expect(register).toBeDisabled();
+    await user.type(screen.getByLabelText("Nome"), "Câmera hall");
+    await user.type(screen.getByLabelText("Entrada"), "portaria");
+    await user.click(register);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices"))?.body).toEqual({ name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", config: {} }));
   });
 
   it("queries the access report by period and offers the CSV export", async () => {

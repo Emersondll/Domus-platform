@@ -15,6 +15,11 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID> {
 
     Page<Resident> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
+    Page<Resident> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
+
+    /** Moradores ativos de uma unidade (a família), sem paginação: o domicílio é pequeno. */
+    List<Resident> findByCondominiumIdAndUnitIdAndActiveTrueOrderByFullName(UUID condominiumId, UUID unitId);
+
     Optional<Resident> findByIdAndCondominiumId(UUID id, UUID condominiumId);
 
     /** Usuários (com acesso ao app) vinculados a moradores ativos da unidade. */

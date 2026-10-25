@@ -49,3 +49,9 @@ O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_req
 - A auditoria registra quem enviou/leu e quando, **sem o texto**; a notificação ao morador também não copia o texto.
 - Limite de 10 mensagens por minuto por morador (429). Sem retenção/expurgo automático ainda: depende da política de retenção (pendência L-retenção).
 - Não é canal de emergência; o app orienta usar o botão de pânico. Não declara conformidade com a LGPD.
+
+## Família e animais (2026-10-25)
+- Cônjuge e dependentes são cadastros de morador (`resident`, com nome e telefone cifrados) criados pelo próprio morador ou pela administração, sem acesso ao app até a administração conceder. Podem ser desativados, exportados e anonimizados como os demais.
+- O morador só vê e altera a própria unidade; titular, proprietário e locatário só mudam pela administração (limite de 20 pessoas ativas por unidade).
+- Animais (`pet`, V13) são dados do domicílio, sem dado pessoal além do vínculo com a unidade; o campo de observação é livre: orientar a não colocar dado sensível. Limite de 10 por unidade.
+- Todas as operações gravam auditoria (sucesso na mesma transação). Não declara conformidade com a LGPD.

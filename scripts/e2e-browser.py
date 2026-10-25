@@ -278,6 +278,24 @@ try:
         expect(res.get_by_text("Combinado, avise o nome na portaria")).to_be_visible(timeout=20000)
         check("conversa morador <-> portaria nos dois sentidos", True)
 
+        # cadastros do domicílio: o morador cadastra cônjuge e animal; a portaria enxerga nos cadastros
+        more(res, "Minha casa")
+        res.get_by_label("Nome completo").fill("Conjuge E2E")
+        res.get_by_label("Vínculo").select_option("SPOUSE")
+        res.get_by_role("button", name="Adicionar pessoa").click()
+        expect(res.get_by_text("Conjuge E2E")).to_be_visible()
+        res.get_by_label("Nome do animal").fill("Rex E2E")
+        res.get_by_role("button", name="Adicionar animal").click()
+        expect(res.get_by_text("Rex E2E")).to_be_visible()
+        pan.get_by_role("tab", name="Cadastros").click()
+        pan.get_by_role("button", name="Moradores").click()
+        pan.get_by_label("Unidade", exact=True).select_option(label="A / 101")
+        expect(pan.get_by_text("Conjuge E2E")).to_be_visible(timeout=15000)
+        pan.get_by_role("button", name="Animais").click()
+        expect(pan.get_by_text(re.compile("Rex E2E"))).to_be_visible(timeout=15000)
+        check("morador cadastra cônjuge e animal no app e a portaria os vê em Cadastros", True)
+        res.get_by_role("button", name="Início").click()
+
         # câmeras: o síndico cadastra (API de apoio) e a portaria vê a câmera, com o aviso de vídeo não integrado
         api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
                                                        "entrance": "portaria", "config": {}})

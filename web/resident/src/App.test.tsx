@@ -42,6 +42,10 @@ function fakeApi() {
     if (url.endsWith("/me/announcements")) return json(page([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]));
     if (url.endsWith("/me/messages") && method === "POST") return json({ id: "m2", fromResident: true, text: "x", createdAt: new Date().toISOString(), read: false }, 201);
     if (url.endsWith("/me/messages")) return json(page([{ id: "m1", fromResident: false, text: "Pode enviar o nome", createdAt: new Date().toISOString(), read: true }]));
+    if (url.endsWith("/me/household") && method === "POST") return json({ id: "f2" }, 201);
+    if (url.endsWith("/me/household")) return json([{ id: "f0", fullName: "Titular Teste", relationship: "OWNER", phone: null, removable: false }, { id: "f1", fullName: "Esposa Teste", relationship: "SPOUSE", phone: null, removable: true }]);
+    if (url.endsWith("/me/pets") && method === "POST") return json({ id: "p2" }, 201);
+    if (url.endsWith("/me/pets")) return json([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: null }]);
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
     if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
@@ -61,7 +65,7 @@ async function openTab(name: string) {
   render(<App />);
   await user.click(await screen.findByRole("button", { name: /Entrar/ }));
   await screen.findByText(/Residencial Sol/);
-  if (["Avisos", "Convites", "Reservas", "Veículos", "Perfil"].includes(name)) {
+  if (["Avisos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"].includes(name)) {
     await user.click(screen.getByRole("button", { name: "Mais" }));
   }
   await user.click(screen.getByRole("button", { name }));
@@ -215,6 +219,21 @@ describe("resident app", () => {
     await user.type(screen.getByLabelText("Nova mensagem"), "Libere o prestador");
     await user.click(send);
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/messages") && c.method === "POST")?.body).toBe(JSON.stringify({ text: "Libere o prestador" })));
+  });
+
+  it("manages the family and the pets of the unit", async () => {
+    const user = await openTab("Minha casa");
+    expect(await screen.findByText("Esposa Teste")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remover Titular Teste" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Esposa Teste" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome completo"), "Filho Teste");
+    await user.selectOptions(screen.getByLabelText("Vínculo"), "DEPENDENT");
+    await user.click(screen.getByRole("button", { name: "Adicionar pessoa" }));
+    await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/household") && c.method === "POST")?.body).toBe(JSON.stringify({ fullName: "Filho Teste", relationship: "DEPENDENT", phone: null })));
+    await user.type(screen.getByLabelText("Nome do animal"), "Mimi");
+    await user.selectOptions(screen.getByLabelText("Espécie"), "CAT");
+    await user.click(screen.getByRole("button", { name: "Adicionar animal" }));
+    await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/pets") && c.method === "POST")?.body).toBe(JSON.stringify({ name: "Mimi", species: "CAT", breed: null, notes: null })));
   });
 
   it("offers no door button unless the condominium enabled remote opening", async () => {

@@ -15,3 +15,5 @@ export type Door = { id: string; name: string; entrance: string };
 export type DoorCommand = { id: string; deviceId: string; state: string; failureReason: string | null };
 
 export type DirectMessage = { id: string; fromResident: boolean; text: string; createdAt: string; read: boolean };
+export type HouseholdMember = { id: string; fullName: string; relationship: string; phone: string | null; removable: boolean };
+export type Pet = { id: string; unitId: string; name: string; species: string; breed: string | null; notes: string | null };

@@ -9,9 +9,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 134 testes (30 unitários + 104 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 137 testes (30 unitários + 107 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 54 testes (33 painel + 21 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 57 testes (35 painel + 22 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
 | `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
@@ -129,8 +129,9 @@ python3 scripts/e2e-browser.py        # precisa de Playwright e do jar do backen
 Detalhes e limites de cada prova: [`docs/STATUS.md`](docs/STATUS.md), [`docs/operations.md`](docs/operations.md), [`docs/security.md`](docs/security.md), [`docs/agent.md`](docs/agent.md).
 
 ## Auditoria de telas × API (2026-10-25)
-Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`). A API tem 112 endpoints; **21 não têm tela**:
-- **Faltam telas de administração (a API existe):** cadastro de moradores, blocos e unidades, vínculos (membros), agentes locais, empresas operadoras e administradores, rotação de chave de dispositivo, conflitos de sincronização, exportação/anonimização de morador (LGPD). Hoje o condomínio é preparado só pela API ou pelos dados de desenvolvimento. É a próxima lacuna de produto mais visível.
-- **Sem tela por desenho:** `agent/*` (agente local usa a API direto).
-- **Câmeras:** a aba cadastra a câmera e mostra online/offline. **Vídeo ao vivo continua não integrado** (exige câmera com RTSP e servidor de mídia).
-- Corrigido nesta rodada: o app do morador tinha 9 abas na barra inferior e não cabia no celular (agora 4 + "Mais"); a mesa da portaria passou a agrupar as abas (Rotina, Segurança, Comunicação, Gestão); a validação de convite agora tem tela.
+Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 123 endpoints; **11 não têm tela**:
+- **Sem tela, a API existe:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas. É a administração da plataforma/empresa, ainda só pela API.
+- **Sem tela por desenho:** `agent/*` (o agente local usa a API direto).
+- **Telas de cadastro feitas em 2026-10-25** (aba Cadastros, Gestão): blocos e unidades, moradores por unidade (titular, cônjuge, dependentes; desativar, acesso ao app, exportar e anonimizar), animais, equipe. O morador cuida da própria família e dos animais em "Mais > Minha casa". Escrever exige síndico ou administração; o operador consulta.
+- **Câmeras:** a aba cadastra a câmera e mostra online/offline. **Vídeo ao vivo continua não integrado** (exige câmera com RTSP e servidor de mídia); é o próximo e último item desta fase.
+- Corrigido: o app do morador tinha 9 abas na barra inferior e não cabia no celular (agora 4 + "Mais"); a mesa da portaria agrupa as abas (Rotina, Segurança, Comunicação, Gestão); a validação de convite e o pedido de autorização de visitante no balcão (sem chamada) têm tela.

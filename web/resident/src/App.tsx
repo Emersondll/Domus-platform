@@ -7,6 +7,7 @@ import { Visits } from "./Visits";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
 import { ProfilePage } from "./Profile";
+import { Household } from "./Household";
 import { Messages } from "./Messages";
 import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
@@ -14,7 +15,7 @@ import type { Residency } from "./types";
 
 /** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
 const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
-const MORE = ["Avisos", "Convites", "Reservas", "Veículos", "Perfil"] as const;
+const MORE = ["Avisos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
 type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
 const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
@@ -125,6 +126,7 @@ export function App() {
         {condo && tab === "Encomendas" && <Parcels token={token} condo={condo} />}
         {condo && tab === "Reservas" && <Reservations token={token} condo={condo} />}
         {condo && tab === "Veículos" && <Vehicles token={token} condo={condo} />}
+        {condo && tab === "Minha casa" && <Household token={token} condo={condo} />}
         {condo && tab === "Perfil" && <ProfilePage token={token} condo={condo} />}
       </main>
       <nav aria-label="Seções">

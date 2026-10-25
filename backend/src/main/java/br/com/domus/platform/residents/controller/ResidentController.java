@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -68,10 +70,31 @@ public class ResidentController {
                 r.phone(), r.residentType()));
     }
 
+    /**
+     * @param fullName     nome completo
+     * @param email        e-mail de contato, opcional
+     * @param phone        telefone de contato, opcional
+     * @param residentType vínculo com a unidade (OWNER, TENANT, SPOUSE ou DEPENDENT)
+     * @param active       false desativa o cadastro (mudança, fim de contrato); o histórico permanece
+     */
+    public record UpdateResidentRequest(@NotBlank @Size(max = 160) String fullName, @Email @Size(max = 190) String email,
+                                        @Size(max = 30) String phone, @NotNull ResidentType residentType,
+                                        @NotNull Boolean active) {
+    }
+
+    /** @param unitId filtra pelos moradores de uma unidade, opcional */
     @GetMapping
     public PageResponse<ResidentResponse> list(@PathVariable UUID condominiumId,
+                                               @RequestParam(required = false) UUID unitId,
                                                @PageableDefault(size = 50, sort = "fullName") Pageable pageable) {
-        return PageResponse.of(service.list(condominiumId, pageable), ResidentResponse::from);
+        return PageResponse.of(service.list(condominiumId, unitId, pageable), ResidentResponse::from);
+    }
+
+    @PutMapping("/{residentId}")
+    public ResidentResponse update(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
+                                   @Valid @RequestBody UpdateResidentRequest r) {
+        return ResidentResponse.from(service.update(condominiumId, residentId, r.fullName(), r.email(), r.phone(),
+                r.residentType(), r.active()));
     }
 
     @GetMapping("/{residentId}")

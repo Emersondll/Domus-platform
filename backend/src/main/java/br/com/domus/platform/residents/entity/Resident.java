@@ -67,6 +67,15 @@ public class Resident {
         this.active = false;
     }
 
+    /** Atualização cadastral feita pela administração do condomínio. */
+    public void update(String fullName, String email, String phone, ResidentType type, boolean active) {
+        this.fullName = fullName;
+        this.email = email;
+        this.phone = phone;
+        this.residentType = type;
+        this.active = active;
+    }
+
     public void updateContact(String email, String phone) {
         this.email = email;
         this.phone = phone;

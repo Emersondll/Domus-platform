@@ -9,7 +9,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 ## 1. Controle de acesso
 | Recurso | Situação | Observação |
 |---|---|---|
-| Cadastro de moradores, visitantes e prestadores | Feito | Moradores por API/painel; visitantes via convite |
+| Cadastro de moradores (titular, cônjuge, dependentes), animais, visitantes e prestadores | Feito | Painel (aba Cadastros) e app do morador (Minha casa); visitantes via convite ou pedido de autorização no balcão |
 | Pré-autorização de visitantes (QR Code, validade, usos) | Feito | Visitante recorrente = convite com vários usos |
 | Autorização de entrada pelo celular (visitante sem convite) | **Feito** | Operador pede, morador aprova ou nega no app (prazo de 5 min); a resposta não abre a porta |
 | Registro de entradas **e saídas** | **Feito** | A portaria registra a saída; a tela mostra quem está no local |

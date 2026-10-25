@@ -3,6 +3,7 @@ import { DeskAnnouncements } from "./DeskAnnouncements";
 import { DeskCameras } from "./DeskCameras";
 import { DeskDoors } from "./DeskDoors";
 import { DeskParcels } from "./DeskParcels";
+import { DeskRegistry } from "./DeskRegistry";
 import { DeskReports } from "./DeskReports";
 import { DeskMessages } from "./DeskMessages";
 import { DeskShiftLog } from "./DeskShiftLog";
@@ -14,7 +15,7 @@ const GROUPS = [
   { label: "Rotina", tabs: ["Encomendas", "Visitantes", "Livro de turno"] },
   { label: "Segurança", tabs: ["Portas", "Câmeras", "Ocorrências"] },
   { label: "Comunicação", tabs: ["Mensagens", "Comunicados"] },
-  { label: "Gestão", tabs: ["Relatórios"] },
+  { label: "Gestão", tabs: ["Cadastros", "Relatórios"] },
 ] as const;
 type Tab = (typeof GROUPS)[number]["tabs"][number];
 
@@ -44,6 +45,7 @@ export function CondoDesk({ token, condominiumId, name }: { token: string; condo
       {tab === "Mensagens" && <DeskMessages token={token} condominiumId={condominiumId} />}
       {tab === "Livro de turno" && <DeskShiftLog token={token} condominiumId={condominiumId} />}
       {tab === "Comunicados" && <DeskAnnouncements token={token} condominiumId={condominiumId} />}
+      {tab === "Cadastros" && <DeskRegistry token={token} condominiumId={condominiumId} />}
       {tab === "Relatórios" && <DeskReports token={token} condominiumId={condominiumId} />}
     </section>
   );

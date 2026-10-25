@@ -1,0 +1,26 @@
+import { useState } from "react";
+import { RegistryPets } from "./RegistryPets";
+import { RegistryResidents } from "./RegistryResidents";
+import { RegistryStaff } from "./RegistryStaff";
+import { RegistryUnits } from "./RegistryUnits";
+
+const SECTIONS = ["Unidades", "Moradores", "Animais", "Equipe"] as const;
+
+/** Cadastros do condomínio. Escrever exige o síndico ou a administração; o operador consulta. */
+export function DeskRegistry({ token, condominiumId }: { token: string; condominiumId: string }) {
+  const [section, setSection] = useState<(typeof SECTIONS)[number]>("Unidades");
+  return (
+    <div aria-label="Cadastros">
+      <p className="hint">Cadastros do condomínio. Só o síndico ou a administração grava; o operador apenas consulta.</p>
+      <div className="tabs" role="group" aria-label="Tipos de cadastro">
+        {SECTIONS.map((s) => (
+          <button key={s} aria-pressed={section === s} onClick={() => setSection(s)}>{s}</button>
+        ))}
+      </div>
+      {section === "Unidades" && <RegistryUnits token={token} condominiumId={condominiumId} />}
+      {section === "Moradores" && <RegistryResidents token={token} condominiumId={condominiumId} />}
+      {section === "Animais" && <RegistryPets token={token} condominiumId={condominiumId} />}
+      {section === "Equipe" && <RegistryStaff token={token} condominiumId={condominiumId} />}
+    </div>
+  );
+}

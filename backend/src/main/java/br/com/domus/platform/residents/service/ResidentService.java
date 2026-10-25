@@ -45,10 +45,24 @@ public class ResidentService {
     }
 
     @Transactional
-    public Page<Resident> list(UUID condominiumId, Pageable pageable) {
+    public Page<Resident> list(UUID condominiumId, UUID unitId, Pageable pageable) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.list");
         audit.record(actor.userId(), null, condominiumId, "resident.list", "resident", null, AuditOutcome.SUCCESS);
-        return residents.findByCondominiumId(condominiumId, pageable);
+        return unitId == null ? residents.findByCondominiumId(condominiumId, pageable)
+                : residents.findByCondominiumIdAndUnitId(condominiumId, unitId, pageable);
+    }
+
+    /** A administração corrige o cadastro e pode desativar quem se mudou (a unidade não muda: crie outro cadastro). */
+    @Transactional
+    public Resident update(UUID condominiumId, UUID residentId, String fullName, String email, String phone,
+                           ResidentType type, boolean active) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.update");
+        Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Resident not found"));
+        resident.update(fullName.trim(), email, phone, type, active);
+        audit.record(actor.userId(), null, condominiumId, "resident.update", "resident",
+                residentId.toString(), AuditOutcome.SUCCESS);
+        return resident;
     }
 
     @Transactional

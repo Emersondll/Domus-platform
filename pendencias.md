@@ -92,7 +92,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | D7 | **Planos, contratos e limites** por empresa operadora (regras de negócio e cobrança) | em aberto |
 | D8 | **Papéis e permissões finos** das telas de administração (o que o síndico e o administrador da empresa podem ver e fazer) | em aberto |
 | D9 | Java 26 (não LTS) ou 25 LTS | **decidido: manter Java 26** (2026-10-21) |
-| D10 | Licença do projeto | **decidido: MIT** |
+| D10 | Licença do projeto | **decidido: Apache 2.0** (trocada de MIT em 2026-10-25; metadados e avisos alinhados) |
 | D11 | `.claude/` e `CLAUDE.md` fora do Git | **decidido: só locais** |
 
 ## 7. Auditoria de proveniência e licenças (2026-10-22)

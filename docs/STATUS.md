@@ -77,7 +77,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 8. **Administração e relatórios:** não existem telas para administrador da plataforma, da empresa e síndico (só há API); relatórios por condomínio/exportação; planos, contratos e limites.
 9. Instalador/pacote (.deb) do agente e suporte a outros sistemas além de Linux/systemd.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
-11. **CI:** validado em 2026-10-22. Licença MIT (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local e fora do histórico.
+11. **CI:** validado em 2026-10-22. Licença Apache 2.0 (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local e fora do histórico.
 
 ## Riscos aceitos (conscientes)
 - **Revogação durante a queda** só chega ao agente quando a política renova (TTL 6 h): janela limitada e auditável (`REVOKED_BEFORE_USE`).

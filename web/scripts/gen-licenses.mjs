@@ -36,7 +36,7 @@ const licenseFile = (dir) =>
 
 const parts = [
   "AVISOS DE SOFTWARE DE TERCEIROS",
-  "O código próprio deste produto é licenciado sob a Licença MIT (abaixo). Os componentes a seguir mantêm as licenças originais.",
+  "O código próprio deste produto é licenciado sob a Licença Apache 2.0 (arquivo LICENSE). Os componentes a seguir mantêm as licenças originais.",
   "",
   "=== Projeto ===",
   readFileSync(join(root, "LICENSE"), "utf8").trim(),

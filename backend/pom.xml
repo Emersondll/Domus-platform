@@ -18,8 +18,8 @@
     <description>Plataforma de portaria virtual multicondomínio</description>
     <licenses>
         <license>
-            <name>MIT License</name>
-            <url>https://opensource.org/license/mit</url>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -115,7 +115,7 @@
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
-            <!-- Avisos de licença acompanham o artefato distribuído (MIT do projeto e componentes de terceiros). -->
+            <!-- Avisos de licença acompanham o artefato distribuído (Apache-2.0 do projeto e componentes de terceiros). -->
             <resource>
                 <directory>${project.basedir}/..</directory>
                 <targetPath>META-INF/domus</targetPath>

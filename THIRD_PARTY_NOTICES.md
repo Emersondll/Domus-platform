@@ -1,6 +1,6 @@
 # Avisos de terceiros
 
-O código próprio deste repositório é licenciado sob a [Licença MIT](LICENSE). Os componentes abaixo mantêm as licenças originais.
+O código próprio deste repositório é licenciado sob a [Licença Apache 2.0](LICENSE). Os componentes abaixo mantêm as licenças originais.
 
 | Componente | Licença | Onde está o detalhe |
 |---|---|---|

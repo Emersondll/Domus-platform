@@ -13,3 +13,5 @@ export type VisitRequest = { id: string; unitId: string; visitorName: string; ki
 export type Announcement = { id: string; title: string; body: string; createdAt: string };
 export type Door = { id: string; name: string; entrance: string };
 export type DoorCommand = { id: string; deviceId: string; state: string; failureReason: string | null };
+
+export type DirectMessage = { id: string; fromResident: boolean; text: string; createdAt: string; read: boolean };

@@ -51,3 +51,6 @@ export type VisitRequest = { id: string; unitId: string; callId: string | null; 
 export type AccessRow = { attemptId: string; occurredAt: string; entrance: string; result: string; reason: string; unitId: string | null; unitLabel: string | null; visitorName: string | null; exitedAt: string | null };
 export type Announcement = { id: string; title: string; body: string; createdAt: string };
 export type ShiftLogEntry = { id: string; shiftId: string | null; kind: string; text: string; createdAt: string };
+
+export type DirectMessage = { id: string; fromResident: boolean; text: string; createdAt: string; read: boolean };
+export type MessageThread = { residentUserId: string; residentName: string; lastAt: string; unread: number };

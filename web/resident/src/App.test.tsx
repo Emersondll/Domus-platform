@@ -40,6 +40,8 @@ function fakeApi() {
     if (url.endsWith("/me/doors/d1/open")) return openStatus === 202 ? json({ id: "cm1", state: "PENDING" }, 202) : json({ detail: "x" }, openStatus);
     if (url.endsWith("/me/commands/cm1")) return json({ id: "cm1", deviceId: "d1", state: cmdState, failureReason: null });
     if (url.endsWith("/me/announcements")) return json(page([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]));
+    if (url.endsWith("/me/messages") && method === "POST") return json({ id: "m2", fromResident: true, text: "x", createdAt: new Date().toISOString(), read: false }, 201);
+    if (url.endsWith("/me/messages")) return json(page([{ id: "m1", fromResident: false, text: "Pode enviar o nome", createdAt: new Date().toISOString(), read: true }]));
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
     if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
@@ -200,6 +202,16 @@ describe("resident app", () => {
     await openTab("Avisos");
     expect(await screen.findByText("Manutenção")).toBeInTheDocument();
     expect(screen.getByText("Caixa d'água na sexta")).toBeInTheDocument();
+  });
+
+  it("shows the conversation with the front desk and sends a message", async () => {
+    const user = await openTab("Mensagens");
+    expect(await screen.findByText("Pode enviar o nome")).toBeInTheDocument();
+    const send = screen.getByRole("button", { name: "Enviar" });
+    expect(send).toBeDisabled();
+    await user.type(screen.getByLabelText("Nova mensagem"), "Libere o prestador");
+    await user.click(send);
+    await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/messages") && c.method === "POST")?.body).toBe(JSON.stringify({ text: "Libere o prestador" })));
   });
 
   it("offers no door button unless the condominium enabled remote opening", async () => {

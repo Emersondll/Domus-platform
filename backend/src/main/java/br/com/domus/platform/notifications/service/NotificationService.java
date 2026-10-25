@@ -30,6 +30,7 @@ public class NotificationService {
     public static final String VISIT_REQUEST = "VISIT_REQUEST";
     /** Comunicado do condomínio; essencial, não depende de preferência. */
     public static final String ANNOUNCEMENT = "ANNOUNCEMENT";
+    public static final String DIRECT_MESSAGE = "DIRECT_MESSAGE";
     public static final String CALL_ASSIGNED = "CALL_ASSIGNED";
     public static final String CALL_CLOSED = "CALL_CLOSED";
 
@@ -72,6 +73,12 @@ public class NotificationService {
         for (UUID userId : residents.findUserIdsOfCondominium(condominiumId)) {
             notifications.save(new Notification(userId, condominiumId, type, title, body, now));
         }
+    }
+
+    /** Notifica um morador específico (resposta da portaria a uma mensagem). O texto da mensagem não é copiado. */
+    @Transactional
+    public void notifyUser(UUID condominiumId, UUID userId, String type, String title, String body) {
+        notifications.save(new Notification(userId, condominiumId, type, title, body, Instant.now(clock)));
     }
 
     @Transactional(readOnly = true)

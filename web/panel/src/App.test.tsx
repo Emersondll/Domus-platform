@@ -27,6 +27,9 @@ function fakeApi() {
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
     if (url.endsWith("/remote-open")) return json({ enabled: remoteEnabled });
     if (url.endsWith("/resident-openable")) return json({ id: "d1", residentOpenable: true });
+    if (url.endsWith("/messages/threads")) return json([{ residentUserId: "ru1", residentName: "Maria Teste", lastAt: new Date().toISOString(), unread: 2 }]);
+    if (url.endsWith("/messages/threads/ru1") && init?.method === "POST") return json({ id: "m9" });
+    if (url.endsWith("/messages/threads/ru1")) return pg([{ id: "m1", fromResident: true, text: "Preciso de ajuda", createdAt: new Date().toISOString(), read: false }]);
     if (url.includes("/announcements?")) return pg([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]);
     if (url.endsWith("/announcements") && init?.method === "POST") return json({ id: "an2" });
     if (url.includes("/shift-log?")) return pg([{ id: "sl1", shiftId: null, kind: "HANDOVER", text: "Portão social instável", createdAt: new Date().toISOString() }]);
@@ -231,6 +234,20 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Texto"), "Ronda concluída");
     await user.click(screen.getByRole("button", { name: "Registrar" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/shift-log"))?.body).toEqual({ kind: "NOTE", text: "Ronda concluída" }));
+  });
+
+  it("opens a resident conversation and replies", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Mensagens" }));
+    expect(await screen.findByText("2 nova(s)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Maria Teste" }));
+    expect(await screen.findByText("Preciso de ajuda")).toBeInTheDocument();
+    const reply = screen.getByRole("button", { name: "Responder" });
+    expect(reply).toBeDisabled();
+    await user.type(screen.getByLabelText("Resposta"), "Já libero");
+    await user.click(reply);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/messages/threads/ru1"))?.body).toEqual({ text: "Já libero" }));
   });
 
   it("queries the access report by period and offers the CSV export", async () => {

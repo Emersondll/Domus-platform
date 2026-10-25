@@ -26,7 +26,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Abertura remota de portão pelo morador | **Feito** | Desligada por padrão; duas travas (política do condomínio, ligada pelo síndico, e porta marcada); 1 abertura a cada 30 s por morador; mesma regra "aceito ≠ aberto" |
 | Interfone móvel (voz/vídeo) | Externo | SIP/WebRTC e servidor de mídia |
 | Consulta de registros de acesso | Feito | |
-| Comunicação com portaria, zelador e síndico | Parcial | Comunicados para todos os moradores: **feito**. Mensagens individuais (conversa morador ↔ portaria): **falta** |
+| Comunicação com portaria, zelador e síndico | Parcial | Comunicados para todos os moradores: **feito**. Mensagens individuais (conversa morador ↔ portaria, texto cifrado, limite de 10/min): **feito**; sem push/e-mail/WhatsApp e sem anexos |
 
 ## 3. Correspondências e entregas
 | Recurso | Situação | Observação |
@@ -66,6 +66,6 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 
 ## Ordem
 - **Lote A (feito em 2026-10-23):** autorização do visitante pelo celular e botão de pânico.
-- **Lote B (feito em 2026-10-24, exceto mensagens individuais):** saída de visitantes, relatórios de acesso e CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio). **Resta do lote:** mensagens individuais morador ↔ portaria.
+- **Lote B (feito; mensagens individuais em 2026-10-25):** saída de visitantes, relatórios de acesso e CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio). Mensagens individuais morador ↔ portaria incluídas.
 - **Lote C:** liberação de recursos por plano, documentos, medições, regras de automação.
 - **Externo:** vídeo, interfone, fotos, facial/biometria/placas, assembleias, push/e-mail/WhatsApp.

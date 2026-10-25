@@ -9,9 +9,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 131 testes (30 unitários + 101 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 134 testes (30 unitários + 104 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 50 testes (30 painel + 20 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 52 testes (31 painel + 21 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
 | `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
@@ -35,7 +35,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | 4. Painel: portas e dispositivos | **Parcial.** Estado das portas, atualização de estado e histórico de comandos (com "aceito ≠ aberto"). **Falta** abrir porta fora de um atendimento (hoje só dentro do atendimento, onde a justificativa e a base de autorização são registradas) |
 | 5. Câmeras | **Parcial.** Lista e estado das câmeras, com aviso explícito de que o vídeo ao vivo não está integrado. **Falta o vídeo**: exige câmeras RTSP e servidor de mídia (decisão externa) |
 | Lote A (escopo de produto) | **Feito:** autorização de visitante pelo celular e alerta de pânico. Ver `docs/product-scope.md` para os lotes B e C |
-| Lote B (escopo de produto) | **Feito (2026-10-24):** saída de visitantes, relatório de acessos com CSV, comunicados, livro de turno, comprovante imprimível e abertura remota pelo morador (opcional por condomínio; desligada por padrão). **Falta do lote:** mensagens individuais morador ↔ portaria. Evidência: 131 testes de backend, 50 de tela, E2E em navegador (31 verificações), `restore-drill` PASS (11 migrações), teste de carga sem erros |
+| Lote B (escopo de produto) | **Feito (2026-10-24):** saída de visitantes, relatório de acessos com CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio; desligada por padrão) e mensagens individuais morador ↔ portaria (2026-10-25). Evidência: 134 testes de backend, 52 de tela, E2E em navegador (31 verificações, ainda sem o passo de mensagens), `restore-drill` PASS (12 migrações), teste de carga sem erros |
 | Fora do plano | Notificação push/e-mail/WhatsApp ao morador (D5); aderência a outros produtos de portaria depende de você descrever os fluxos desejados |
 
 ## 3. Bugs

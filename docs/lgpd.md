@@ -42,3 +42,10 @@ O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_req
 - **Livro de turno:** o texto é livre e pode citar pessoas; fica **cifrado em nível de campo** (`shift_log_entry.text`). A tela avisa para registrar fatos e evitar dados pessoais além do necessário. Prazo de retenção: decisão do controlador (D1).
 - **Comunicados:** conteúdo institucional para todos os moradores; não deve conter dado pessoal de terceiros. Fica registrado com autor e data.
 - **Abertura remota pelo morador:** recurso **opcional, desligado por padrão**; só o síndico o habilita e apenas nas portas marcadas. Cada pedido gera comando auditado, com limite de frequência por morador. É decisão do condomínio ativá-lo e comunicar as regras de uso aos moradores; a plataforma não presume que a porta abriu sem evento do equipamento.
+
+## Mensagens individuais morador ↔ portaria (2026-10-25)
+- Tabela `direct_message` (V12): texto cifrado na aplicação (AES-256-GCM); metadados (condomínio, morador, autor, horário, leitura) em claro.
+- O morador só lê a própria conversa; a portaria (OPERATE) lê as conversas do condomínio. Fora do escopo = 404.
+- A auditoria registra quem enviou/leu e quando, **sem o texto**; a notificação ao morador também não copia o texto.
+- Limite de 10 mensagens por minuto por morador (429). Sem retenção/expurgo automático ainda: depende da política de retenção (pendência L-retenção).
+- Não é canal de emergência; o app orienta usar o botão de pânico. Não declara conformidade com a LGPD.

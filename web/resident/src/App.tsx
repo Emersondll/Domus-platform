@@ -103,6 +103,10 @@ export function App() {
           <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início"
             aria-current={tab === "Início"}>🏠</button>
         )}
+        {condo && (
+          <button className="home-shortcut" onClick={() => setTab("Câmeras")} aria-label="Ver câmeras da entrada"
+            title="Câmeras da entrada" aria-current={tab === "Câmeras"}>📹</button>
+        )}
         <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
           <select aria-label="Condomínio" value={condo ?? ""} onChange={(e) => setCondo(e.target.value)}>

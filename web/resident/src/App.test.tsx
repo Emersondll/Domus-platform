@@ -353,6 +353,16 @@ describe("resident app", () => {
     expect(screen.getByRole("button", { name: "Ir para o início" })).toBeInTheDocument();
   });
 
+  it("opens the cameras from the header icon on any screen", async () => {
+    myCameras = [{ id: "k1", name: "Câmera portaria", entrance: "portaria" }];
+    const user = await openTab("Início");
+    await user.click(screen.getByRole("button", { name: "Ver câmeras da entrada" }));
+    expect(await screen.findByRole("region", { name: "Câmeras da entrada" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver câmeras da entrada" })).toHaveAttribute("aria-current", "true");
+    await user.click(screen.getByRole("button", { name: "Ir para o início" }));
+    expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
+  });
+
   it("lets the resident watch only the entrance cameras the manager released", async () => {
     myCameras = [{ id: "k1", name: "Câmera portaria", entrance: "portaria" }];
     hlsLoaded.length = 0;

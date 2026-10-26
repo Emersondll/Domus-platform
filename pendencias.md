@@ -118,6 +118,8 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | CR2 | Qualquer morador vinculado ao condomínio (inclusive dependente) vê as câmeras liberadas; não há horário nem restrição por unidade | decisão D21 |
 | CR3 | Mesmos limites do vídeo da portaria: nenhuma câmera real testada, H.264 apenas, câmera atrás de NAT depende do agente publicar o fluxo | `docs/cameras.md` |
 | CR4 | O app não impede captura de tela nem gravação do celular | só aviso na tela |
+| CR5 | **Cadastro guiado de câmeras (usuário e senha cifrados no banco, hoje só o nome de uma variável de ambiente) e leitura do endereço pelo ONVIF `GetStreamUri`:** não feitos; mudam o modelo de segredos (decisão D4) e dependem de câmera real | decidir D4; testar com câmera real |
+| CR6 | A "ciência" do morador vale só enquanto a tela está aberta; não é registrada nem é consentimento jurídico | D21 |
 
 **B. Demais pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)**
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.

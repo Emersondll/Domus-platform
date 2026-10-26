@@ -286,8 +286,10 @@ try:
         pan.get_by_role("tab", name="Portas").click()
         expect(pan.get_by_text("Portão principal").first).to_be_visible()
         pan.get_by_role("tab", name="Câmeras").click()
-        expect(pan.get_by_role("heading", name="Cadastrar câmera")).to_be_visible()
-        check("mesa do condomínio: portas e câmeras", True)
+        expect(pan.get_by_role("region", name="Câmeras para moradores")).to_be_visible()
+        # o painel do e2e é do operador: ele vê as câmeras, mas não o cadastro nem a liberação (só síndico/administração)
+        expect(pan.get_by_role("heading", name="Cadastrar câmera")).to_have_count(0)
+        check("mesa do condomínio: portas e câmeras (operador não vê cadastro nem liberação)", True)
 
         # Lote B: comunicados, livro de turno, saída de visitante, relatório/CSV e abertura remota
         condo = api("GET", "/api/v1/me/residencies", "resident-sol")[0]["condominiumId"]
@@ -372,6 +374,7 @@ try:
         res.get_by_role("button", name="Mais", exact=True).click()
         res.get_by_role("button", name="Câmeras", exact=True).click()
         expect(res.get_by_text("Câmera hall E2E")).to_have_count(0)
+        res.get_by_label(re.compile("as imagens mostram outras pessoas")).check()
         res.get_by_role("button", name="Ver Câmera RTSP E2E").click()
         if os.environ.get("E2E_LIVE_VIDEO") == "1":
             expect(res.get_by_text("Ao vivo · Câmera RTSP E2E")).to_be_visible(timeout=30000)

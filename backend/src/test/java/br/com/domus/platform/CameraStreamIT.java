@@ -176,6 +176,24 @@ class CameraStreamIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void permissionsTellEachRoleWhatItMayDoAndReleasingNotifiesResidents() throws Exception {
+        String url = devices() + "/permissions";
+        mvc.perform(get(url).with(as("cs-manager"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.level").value("MANAGE")).andExpect(jsonPath("$.canManage").value(true));
+        mvc.perform(get(url).with(as("cs-operator"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.level").value("OPERATE")).andExpect(jsonPath("$.canManage").value(false));
+        mvc.perform(get(url).with(as("cs-other-operator"))).andExpect(status().isNotFound());
+        mvc.perform(get(url).with(as("cs-res"))).andExpect(status().isNotFound());
+
+        String id = registerCamera("Cam Aviso Res", "{\"rtspUrl\":\"rtsp://localhost:8554/aviso\"}");
+        String notes = "/api/v1/condominiums/" + condo + "/me/notifications";
+        viewable(id, true, "cs-manager");
+        mvc.perform(get(notes).with(as("cs-res"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.type=='CAMERA_RELEASED')].body").value(
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Cam Aviso Res"))));
+    }
+
+    @Test
     void atMostFourCamerasCanBeReleasedAndDeactivatingWithdrawsIt() throws Exception {
         String[] ids = new String[5];
         for (int i = 0; i < 5; i++) {

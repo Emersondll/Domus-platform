@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { DeviceFull } from "./types";
 import { CameraPlayer } from "../../shared/src/CameraPlayer";
 import { errorMessage, useCondoList } from "./useCondoList";
 
 const MAX_LIVE = 4;
+const MAX_RESIDENT = 4; // igual ao limite do servidor (DeviceService.MAX_RESIDENT_CAMERAS)
 const STATUS_TEXT: Record<string, string> = { ONLINE: "online", OFFLINE: "offline", UNKNOWN: "estado desconhecido" };
 
 /**
@@ -15,6 +16,12 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   const base = `/api/v1/condominiums/${condominiumId}/devices`;
   const devices = useCondoList<DeviceFull>(token, `${base}?size=100`, 10000);
   const cameras = devices.items.filter((d) => d.kind === "CAMERA");
+  const released = cameras.filter((c) => c.residentViewable && c.active !== false);
+  // O servidor é quem decide; a tela só esconde o que ele recusaria (síndico ou administração).
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    request<{ canManage: boolean }>(token, "GET", `${base}/permissions`).then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+  }, [token, base]);
   const [name, setName] = useState("");
   const [entrance, setEntrance] = useState("");
   const [adapter, setAdapter] = useState("ONVIF");
@@ -108,6 +115,16 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         Cadastre as câmeras e acompanhe se estão online. O vídeo ao vivo só aparece para câmeras com endereço RTSP e com o
         servidor de mídia ligado (docs/cameras.md). Ver a imagem fica registrado na auditoria. Nenhuma imagem é simulada.
       </p>
+      <section aria-label="Câmeras para moradores" className="camera-monitor">
+        <h4>Câmeras para moradores: {released.length} de {MAX_RESIDENT} liberadas</h4>
+        {released.length === 0 && <p className="hint">Nenhuma câmera liberada: os moradores não veem vídeo. Confira o vídeo com "Ver ao vivo" antes de liberar.</p>}
+        <ul>
+          {released.map((c) => <li key={c.id}>{c.name} ({c.entrance}){canManage && <>{" "}<button onClick={() => act(c.id, "resident-viewable", { enabled: false })}
+            aria-label={`Retirar ${c.name} dos moradores`}>Retirar</button></>}</li>)}
+        </ul>
+        {!canManage && <p className="hint">Só o síndico ou a administração libera câmeras aos moradores.</p>}
+        {canManage && released.length >= MAX_RESIDENT && <p className="hint">Limite de {MAX_RESIDENT} câmeras atingido. Retire uma para liberar outra.</p>}
+      </section>
       {watching.length > 0 && (
         <div className="camera-grid" aria-label="Câmeras ao vivo">
           {watching.map((w) => (
@@ -130,16 +147,18 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
               ? <button disabled={watching.some((w) => w.id === c.id) || watching.length >= MAX_LIVE}
                   onClick={() => setWatching((list) => [...list, c])} aria-label={`Ver ao vivo ${c.name}`}>Ver ao vivo</button>
               : <span className="hint">sem vídeo configurado</span>)}{" "}
-            <button onClick={() => startEdit(c)} aria-label={`Editar ${c.name}`}>Editar</button>{" "}
+            {canManage && <><button onClick={() => startEdit(c)} aria-label={`Editar ${c.name}`}>Editar</button>{" "}
             <button onClick={() => act(c.id, "active", { active: c.active === false })}
               aria-label={`${c.active === false ? "Reativar" : "Desativar"} ${c.name}`}>{c.active === false ? "Reativar" : "Desativar"}</button>{" "}
             {c.active !== false && c.liveVideo && (
               <button onClick={() => act(c.id, "resident-viewable", { enabled: !c.residentViewable })}
+                disabled={!c.residentViewable && released.length >= MAX_RESIDENT}
+                title={!c.residentViewable && released.length >= MAX_RESIDENT ? `Já há ${MAX_RESIDENT} câmeras liberadas. Retire uma antes.` : undefined}
                 aria-label={`${c.residentViewable ? "Retirar" : "Liberar"} ${c.name} ${c.residentViewable ? "do" : "para o"} morador`}>
                 {c.residentViewable ? "Retirar do morador" : "Liberar ao morador"}
               </button>
-            )}{" "}
-            {c.active !== false && (
+            )}{" "}</>}
+            {canManage && c.active !== false && (
               <button onClick={() => act(c.id, "visitor-entrance", { enabled: !c.visitorEntrance })}
                 aria-label={`${c.visitorEntrance ? "Desmarcar" : "Marcar"} ${c.name} como câmera de entrada de visitas`}>
                 {c.visitorEntrance ? "Desmarcar entrada de visitas" : "Marcar como entrada de visitas"}
@@ -164,6 +183,8 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
           <button onClick={() => setEditing(null)}>Cancelar</button>
         </section>
       )}
+      {canManage && (
+        <>
       <h3>Cadastrar câmera</h3>
       <p className="hint">Só o síndico ou a administração cadastra equipamentos. Segredos de acesso ficam em variáveis de ambiente, não aqui.</p>
       <label htmlFor="cam-name">Nome</label>
@@ -184,6 +205,8 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
       <input id="cam-rtsp-env" maxLength={80} placeholder="CAM_PORTARIA_CRED" value={rtspEnv}
         onChange={(e) => setRtspEnv(e.target.value)} />
       <button disabled={!name.trim() || !entrance.trim()} onClick={register}>Cadastrar câmera</button>
+        </>
+      )}
       {apiKey && <p role="status" className="hint">Chave do equipamento (aparece só agora, guarde): <code>{apiKey}</code></p>}
       {error && <p role="alert" className="error">{error}</p>}
     </div>

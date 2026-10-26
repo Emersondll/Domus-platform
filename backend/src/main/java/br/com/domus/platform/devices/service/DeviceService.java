@@ -6,6 +6,7 @@ import br.com.domus.platform.devices.adapter.DeviceAdapter;
 import br.com.domus.platform.devices.adapter.DeviceAdapters;
 import br.com.domus.platform.devices.adapter.HostPolicy;
 import br.com.domus.platform.shared.DeviceHealthLookup;
+import br.com.domus.platform.notifications.service.NotificationService;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ConflictException;
@@ -48,15 +49,17 @@ public class DeviceService implements DeviceHealthLookup {
     private final AccessService access;
     private final AuditService audit;
     private final Clock clock;
+    private final NotificationService notifications;
 
     public DeviceService(DeviceRepository devices, DeviceAdapters adapters, HostPolicy hostPolicy,
-                         AccessService access, AuditService audit, Clock clock) {
+                         AccessService access, AuditService audit, Clock clock, NotificationService notifications) {
         this.devices = devices;
         this.adapters = adapters;
         this.hostPolicy = hostPolicy;
         this.access = access;
         this.audit = audit;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -172,7 +175,12 @@ public class DeviceService implements DeviceHealthLookup {
                 throw new ConflictException("At most " + MAX_RESIDENT_CAMERAS + " cameras can be shown to residents");
             }
         }
+        boolean changed = device.isResidentViewable() != enabled;
         device.setResidentViewable(enabled);
+        if (changed && enabled) {
+            notifications.notifyCondominium(condominiumId, NotificationService.CAMERA_RELEASED, "Nova câmera disponível",
+                    "A câmera \"" + device.getName() + "\" (" + device.getEntrance() + ") foi liberada em Câmeras da entrada.");
+        }
         audit.record(actor.userId(), null, condominiumId, "device.resident-viewable." + enabled, "device",
                 deviceId.toString(), AuditOutcome.SUCCESS);
         return device;
@@ -217,6 +225,13 @@ public class DeviceService implements DeviceHealthLookup {
         long offline = all.stream().filter(d -> "OFFLINE".equals(d.getStatus())).count();
         String label = offline > 0 ? "DEGRADED" : online == all.size() ? "ONLINE" : "UNKNOWN";
         return label + " " + (label.equals("DEGRADED") ? offline : online) + "/" + all.size();
+    }
+
+    /** Nível do usuário atual neste condomínio (a tela esconde o que o servidor recusaria). Fora do escopo = 404. */
+    @Transactional(readOnly = true)
+    public AccessLevel myLevel(UUID condominiumId) {
+        access.require(condominiumId, AccessLevel.READ, "device.permissions");
+        return access.levelFor(access.currentActor(), condominiumId);
     }
 
     /** Câmeras liberadas para o morador; quem chama já verificou que é morador do condomínio. */

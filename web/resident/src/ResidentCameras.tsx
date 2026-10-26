@@ -14,6 +14,7 @@ export function ResidentCameras({ token, condo }: { token: string; condo: string
   const base = `/api/v1/condominiums/${condo}/me/cameras`;
   const [cameras, setCameras] = useState<EntranceCamera[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aware, setAware] = useState(false); // ciência a cada abertura da tela; não é consentimento jurídico
   const [watching, setWatching] = useState<EntranceCamera[]>([]);
   useEffect(() => {
     request<EntranceCamera[]>(token, "GET", base).then((c) => setCameras(c ?? [])).catch((e) => setError(errorText(e)));
@@ -24,16 +25,20 @@ export function ResidentCameras({ token, condo }: { token: string; condo: string
     <section aria-label="Câmeras da entrada">
       <h2>Câmeras da entrada</h2>
       <p className="hint">
-        Imagem ao vivo das entradas liberadas pela administração. Cada visualização fica registrada. Não grave nem
-        compartilhe as imagens: elas mostram outras pessoas.
+        Imagem ao vivo das entradas liberadas pela administração, só para acompanhar a entrada. Cada visualização fica
+        registrada em seu nome. Não há gravação.
       </p>
+      <label className="check">
+        <input type="checkbox" checked={aware} onChange={(e) => setAware(e.target.checked)} />{" "}
+        Entendi: as imagens mostram outras pessoas e não vou gravá-las nem compartilhá-las.
+      </label>
       {error && <p role="alert" className="error">{error}</p>}
       {!error && cameras.length === 0 && <p>Nenhuma câmera foi liberada para os moradores neste condomínio.</p>}
       <ul>
         {cameras.map((c) => (
           <li key={c.id}>
             <strong>{c.name}</strong> ({c.entrance}){" "}
-            <button disabled={watching.some((w) => w.id === c.id) || watching.length >= MAX_LIVE}
+            <button disabled={!aware || watching.some((w) => w.id === c.id) || watching.length >= MAX_LIVE}
               onClick={() => setWatching((list) => [...list, c])} aria-label={`Ver ${c.name}`}>Ver</button>
           </li>
         ))}

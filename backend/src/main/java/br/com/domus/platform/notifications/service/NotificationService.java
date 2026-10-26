@@ -32,6 +32,7 @@ public class NotificationService {
     public static final String ANNOUNCEMENT = "ANNOUNCEMENT";
     public static final String DIRECT_MESSAGE = "DIRECT_MESSAGE";
     public static final String CALL_ASSIGNED = "CALL_ASSIGNED";
+    public static final String CAMERA_RELEASED = "CAMERA_RELEASED";
     public static final String CALL_CLOSED = "CALL_CLOSED";
 
     private final NotificationRepository notifications;

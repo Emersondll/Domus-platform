@@ -72,7 +72,12 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 - **Quem vê o quê:** a portaria vê **todas** as câmeras ativas. O morador vê ao vivo **só as câmeras de entrada que o síndico
   liberou** (`resident_viewable`, no máximo 4 por condomínio; padrão desligado), em Mais > Câmeras no app. Cada abertura do
   morador é auditada (`camera.view.resident`); câmera não liberada, equipe e outro condomínio recebem 404. Desativar a câmera
-  retira a liberação. Sem gravação. A decisão jurídica de mostrar imagem de áreas comuns aos moradores está em `pendencias.md` (D21).
+  retira a liberação. Sem gravação.
+  **Quem faz o quê no painel (aba Câmeras):** o operador vê o estado e o vídeo; cadastrar, editar, desativar, marcar a câmera de entrada
+  de visitas e liberar ao morador só aparecem para síndico ou administração (a tela consulta `GET /devices/permissions`; o servidor
+  continua sendo quem decide). O quadro "Câmeras para moradores: X de 4 liberadas" mostra o que o morador vê e bloqueia a quinta.
+  Ao liberar uma câmera, os moradores recebem a notificação "Nova câmera disponível" (aba Avisos), e o app pede a ciência de que
+  as imagens mostram outras pessoas antes de abrir o vídeo (ciência de tela, não consentimento jurídico). A decisão jurídica de mostrar imagem de áreas comuns aos moradores está em `pendencias.md` (D21).
 - **Produção:** `/internal/*` não pode ser publicado no proxy reverso (o `Caddyfile` bloqueia `/internal` com 404; confira se mudar o proxy); o MediaMTX precisa de TLS
   na frente e `hlsAllowOrigin` restrito à origem do painel (hoje `*` no arquivo de exemplo).
 - A conversão RTSP → HLS roda no MediaMTX (MIT), executável **separado**; ele não é embutido no jar do Domus.

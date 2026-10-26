@@ -5,6 +5,7 @@ import br.com.domus.platform.devices.entity.Device;
 import br.com.domus.platform.devices.service.AccessCommandService;
 import br.com.domus.platform.devices.service.DeviceEventService;
 import br.com.domus.platform.devices.service.DeviceService;
+import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -177,6 +178,19 @@ public class DeviceController {
     public DeviceResponse visitorEntrance(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                           @RequestBody VisitorEntranceRequest r) {
         return DeviceResponse.from(devices.setVisitorEntrance(condominiumId, deviceId, r.enabled()), null);
+    }
+
+    /**
+     * @param level   NONE, READ, OPERATE ou MANAGE
+     * @param canManage se o usuário pode cadastrar, editar e liberar câmeras ao morador (síndico ou administração)
+     */
+    public record PermissionsResponse(String level, boolean canManage) {
+    }
+
+    @GetMapping("/condominiums/{condominiumId}/devices/permissions")
+    public PermissionsResponse permissions(@PathVariable UUID condominiumId) {
+        var level = devices.myLevel(condominiumId);
+        return new PermissionsResponse(level.name(), level == AccessLevel.MANAGE);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/resident-viewable")

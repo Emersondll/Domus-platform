@@ -28,6 +28,7 @@ let posted: { url: string; body: unknown }[] = [];
 let visitStatus = "PENDING";
 let remoteEnabled = false;
 let videoDown = false;
+let devicePerms = "MANAGE";
 let panics: unknown[] = [];
 let claimed: Record<string, unknown> | null = null;
 const sirenStarts: number[] = [];
@@ -56,6 +57,7 @@ function fakeApi() {
     if (url.endsWith("/entrance-snapshots") && init?.method === "POST") return json({ id: "s1", expiresAt: new Date().toISOString(), cameraName: "Câmera hall" });
     if (url.includes("/entrance-snapshots/") && url.endsWith("/image")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (url.endsWith("/visit-requests/vr10/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
+    if (url.endsWith("/devices/permissions")) return json({ level: devicePerms, canManage: devicePerms === "MANAGE" });
     if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
     if (url.endsWith("/active") || url.endsWith("/visitor-entrance") || url.endsWith("/resident-viewable")) return json({ id: "d2" });
     if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
@@ -124,6 +126,7 @@ describe("operator panel", () => {
     posted = [];
     visitStatus = "PENDING";
     videoDown = false;
+    devicePerms = "MANAGE";
     panics = [];
     claimed = null;
     sirenStarts.length = 0;
@@ -260,6 +263,28 @@ describe("operator panel", () => {
     const grid = await screen.findByLabelText("Câmeras monitoradas");
     expect(within(grid).getByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
     expect(within(grid).getByRole("region", { name: "Vídeo de Câmera hall" })).toBeInTheDocument();
+  });
+
+  it("hides camera registration and release from the operator, who can still watch", async () => {
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(await screen.findByText("Câmera garagem")).toBeInTheDocument();
+    expect(await screen.findByText(/Só o síndico ou a administração libera/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cadastrar câmera" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Liberar Câmera garagem para o morador" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar Câmera garagem" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver ao vivo Câmera garagem" })).toBeInTheDocument();
+  });
+
+  it("shows how many cameras are released to residents and blocks the fifth", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    const box = await screen.findByRole("region", { name: "Câmeras para moradores" });
+    expect(within(box).getByText(/0 de 4 liberadas/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Liberar Câmera garagem para o morador" })).toBeEnabled();
   });
 
   it("shows an explicit error, not a picture, when the media server is down", async () => {

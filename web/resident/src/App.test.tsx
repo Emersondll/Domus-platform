@@ -370,6 +370,8 @@ describe("resident app", () => {
     await user.click(screen.getByRole("button", { name: "Câmeras" }));
     expect(await screen.findByText("Câmera portaria")).toBeInTheDocument();
     expect(calls.some((c) => c.url.endsWith("/stream-session"))).toBe(false); // nada abre sozinho
+    expect(screen.getByRole("button", { name: "Ver Câmera portaria" })).toBeDisabled(); // antes da ciência
+    await user.click(screen.getByRole("checkbox", { name: /as imagens mostram outras pessoas/ }));
     await user.click(screen.getByRole("button", { name: "Ver Câmera portaria" }));
     expect(await screen.findByRole("region", { name: "Vídeo de Câmera portaria" })).toBeInTheDocument();
     await waitFor(() => expect(hlsLoaded).toEqual(["http://media.test:8888/cam-k1/index.m3u8?token=9999999999.sig"]));

@@ -5,7 +5,7 @@ import type { Notification } from "./types";
 export const CATEGORIES = [
   { name: "Visitas", types: ["VISIT_REQUEST", "VISITOR_ARRIVED"], empty: "Nenhuma notificação de visitas." },
   { name: "Encomendas", types: ["PARCEL_RECEIVED"], empty: "Nenhuma notificação de encomendas." },
-  { name: "Avisos", types: ["ANNOUNCEMENT"], empty: "Nenhum aviso do condomínio." },
+  { name: "Avisos", types: ["ANNOUNCEMENT", "CAMERA_RELEASED"], empty: "Nenhum aviso do condomínio." },
   { name: "Mensagens", types: ["DIRECT_MESSAGE"], empty: "Nenhuma mensagem nova." },
   { name: "Portaria", types: ["CALL_ASSIGNED", "CALL_CLOSED", "PANIC_RECEIVED"], empty: "Nada sobre chamadas à portaria." },
 ] as const;

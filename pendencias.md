@@ -5,20 +5,64 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
-## 1. Evidência do estado atual
+## 1. Evidência do estado atual (2026-10-26, commit `080d1c6`)
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 152 testes (30 unitários + 122 de integração com PostgreSQL real), 0 falhas |
-| Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 68 testes (43 painel + 25 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
-| `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
-| `scripts/e2e-browser.py` | OK, 40 verificações (navegador real: chamada, pânico com janela de alerta, porta só confirma com evento, visitantes, encomendas, mensagens, cadastros, vídeo ao vivo) |
-| `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
-| `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
-| `scripts/restore-drill.sh` | PASS (16 migrações, V1–V16) |
-| `scripts/api-smoke.py` | OK: 136 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
-| CI no GitHub | **verde** nos pushes até `76953cc` (2026-10-26); os commits locais mais novos ainda não foram enviados |
+| Backend `mvn verify` | 169 testes (31 unitários + 138 de integração com PostgreSQL real), 0 falhas |
+| Agente `mvn test` | 36 testes, 0 falhas (última execução registrada em 2026-10-22; o agente não foi alterado depois) |
+| Web `npm test` + build | 83 testes (47 painel + 36 app do morador), builds OK |
+| `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK nas últimas execuções registradas (2026-10-22); não reexecutados nesta rodada |
+| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 47 verificações (inclui "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
+| `scripts/restore-drill.sh` | PASS (19 migrações, V1–V19) |
+| `scripts/api-smoke.py` | OK: 152 endpoints; 52 GETs de condomínio × 4 papéis; 11 endpoints sem tela |
+| `scripts/load-test.py` | executado em 2026-10-26 para "Meus acessos" (0 erros); **não** reexecutado depois do vídeo para o morador (não mexeu em auditoria nem em pool) |
+| CI no GitHub | **verde** em `080d1c6` (7 jobs: backend, agente, web, compose, CodeQL Java e JS/TS, dependências e segredos) |
+| Câmera real, controladora real, celular real, Keycloak em navegador | **nunca testados** |
+
+## 1.1 Plano de ação (ordem recomendada)
+
+Legenda: **[eu]** posso fazer agora, sem decisão sua; **[você]** depende de decisão, contrato, equipamento ou jurídico.
+
+**Fase 1 — Endurecer o que já existe (pequeno, sem dependência) [eu]**
+1. **CR1:** travar o teto de 4 câmeras liberadas (trava por condomínio no serviço ou restrição no banco) e teste de concorrência.
+2. **B12:** token do vídeo preso só ao caminho, sem ligação com a pessoa: quem receber a URL assiste até o token vencer (10 min). Reduzir o prazo para o morador (2–3 min, com renovação) e registrar a renovação.
+3. **B14:** versionar a configuração local do servidor de mídia e um `scripts/dev-media.sh` que sobe as fontes de teste (hoje vive em `/tmp`, fora do Git, e quebra sem aviso para qualquer outra máquina).
+4. **B18:** E2E com o papel de síndico no navegador (cadastro de câmera, "Liberar ao morador", "Meios de acesso"); hoje só o vitest cobre essas telas.
+5. **B15/B16:** esqueleto do painel enquanto as permissões carregam (hoje os botões aparecem depois de um instante) e grade 2×2 do vídeo no celular.
+6. **B13:** `api-smoke` e `load-test` esperam o limitador de taxa esvaziar (hoje dão 429 falso logo depois de outra prova).
+7. **Processo:** o `npm run build` do painel falhou por erro de tipo num teste e só apareceu porque conferi a saída; passar a rodar `npm test && npm run build` com código de saída verificado antes de cada commit.
+
+**Fase 2 — Telas de administração da plataforma e da empresa (depende de D7 e D8) [você decide, eu implemento]**
+Empresas operadoras, administradores, condomínios, agentes locais, rotação de chave de dispositivo e conflitos de sincronização. Hoje só existem na API (11 endpoints sem tela). **Primeiro:** você responde D8 (o que cada papel vê e faz) e D7 (planos e limites).
+
+**Fase 3 — Equipamento real [você fornece, eu ajusto]**
+1. Uma câmera RTSP real: testar codec (H.264), caminho RTSP, captura de quadro e a ciência de que o HLS exige H.264.
+2. Uma controladora Dahua/Intelbras: confirmar `CardNo`/`UserID`/`Status` (B6/MA1), `openDoor` e o sentido por leitor (D20). Roteiro: `docs/reference-analysis/DAHUA_SOURCES.md`.
+3. Depois disso: agente local publicar o vídeo de câmeras atrás de NAT, ONVIF `GetStreamUri`, passagens do morador durante a queda da central (MA3), cadastro guiado de câmera (CR5, decisão D4).
+
+**Fase 4 — Bloqueio jurídico (em paralelo, é você com o jurídico)**
+D1, D16, D17, D19, D20, D21 e as 9 perguntas da seção 6. **Enquanto não responderem:** foto de cadastro e vídeo do morador ficam desligados em produção e não há identificação facial.
+
+**Fase 5 — Produção e escala [você + eu]**
+D3 (cofre de chaves/KMS), D4 (chave de lançamento do agente), D5 (e-mail/push/WhatsApp), D6 (infraestrutura). Em seguida: limitador de taxa em Redis, lock distribuído, eleição de líder Dahua (B7), mTLS por agente/dispositivo, réplica e PITR do banco, pentest independente, OIDC em navegador real, PWA em celular real.
+
+**Fase 6 — Lançamento comercial [você]**
+Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta comercial (L3), parecer sobre o Grafana/AGPL (L5), RIPD e DPO.
+
+## 1.2 Bugs e riscos encontrados nesta rodada (2026-10-26)
+| # | Achado | Gravidade | Estado |
+|---|---|---|---|
+| B11 | Teste do painel com erro de tipo quebrava o `npm run build` e passou despercebido por eu ler só o fim da saída | média (o CI teria falhado) | **corrigido**; processo na Fase 1, item 7 |
+| B12 | **Token do vídeo preso só ao caminho da câmera:** a URL HLS pode ser repassada e funciona até vencer (10 min) | média | aberto (Fase 1, item 2) |
+| B13 | Limitador de taxa devolve 429 ao `api-smoke` logo depois do e2e/carga (falso negativo da prova) | baixa | aberto |
+| B14 | A configuração do servidor de mídia usada nos testes (`/tmp/domus-run/mtx-test.yml`) e as fontes de vídeo não estão no repositório; outra máquina não reproduz o e2e de vídeo | média (reprodutibilidade) | aberto |
+| B15 | Painel: os botões de administração aparecem só depois da consulta de permissões (piscada) | baixa | aberto |
+| B16 | App do morador: 4 vídeos empilhados formam uma página muito longa no celular | baixa (estética) | aberto |
+| B17 | HLS no iPhone/Safari (reprodução nativa) e reprodução automática **não foram testados**; só Chromium | média | aberto |
+| B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | aberto |
+| B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | depende de D17/D21 |
+| CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | aberto |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.

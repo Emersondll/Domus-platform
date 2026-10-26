@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Expurgo periódico conforme a política de retenção ({@code portaria.retention.*}). Registros referenciados por
  * dados que ainda precisam existir (tentativas ligadas a comandos físicos, eventos ligados a conflitos abertos) são
  * preservados. O {@code audit_log} é append-only por trigger e NÃO é expurgado aqui: seu descarte exige procedimento
- * de manutenção controlado (ver docs/lgpd.md). Imagens/áudios ainda não são armazenados pela plataforma.
+ * de manutenção controlado (ver docs/lgpd.md). A imagem da câmera de entrada (visit_snapshot) é expurgada aqui; áudio não é armazenado.
  */
 @Service
 public class RetentionService {
@@ -33,6 +33,7 @@ public class RetentionService {
     private final int agentEventsDays;
     private final int deviceEventsDays;
     private final int resolvedConflictsDays;
+    private final int snapshotsDays;
     private final boolean enabled;
 
     public RetentionService(JdbcClient jdbc, Clock clock, MeterRegistry meters,
@@ -41,7 +42,8 @@ public class RetentionService {
             @Value("${portaria.retention.access-attempts-days:365}") int accessAttemptsDays,
             @Value("${portaria.retention.agent-events-days:90}") int agentEventsDays,
             @Value("${portaria.retention.device-events-days:90}") int deviceEventsDays,
-            @Value("${portaria.retention.resolved-conflicts-days:365}") int resolvedConflictsDays) {
+            @Value("${portaria.retention.resolved-conflicts-days:365}") int resolvedConflictsDays,
+            @Value("${portaria.snapshots.retention-days:30}") int snapshotsDays) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.meters = meters;
@@ -51,6 +53,7 @@ public class RetentionService {
         this.agentEventsDays = agentEventsDays;
         this.deviceEventsDays = deviceEventsDays;
         this.resolvedConflictsDays = resolvedConflictsDays;
+        this.snapshotsDays = snapshotsDays;
     }
 
     @Scheduled(cron = "${portaria.retention.cron:0 30 3 * * *}")
@@ -80,6 +83,11 @@ public class RetentionService {
                 """).param("cutoff", cutoff(now, agentEventsDays)).update());
         deleted.put("device_event", jdbc.sql("DELETE FROM device_event WHERE received_at < :cutoff")
                 .param("cutoff", cutoff(now, deviceEventsDays)).update());
+        // Imagem da câmera de entrada: a que não foi enviada some quando vence (minutos); a enviada, após o prazo de retenção.
+        deleted.put("visit_snapshot", jdbc.sql("""
+                DELETE FROM visit_snapshot
+                WHERE (visit_request_id IS NULL AND expires_at < :now) OR captured_at < :cutoff
+                """).param("now", java.sql.Timestamp.from(now)).param("cutoff", cutoff(now, snapshotsDays)).update());
         deleted.forEach((table, n) -> {
             if (n > 0) {
                 meters.counter("portaria.retention.deleted", "table", table).increment(n);

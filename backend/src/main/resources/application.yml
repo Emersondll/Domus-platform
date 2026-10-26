@@ -102,6 +102,15 @@ portaria:
     publish-secret: ${MEDIA_PUBLISH_SECRET:}
     # IPs de onde o servidor de mídia chama a validação (nunca publique /internal no proxy reverso).
     auth-allowed-ips: ${MEDIA_AUTH_ALLOWED_IPS:127.0.0.1,::1,0:0:0:0:0:0:0:1}
+    # Como o backend (ffmpeg) lê o fluxo no servidor de mídia para capturar quadros.
+    rtsp-internal-url: ${MEDIA_RTSP_INTERNAL_URL:rtsp://127.0.0.1:8554}
+  snapshots:
+    # Imagem da câmera de entrada junto do pedido de autorização de visita. DESLIGADO por padrão: imagem de pessoa é dado
+    # sensível e depende de decisão jurídica (D13). Ver docs/plano-cameras-visitas.md.
+    enabled: ${SNAPSHOTS_ENABLED:false}
+    temp-ttl: PT10M
+    retention-days: ${SNAPSHOTS_RETENTION_DAYS:30}
+    ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
   agent:
     # Obrigatório (>= 32 caracteres). Deriva o segredo de assinatura da política de cada agente.
     policy-master-secret: ${AGENT_POLICY_MASTER_SECRET:}

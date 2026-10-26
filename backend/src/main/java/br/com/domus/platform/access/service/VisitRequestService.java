@@ -45,14 +45,17 @@ public class VisitRequestService {
     private final AccessService access;
     private final AuditService audit;
     private final AccessAttemptRepository attempts;
+    private final VisitSnapshotService snapshots;
     private final Clock clock;
 
     public VisitRequestService(VisitRequestRepository requests, AccessAttemptRepository attempts,
+                               VisitSnapshotService snapshots,
                                CommercialService commercial,
                                ResidentRepository residents, NotificationService notifications,
                                AccessService access, AuditService audit, Clock clock) {
         this.requests = requests;
         this.attempts = attempts;
+        this.snapshots = snapshots;
         this.commercial = commercial;
         this.residents = residents;
         this.notifications = notifications;
@@ -62,7 +65,8 @@ public class VisitRequestService {
     }
 
     @Transactional
-    public VisitRequest request(UUID condominiumId, UUID unitId, String visitorName, String kind, UUID callId) {
+    public VisitRequest request(UUID condominiumId, UUID unitId, String visitorName, String kind, UUID callId,
+                                UUID snapshotId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "visit.request");
         commercial.requireUnit(condominiumId, unitId);
         Instant now = Instant.now(clock);
@@ -70,10 +74,14 @@ public class VisitRequestService {
                 actor.userId(), now, now.plus(RESPONSE_WINDOW)));
         audit.record(actor.userId(), null, condominiumId, "visit.request", "visit_request",
                 request.getId().toString(), AuditOutcome.SUCCESS);
+        if (snapshotId != null) {
+            snapshots.attach(condominiumId, snapshotId, request.getId(), actor.userId());
+        }
         boolean provider = "SERVICE_PROVIDER".equals(kind);
         notifications.notifyUnit(condominiumId, unitId, NotificationService.VISIT_REQUEST,
                 provider ? "Prestador de serviço na portaria" : "Visita na portaria",
-                visitorName + " aguarda a sua autorização. Responda pelo app em até 5 minutos.");
+                visitorName + " aguarda a sua autorização" + (snapshotId != null ? " (com imagem da entrada)" : "")
+                        + ". Responda pelo app em até 5 minutos.");
         return request;
     }
 
@@ -135,6 +143,19 @@ public class VisitRequestService {
     @Transactional(readOnly = true)
     public Set<UUID> enteredIds(UUID condominiumId, Collection<UUID> requestIds) {
         return requestIds.isEmpty() ? Set.of() : Set.copyOf(attempts.findEnteredRequestIds(condominiumId, requestIds));
+    }
+
+    /** Imagem da entrada de um pedido da própria unidade do morador. */
+    @Transactional
+    public byte[] snapshotForResident(UUID condominiumId, UUID requestId) {
+        ResidentContext me = access.requireResident(condominiumId, "snapshot.view.self");
+        return snapshots.imageForResident(condominiumId, requestId, myUnit(me, condominiumId));
+    }
+
+    /** Dos pedidos informados, os que têm imagem da entrada. */
+    @Transactional(readOnly = true)
+    public Set<UUID> withSnapshot(UUID condominiumId, Collection<UUID> requestIds) {
+        return snapshots.requestsWithSnapshot(condominiumId, requestIds);
     }
 
     private UUID myUnit(ResidentContext me, UUID condominiumId) {

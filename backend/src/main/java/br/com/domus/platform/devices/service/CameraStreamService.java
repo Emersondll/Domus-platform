@@ -55,6 +55,7 @@ public class CameraStreamService {
     private final String publicHlsUrl;
     private final String publishSecret;
     private final Set<String> authAllowedIps;
+    private final String internalRtspUrl;
 
     public CameraStreamService(DeviceService devices, MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
                                AccessService access, AuditService audit, Clock clock,
@@ -63,7 +64,8 @@ public class CameraStreamService {
                                @Value("${portaria.media.token-ttl:PT10M}") Duration tokenTtl,
                                @Value("${portaria.media.public-hls-url:}") String publicHlsUrl,
                                @Value("${portaria.media.publish-secret:}") String publishSecret,
-                               @Value("${portaria.media.auth-allowed-ips:127.0.0.1,::1,0:0:0:0:0:0:0:1}") String allowedIps) {
+                               @Value("${portaria.media.auth-allowed-ips:127.0.0.1,::1,0:0:0:0:0:0:0:1}") String allowedIps,
+                               @Value("${portaria.media.rtsp-internal-url:rtsp://127.0.0.1:8554}") String internalRtspUrl) {
         if (enabled && tokenSecret.length() < 32) {
             throw new IllegalStateException("portaria.media.token-secret must have at least 32 characters");
         }
@@ -79,6 +81,7 @@ public class CameraStreamService {
         this.tokenTtl = tokenTtl;
         this.publicHlsUrl = publicHlsUrl.endsWith("/") ? publicHlsUrl.substring(0, publicHlsUrl.length() - 1) : publicHlsUrl;
         this.publishSecret = publishSecret;
+        this.internalRtspUrl = internalRtspUrl.endsWith("/") ? internalRtspUrl.substring(0, internalRtspUrl.length() - 1) : internalRtspUrl;
         this.authAllowedIps = Arrays.stream(allowedIps.split(",")).map(String::trim).filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
     }
@@ -108,6 +111,22 @@ public class CameraStreamService {
         audit.record(actor.userId(), null, condominiumId, "camera.view", "device", deviceId.toString(),
                 AuditOutcome.SUCCESS);
         return new Session(publicHlsUrl + "/" + path + "/index.m3u8?token=" + sign(path, expiresAt), expiresAt);
+    }
+
+    /** A câmera tem fonte RTSP, está ativa e o servidor de mídia está ligado (o backend pode ler o fluxo dela). */
+    public boolean canReadInternally(Device device) {
+        return enabled && device.isActive() && "CAMERA".equals(device.getKind()) && device.getConfig().containsKey("rtspUrl");
+    }
+
+    /**
+     * URL RTSP <b>interna</b> do servidor de mídia para o próprio backend ler o fluxo (captura de quadro). Carrega um token
+     * de 60 s do mesmo tipo da sessão de visualização; a senha da câmera continua só no servidor de mídia. Uso interno:
+     * quem chama já verificou a permissão.
+     */
+    public String internalReadUrl(Device device) throws DeviceAdapter.DeviceCommunicationException {
+        String path = pathOf(device.getId());
+        media.ensurePath(path, sourceUrl(device, device.getConfig().get("rtspUrl")));
+        return internalRtspUrl + "/" + path + "?token=" + sign(path, clock.instant().plusSeconds(60));
     }
 
     /**

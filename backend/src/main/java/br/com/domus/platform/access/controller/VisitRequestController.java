@@ -39,10 +39,11 @@ public class VisitRequestController {
      * @param visitorName nome de quem aguarda na portaria
      * @param kind        VISITOR ou SERVICE_PROVIDER
      * @param callId      atendimento em que o pedido foi feito, opcional
+     * @param snapshotId  imagem da câmera de entrada capturada pela portaria (ver {@code entrance-snapshots}), opcional
      */
     public record CreateVisitRequest(@NotNull UUID unitId, @NotBlank @Size(max = 160) String visitorName,
                                      @NotNull @Pattern(regexp = "VISITOR|SERVICE_PROVIDER") String kind,
-                                     UUID callId) {
+                                     UUID callId, UUID snapshotId) {
     }
 
     /**
@@ -56,17 +57,19 @@ public class VisitRequestController {
      * @param expiresAt   prazo para o morador responder
      * @param decidedAt   quando o morador respondeu
      * @param entered     se a portaria já registrou a entrada de quem foi autorizado (só informado na lista da portaria)
+     * @param hasSnapshot se o pedido tem a imagem da câmera de entrada
      */
     public record VisitRequestResponse(UUID id, UUID unitId, UUID callId, String visitorName, String kind,
                                        String status, Instant createdAt, Instant expiresAt, Instant decidedAt,
-                                       boolean entered) {
+                                       boolean entered, boolean hasSnapshot) {
         static VisitRequestResponse from(VisitRequest r) {
-            return from(r, false);
+            return from(r, false, false);
         }
 
-        static VisitRequestResponse from(VisitRequest r, boolean entered) {
+        static VisitRequestResponse from(VisitRequest r, boolean entered, boolean hasSnapshot) {
             return new VisitRequestResponse(r.getId(), r.getUnitId(), r.getCallId(), r.getVisitorName(), r.getKind(),
-                    r.effectiveStatus(Instant.now()), r.getCreatedAt(), r.getExpiresAt(), r.getDecidedAt(), entered);
+                    r.effectiveStatus(Instant.now()), r.getCreatedAt(), r.getExpiresAt(), r.getDecidedAt(), entered,
+                    hasSnapshot);
         }
     }
 
@@ -82,7 +85,7 @@ public class VisitRequestController {
     @ResponseStatus(HttpStatus.CREATED)
     public VisitRequestResponse create(@PathVariable UUID condominiumId, @Valid @RequestBody CreateVisitRequest r) {
         return VisitRequestResponse.from(service.request(condominiumId, r.unitId(), r.visitorName(), r.kind(),
-                r.callId()));
+                r.callId(), r.snapshotId()), false, r.snapshotId() != null);
     }
 
     @GetMapping("/visit-requests")
@@ -91,7 +94,8 @@ public class VisitRequestController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         org.springframework.data.domain.Page<VisitRequest> page = service.list(condominiumId, callId, pageable);
         java.util.Set<UUID> entered = service.enteredIds(condominiumId, page.getContent().stream().map(VisitRequest::getId).toList());
-        return PageResponse.of(page, r -> VisitRequestResponse.from(r, entered.contains(r.getId())));
+        java.util.Set<UUID> pics = service.withSnapshot(condominiumId, page.getContent().stream().map(VisitRequest::getId).toList());
+        return PageResponse.of(page, r -> VisitRequestResponse.from(r, entered.contains(r.getId()), pics.contains(r.getId())));
     }
 
     /** A portaria registra a entrada de quem o morador autorizou. Não abre porta. */
@@ -105,7 +109,9 @@ public class VisitRequestController {
     @GetMapping("/me/visit-requests")
     public PageResponse<VisitRequestResponse> listMine(@PathVariable UUID condominiumId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(service.listMine(condominiumId, pageable), VisitRequestResponse::from);
+        org.springframework.data.domain.Page<VisitRequest> page = service.listMine(condominiumId, pageable);
+        java.util.Set<UUID> pics = service.withSnapshot(condominiumId, page.getContent().stream().map(VisitRequest::getId).toList());
+        return PageResponse.of(page, r -> VisitRequestResponse.from(r, false, pics.contains(r.getId())));
     }
 
     @PostMapping("/me/visit-requests/{requestId}/approve")

@@ -25,3 +25,6 @@ portaria:
     enabled: true
     token-secret: dev-only-media-token-secret-do-not-use-in-production-01
     publish-secret: dev-only-media-publish-secret
+  snapshots:
+    # SOMENTE desenvolvimento: captura ligada (câmeras SIMULATOR geram imagem sintética).
+    enabled: true

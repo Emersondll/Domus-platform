@@ -18,7 +18,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
 | `scripts/restore-drill.sh` | PASS (14 migrações, V1–V14) |
 | `scripts/api-smoke.py` | OK: 128 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
-| CI no GitHub | **verde** nos pushes até `5d4caa4` (2026-10-26); o de `5fdaaea` estava em andamento ao escrever |
+| CI no GitHub | **verde** nos pushes até `5fdaaea` (2026-10-26); o de `d716a2a` (só documentação) foi disparado e não foi conferido |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -68,7 +68,10 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 2. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
 3. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
-4. **Telas de administração da plataforma e da empresa operadora** (empresas e seus administradores, agentes locais, rotação de chave de dispositivo, conflitos de sincronização). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.
+4. **Telas de administração da plataforma e da empresa operadora — PENDENTE (só existe API).** Escopo:
+   - **Administrador da plataforma:** cadastrar e listar empresas operadoras (`/companies`) e os administradores de cada empresa (`/companies/{id}/admins`); criar condomínios; visão de todas as empresas.
+   - **Administrador da empresa operadora:** criar e gerenciar os condomínios da empresa, operadores e síndicos (hoje só a equipe de um condomínio, na aba Equipe), agentes locais (`/condominiums/{id}/agents`: cadastro e chave), rotação de chave de dispositivo (`rotate-key`) e conflitos de sincronização (`/sync-conflicts`).
+   - **Antes de começar, decidir D8** (o que cada papel pode ver e fazer) e D7 (planos e limites por empresa). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.
 5. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
 6. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
 7. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.

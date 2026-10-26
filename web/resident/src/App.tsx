@@ -98,6 +98,9 @@ export function App() {
     <div className="app">
       <header>
         <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Domus"}</strong>
+        {condo && tab !== "Início" && (
+          <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início">🏠</button>
+        )}
         <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
           <select aria-label="Condomínio" value={condo ?? ""} onChange={(e) => setCondo(e.target.value)}>

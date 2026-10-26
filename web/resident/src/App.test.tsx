@@ -325,6 +325,16 @@ describe("resident app", () => {
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
   });
 
+  it("keeps a home shortcut in the header on every screen except the home itself", async () => {
+    const user = await openTab("Início");
+    expect(screen.queryByRole("button", { name: "Ir para o início" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    await user.click(screen.getByRole("button", { name: "Veículos" }));
+    await user.click(await screen.findByRole("button", { name: "Ir para o início" }));
+    expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ir para o início" })).not.toBeInTheDocument();
+  });
+
   it("shows the entrance image with the visitor request, or says there is none", async () => {
     const at = new Date().toISOString();
     myVisitRequests = [

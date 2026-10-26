@@ -92,6 +92,9 @@ public class CameraStreamService {
         if (!"CAMERA".equals(device.getKind()) || rtspUrl == null) {
             throw new ConflictException("Camera has no video source configured");
         }
+        if (!device.isActive()) {
+            throw new ConflictException("Camera is deactivated");
+        }
         if (!enabled) {
             throw new ConflictException("Live video is not enabled on this installation");
         }

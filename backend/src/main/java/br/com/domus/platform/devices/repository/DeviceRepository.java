@@ -20,5 +20,9 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     /** Uso interno (assinatura de eventos): varre todos os tenants sem expor o resultado por API. */
     List<Device> findByAdapter(String adapter);
 
+    boolean existsByCondominiumIdAndNameAndIdNot(UUID condominiumId, String name, UUID id);
+
+    List<Device> findByCondominiumIdAndEntranceAndVisitorEntranceTrue(UUID condominiumId, String entrance);
+
     boolean existsByCondominiumIdAndName(UUID condominiumId, String name);
 }

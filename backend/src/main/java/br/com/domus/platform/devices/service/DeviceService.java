@@ -83,6 +83,67 @@ public class DeviceService implements DeviceHealthLookup {
         return new Registered(device, apiKey);
     }
 
+    /** Edita nome, entrada e configuração de um equipamento (síndico ou administração). Tipo e adaptador não mudam. */
+    @Transactional
+    public Device update(UUID condominiumId, UUID deviceId, String name, String entrance, Map<String, String> config) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.update");
+        Device device = find(condominiumId, deviceId);
+        Map<String, String> next = config == null ? Map.of() : config;
+        if (next.containsKey("rtspUrl")) {
+            if (!"CAMERA".equals(device.getKind())) {
+                throw new IllegalArgumentException("rtspUrl only applies to cameras");
+            }
+            hostPolicy.requireAllowedRtsp(next.get("rtspUrl"));
+        }
+        if (devices.existsByCondominiumIdAndNameAndIdNot(condominiumId, name, deviceId)) {
+            throw new ConflictException("Device name already in use");
+        }
+        boolean entranceChanged = !device.getEntrance().equals(entrance);
+        if (device.isVisitorEntrance() && entranceChanged) {
+            throw new ConflictException("Unmark the visitor entrance camera before changing its entrance");
+        }
+        device.update(name, entrance, next);
+        audit.record(actor.userId(), null, condominiumId, "device.update", "device", deviceId.toString(),
+                AuditOutcome.SUCCESS);
+        return device;
+    }
+
+    /** Desativa ou reativa uma câmera (equipamentos de acesso não se desativam por aqui). */
+    @Transactional
+    public Device setActive(UUID condominiumId, UUID deviceId, boolean active) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.active");
+        Device device = find(condominiumId, deviceId);
+        if (!"CAMERA".equals(device.getKind())) {
+            throw new ConflictException("Only cameras can be deactivated");
+        }
+        device.setActive(active);
+        audit.record(actor.userId(), null, condominiumId, active ? "device.activate" : "device.deactivate", "device",
+                deviceId.toString(), AuditOutcome.SUCCESS);
+        return device;
+    }
+
+    /** Marca (ou desmarca) a câmera de entrada de visitas; marcar troca a que estava marcada na mesma entrada. */
+    @Transactional
+    public Device setVisitorEntrance(UUID condominiumId, UUID deviceId, boolean enabled) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.visitor-entrance");
+        Device device = find(condominiumId, deviceId);
+        if (!"CAMERA".equals(device.getKind())) {
+            throw new ConflictException("Only a camera can be the visitor entrance camera");
+        }
+        if (enabled) {
+            if (!device.isActive()) {
+                throw new ConflictException("Activate the camera first");
+            }
+            devices.findByCondominiumIdAndEntranceAndVisitorEntranceTrue(condominiumId, device.getEntrance())
+                    .stream().filter(d -> !d.getId().equals(deviceId)).forEach(d -> d.setVisitorEntrance(false));
+            devices.flush();
+        }
+        device.setVisitorEntrance(enabled);
+        audit.record(actor.userId(), null, condominiumId, "device.visitor-entrance." + enabled, "device",
+                deviceId.toString(), AuditOutcome.SUCCESS);
+        return device;
+    }
+
     @Transactional
     public String rotateKey(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.rotate-key");

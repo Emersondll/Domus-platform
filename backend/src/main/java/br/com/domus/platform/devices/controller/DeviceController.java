@@ -65,13 +65,18 @@ public class DeviceController {
      * @param apiKey     chave de API do dispositivo; presente somente na criação ou rotação
      * @param residentOpenable se o morador pode pedir a abertura deste dispositivo (exige a política do condomínio ligada)
      * @param liveVideo        se a câmera tem fonte de vídeo (RTSP) configurada para a visualização ao vivo
+     * @param active           falso quando a câmera foi desativada (sem vídeo e fora da câmera de entrada)
+     * @param visitorEntrance  se é a câmera de entrada de visitas da sua entrada
+     * @param config           configuração não secreta (para câmeras: endereço RTSP e nome da variável de credencial)
      */
     public record DeviceResponse(UUID id, String name, String kind, String adapter, String entrance, String status,
-                                 Instant lastSeenAt, String apiKey, boolean residentOpenable, boolean liveVideo) {
+                                 Instant lastSeenAt, String apiKey, boolean residentOpenable, boolean liveVideo,
+                                 boolean active, boolean visitorEntrance, Map<String, String> config) {
         public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
                     d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable(),
-                    "CAMERA".equals(d.getKind()) && d.getConfig().containsKey("rtspUrl"));
+                    "CAMERA".equals(d.getKind()) && d.getConfig().containsKey("rtspUrl"), d.isActive(),
+                    d.isVisitorEntrance(), "CAMERA".equals(d.getKind()) ? d.getConfig() : Map.of());
         }
     }
 
@@ -123,6 +128,42 @@ public class DeviceController {
     public PageResponse<DeviceResponse> list(@PathVariable UUID condominiumId,
                                              @PageableDefault(size = 50, sort = "name") Pageable pageable) {
         return PageResponse.of(devices.list(condominiumId, pageable), d -> DeviceResponse.from(d, null));
+    }
+
+    /**
+     * @param name     novo nome
+     * @param entrance nova entrada
+     * @param config   nova configuração (substitui a anterior)
+     */
+    public record UpdateDeviceRequest(@NotBlank @Size(max = 80) String name, @NotBlank @Size(max = 60) String entrance,
+                                      Map<String, String> config) {
+    }
+
+    /** @param active verdadeiro reativa, falso desativa */
+    public record ActiveRequest(boolean active) {
+    }
+
+    /** @param enabled verdadeiro marca como câmera de entrada de visitas; falso desmarca */
+    public record VisitorEntranceRequest(boolean enabled) {
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/condominiums/{condominiumId}/devices/{deviceId}")
+    public DeviceResponse update(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
+                                 @Valid @RequestBody UpdateDeviceRequest r) {
+        return DeviceResponse.from(devices.update(condominiumId, deviceId, r.name().trim(), r.entrance().trim(),
+                r.config()), null);
+    }
+
+    @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/active")
+    public DeviceResponse active(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
+                                 @RequestBody ActiveRequest r) {
+        return DeviceResponse.from(devices.setActive(condominiumId, deviceId, r.active()), null);
+    }
+
+    @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/visitor-entrance")
+    public DeviceResponse visitorEntrance(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
+                                          @RequestBody VisitorEntranceRequest r) {
+        return DeviceResponse.from(devices.setVisitorEntrance(condominiumId, deviceId, r.enabled()), null);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/refresh-status")

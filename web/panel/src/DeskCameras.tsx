@@ -4,6 +4,7 @@ import type { DeviceFull } from "./types";
 import { CameraPlayer } from "./CameraPlayer";
 import { errorMessage, useCondoList } from "./useCondoList";
 
+const MAX_LIVE = 4;
 const STATUS_TEXT: Record<string, string> = { ONLINE: "online", OFFLINE: "offline", UNKNOWN: "estado desconhecido" };
 
 /**
@@ -19,7 +20,12 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   const [adapter, setAdapter] = useState("ONVIF");
   const [rtspUrl, setRtspUrl] = useState("");
   const [rtspEnv, setRtspEnv] = useState("");
-  const [watching, setWatching] = useState<DeviceFull | null>(null);
+  const [watching, setWatching] = useState<DeviceFull[]>([]);
+  const [editing, setEditing] = useState<DeviceFull | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEntrance, setEditEntrance] = useState("");
+  const [editRtsp, setEditRtsp] = useState("");
+  const [editEnv, setEditEnv] = useState("");
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +53,44 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
     }
   }
 
+  function startEdit(c: DeviceFull) {
+    setEditing(c);
+    setEditName(c.name);
+    setEditEntrance(c.entrance);
+    setEditRtsp(c.config?.rtspUrl ?? "");
+    setEditEnv(c.config?.rtspCredentialsEnv ?? "");
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setError(null);
+    const config: Record<string, string> = {};
+    if (editRtsp.trim()) config.rtspUrl = editRtsp.trim();
+    if (editRtsp.trim() && editEnv.trim()) config.rtspCredentialsEnv = editEnv.trim();
+    try {
+      await request(token, "PUT", `${base}/${editing.id}`, { name: editName.trim(), entrance: editEntrance.trim(), config });
+      setWatching((list) => list.filter((w) => w.id !== editing.id)); // o vídeo reabre com a configuração nova
+      setEditing(null);
+      await devices.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  /** Desativar/reativar e marcar a câmera de entrada de visitas. */
+  async function act(id: string, what: "active" | "visitor-entrance", body: unknown) {
+    setError(null);
+    try {
+      await request(token, "POST", `${base}/${id}/${what}`, body);
+      if (what === "active" && (body as { active: boolean }).active === false) {
+        setWatching((list) => list.filter((w) => w.id !== id));
+      }
+      await devices.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
   async function refresh(id: string) {
     setError(null);
     try {
@@ -64,22 +108,55 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         Cadastre as câmeras e acompanhe se estão online. O vídeo ao vivo só aparece para câmeras com endereço RTSP e com o
         servidor de mídia ligado (docs/cameras.md). Ver a imagem fica registrado na auditoria. Nenhuma imagem é simulada.
       </p>
-      {watching && (
-        <CameraPlayer token={token} name={watching.name} sessionUrl={`${base}/${watching.id}/stream-session`}
-          onClose={() => setWatching(null)} />
+      {watching.length > 0 && (
+        <div className="camera-grid" aria-label="Câmeras ao vivo">
+          {watching.map((w) => (
+            <CameraPlayer key={w.id} token={token} name={w.name} sessionUrl={`${base}/${w.id}/stream-session`}
+              onClose={() => setWatching((list) => list.filter((x) => x.id !== w.id))} />
+          ))}
+        </div>
       )}
+      {watching.length >= MAX_LIVE && <p className="hint">Limite de {MAX_LIVE} câmeras ao vivo ao mesmo tempo. Feche uma para abrir outra.</p>}
       <ul>
         {cameras.map((c) => (
-          <li key={c.id}>
-            <strong>{c.name}</strong> ({c.entrance}) · {STATUS_TEXT[c.status] ?? "estado desconhecido"}{" "}
-            <button onClick={() => refresh(c.id)} aria-label={`Atualizar estado de ${c.name}`}>Atualizar estado</button>{" "}
-            {c.liveVideo
-              ? <button onClick={() => setWatching(c)} aria-label={`Ver ao vivo ${c.name}`}>Ver ao vivo</button>
-              : <span className="hint">sem vídeo configurado</span>}
+          <li key={c.id} className={c.active === false ? "inactive" : ""}>
+            <strong>{c.name}</strong> ({c.entrance}) · {c.active === false ? "desativada" : (STATUS_TEXT[c.status] ?? "estado desconhecido")}
+            {c.visitorEntrance && <span className="badge ok"> câmera de entrada de visitas</span>}{" "}
+            {c.active !== false && (
+              <button onClick={() => refresh(c.id)} aria-label={`Atualizar estado de ${c.name}`}>Atualizar estado</button>
+            )}{" "}
+            {c.active !== false && (c.liveVideo
+              ? <button disabled={watching.some((w) => w.id === c.id) || watching.length >= MAX_LIVE}
+                  onClick={() => setWatching((list) => [...list, c])} aria-label={`Ver ao vivo ${c.name}`}>Ver ao vivo</button>
+              : <span className="hint">sem vídeo configurado</span>)}{" "}
+            <button onClick={() => startEdit(c)} aria-label={`Editar ${c.name}`}>Editar</button>{" "}
+            <button onClick={() => act(c.id, "active", { active: c.active === false })}
+              aria-label={`${c.active === false ? "Reativar" : "Desativar"} ${c.name}`}>{c.active === false ? "Reativar" : "Desativar"}</button>{" "}
+            {c.active !== false && (
+              <button onClick={() => act(c.id, "visitor-entrance", { enabled: !c.visitorEntrance })}
+                aria-label={`${c.visitorEntrance ? "Desmarcar" : "Marcar"} ${c.name} como câmera de entrada de visitas`}>
+                {c.visitorEntrance ? "Desmarcar entrada de visitas" : "Marcar como entrada de visitas"}
+              </button>
+            )}
           </li>
         ))}
         {cameras.length === 0 && <li>Nenhuma câmera cadastrada.</li>}
       </ul>
+      {editing && (
+        <section aria-label={`Editar ${editing.name}`}>
+          <h3>Editar câmera</h3>
+          <label htmlFor="edit-name">Novo nome</label>
+          <input id="edit-name" maxLength={80} value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <label htmlFor="edit-entrance">Nova entrada</label>
+          <input id="edit-entrance" maxLength={60} value={editEntrance} onChange={(e) => setEditEntrance(e.target.value)} />
+          <label htmlFor="edit-rtsp">Endereço RTSP (sem usuário e senha)</label>
+          <input id="edit-rtsp" maxLength={200} value={editRtsp} onChange={(e) => setEditRtsp(e.target.value)} />
+          <label htmlFor="edit-env">Variável de ambiente com usuário:senha</label>
+          <input id="edit-env" maxLength={80} value={editEnv} onChange={(e) => setEditEnv(e.target.value)} />
+          <button disabled={!editName.trim() || !editEntrance.trim()} onClick={saveEdit}>Salvar alterações</button>{" "}
+          <button onClick={() => setEditing(null)}>Cancelar</button>
+        </section>
+      )}
       <h3>Cadastrar câmera</h3>
       <p className="hint">Só o síndico ou a administração cadastra equipamentos. Segredos de acesso ficam em variáveis de ambiente, não aqui.</p>
       <label htmlFor="cam-name">Nome</label>

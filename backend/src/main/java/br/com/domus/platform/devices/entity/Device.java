@@ -45,6 +45,12 @@ public class Device {
     @Column(name = "resident_openable", nullable = false)
     private boolean residentOpenable;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @Column(name = "visitor_entrance", nullable = false)
+    private boolean visitorEntrance;
+
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
@@ -68,6 +74,32 @@ public class Device {
         if ("ONLINE".equals(status)) {
             this.lastSeenAt = when;
         }
+    }
+
+    /** Edita o que não define a identidade do equipamento (tipo e adaptador não mudam). */
+    public void update(String name, String entrance, Map<String, String> config) {
+        this.name = name;
+        this.entrance = entrance;
+        this.config = config;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+        if (!active) {
+            this.visitorEntrance = false; // câmera desativada não pode ser a câmera de entrada
+        }
+    }
+
+    public void setVisitorEntrance(boolean visitorEntrance) {
+        this.visitorEntrance = visitorEntrance;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public boolean isVisitorEntrance() {
+        return visitorEntrance;
     }
 
     public void allowResidentOpen(boolean allowed) {

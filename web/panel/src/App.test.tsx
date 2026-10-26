@@ -52,6 +52,9 @@ function fakeApi() {
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
     if (url.endsWith("/remote-open")) return json({ enabled: remoteEnabled });
     if (url.endsWith("/resident-openable")) return json({ id: "d1", residentOpenable: true });
+    if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
+    if (url.endsWith("/active") || url.endsWith("/visitor-entrance")) return json({ id: "d2" });
+    if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/devices/d2/stream-session") && videoDown) return new Response(JSON.stringify({ detail: "Media server unavailable" }), { status: 409 });
     if (url.endsWith("/devices/d2/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/messages/threads")) return json([{ residentUserId: "ru1", residentName: "Maria Teste", lastAt: new Date().toISOString(), unread: 2 }]);
@@ -78,7 +81,9 @@ function fakeApi() {
     if (url.includes("/commands?")) return pg([{ id: "cmd0", deviceId: "d1", state: "SENT", failureReason: null, requestedAt: new Date().toISOString() }]);
     if (url.includes("/devices?")) return pg([
       { id: "d1", name: "Portão principal", kind: "ACCESS_CONTROLLER", adapter: "SIMULATOR", entrance: "portaria", status: "ONLINE", lastSeenAt: null },
-      { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null, liveVideo: true },
+      { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: false, config: { rtspUrl: "rtsp://10.0.0.5/garagem" } },
+      { id: "d3", name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", status: "ONLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: true, config: {} },
+      { id: "d4", name: "Câmera velha", kind: "CAMERA", adapter: "ONVIF", entrance: "fundos", status: "UNKNOWN", lastSeenAt: null, liveVideo: false, active: false, visitorEntrance: false, config: {} },
     ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
     if (url === "/api/v1/operator/panics") return json(panics);
@@ -222,7 +227,7 @@ describe("operator panel", () => {
     expect(await screen.findByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
     await waitFor(() => expect(hlsInstances.at(-1)?.loaded).toEqual(["http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig"]));
     expect(posted.some((p) => p.url.endsWith("/devices/d2/stream-session"))).toBe(true);
-    await user.click(screen.getByRole("button", { name: "Fechar vídeo" }));
+    await user.click(screen.getByRole("button", { name: "Fechar vídeo Câmera garagem" }));
     expect(hlsInstances.at(-1)?.destroyed).toBe(true);
   });
 
@@ -470,5 +475,35 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Nome do visitante"), "Tia Rosa");
     await user.click(screen.getByRole("button", { name: "Pedir autorização ao morador" }));
     await waitFor(() => expect(posted.filter((p) => p.url.endsWith("/visit-requests")).at(-1)?.body).toEqual({ unitId: "un1", visitorName: "Tia Rosa", kind: "VISITOR", callId: null }));
+  });
+
+  it("shows several cameras at once, edits one, deactivates one and marks the visitor entrance camera", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(await screen.findByText(/câmera de entrada de visitas/)).toBeInTheDocument(); // d3 já é a de entrada
+    expect(screen.getByText(/Câmera velha/).closest("li")).toHaveTextContent("desativada");
+    expect(screen.queryByRole("button", { name: "Ver ao vivo Câmera velha" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver ao vivo Câmera garagem" }));
+    await user.click(screen.getByRole("button", { name: "Ver ao vivo Câmera hall" }));
+    const grid = await screen.findByLabelText("Câmeras ao vivo");
+    expect(within(grid).getByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
+    expect(within(grid).getByRole("region", { name: "Vídeo de Câmera hall" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tela cheia Câmera hall" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Fechar vídeo Câmera hall" }));
+    expect(within(grid).queryByRole("region", { name: "Vídeo de Câmera hall" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Editar Câmera garagem" }));
+    await user.clear(screen.getByLabelText("Novo nome"));
+    await user.type(screen.getByLabelText("Novo nome"), "Garagem 2");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d2"))?.body).toEqual({ name: "Garagem 2", entrance: "garagem", config: { rtspUrl: "rtsp://10.0.0.5/garagem" } }));
+
+    await user.click(screen.getByRole("button", { name: "Desativar Câmera hall" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d3/active"))?.body).toEqual({ active: false }));
+    await user.click(screen.getByRole("button", { name: "Reativar Câmera velha" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d4/active"))?.body).toEqual({ active: true }));
+    await user.click(screen.getByRole("button", { name: "Marcar Câmera garagem como câmera de entrada de visitas" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d2/visitor-entrance"))?.body).toEqual({ enabled: true }));
   });
 });

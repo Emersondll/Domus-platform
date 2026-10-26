@@ -13,6 +13,7 @@ type Session = { hlsUrl: string; expiresAt: string };
 export function CameraPlayer({ token, sessionUrl, name, onClose }:
   { token: string; sessionUrl: string; name: string; onClose: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
+  const region = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState("Conectando…");
 
@@ -70,11 +71,12 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
   }, [token, sessionUrl]);
 
   return (
-    <div role="region" aria-label={`Vídeo de ${name}`}>
+    <div role="region" aria-label={`Vídeo de ${name}`} ref={region} className="camera-tile">
       <p className="hint">{error ? "Sem imagem" : status} · {name}</p>
       <video ref={video} muted playsInline controls style={{ width: "100%", maxWidth: 640, background: "#000" }} />
       {error && <p role="alert" className="error">{error}</p>}
-      <button onClick={onClose}>Fechar vídeo</button>
+      <button onClick={() => void region.current?.requestFullscreen?.()} aria-label={`Tela cheia ${name}`}>Tela cheia</button>{" "}
+      <button onClick={onClose} aria-label={`Fechar vídeo ${name}`}>Fechar vídeo</button>
     </div>
   );
 }

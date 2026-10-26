@@ -54,6 +54,16 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
     }
   }
 
+  async function registerEntry(requestId: string) {
+    setError(null);
+    try {
+      await request(token, "POST", `${base}/visit-requests/${requestId}/entry`, { entrance: entrance.trim() || "portaria" });
+      await Promise.all([requests.reload(), onSite.reload(), attempts.reload()]);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
   async function registerExit(attemptId: string) {
     setError(null);
     try {
@@ -67,6 +77,22 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
 
   return (
     <div aria-label="Visitantes">
+      <h3>No local agora ({onSite.items.length})</h3>
+      {error && <p role="alert" className="error">{error}</p>}
+      <p className="hint">Quem entrou e ainda não saiu. Registre a saída quando a pessoa for embora; assim o número no resumo volta a refletir quem está no condomínio.</p>
+      <ul>
+        {onSite.items.map((r) => {
+          const hours = (Date.now() - new Date(r.occurredAt).getTime()) / 3_600_000;
+          return (
+            <li key={r.attemptId}>
+              {r.visitorName ?? "Visitante"}{r.unitLabel ? ` · unidade ${r.unitLabel}` : ""} · entrou {new Date(r.occurredAt).toLocaleTimeString()} · {r.entrance}{" "}
+              {hours >= 12 && <span className="badge warn">no local há mais de 12 h: confirme</span>}{" "}
+              <button aria-label={`Registrar saída de ${r.visitorName ?? "visitante"}`} onClick={() => registerExit(r.attemptId)}>Registrar saída</button>
+            </li>
+          );
+        })}
+        {onSite.items.length === 0 && <li>Ninguém no local.</li>}
+      </ul>
       <h3>Avisar chegada de visita ou prestador</h3>
       <p className="hint">
         O morador recebe a notificação com o nome de quem chegou, na aba Visitas do app, e autoriza ou nega. Vale para visita de pessoa
@@ -100,6 +126,10 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
             <span className={r.status === "APPROVED" ? "badge ok" : r.status === "PENDING" ? "badge pending" : "badge warn"}>
               {{ PENDING: "aguardando morador", APPROVED: "autorizado", DENIED: "negado", EXPIRED: "sem resposta" }[r.status] ?? r.status}
             </span>
+            {r.status === "APPROVED" && !r.entered && (
+              <button aria-label={`Registrar entrada de ${r.visitorName}`} onClick={() => registerEntry(r.id)}>Registrar entrada</button>
+            )}
+            {r.entered && <small> · entrada registrada</small>}
           </li>
         ))}
         {requests.items.length === 0 && <li>Nenhum pedido de autorização.</li>}
@@ -116,17 +146,6 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
           {verdict.granted ? `Entrada liberada${verdict.visitorName ? `: ${verdict.visitorName}` : ""} (a porta não é aberta por esta ação)` : `Entrada negada (${verdict.reason})`}
         </p>
       )}
-      <h3>No local agora ({onSite.items.length})</h3>
-      {error && <p role="alert" className="error">{error}</p>}
-      <ul>
-        {onSite.items.map((r) => (
-          <li key={r.attemptId}>
-            {r.visitorName ?? "Visitante"}{r.unitLabel ? ` · unidade ${r.unitLabel}` : ""} · entrou {new Date(r.occurredAt).toLocaleTimeString()} · {r.entrance}{" "}
-            <button onClick={() => registerExit(r.attemptId)}>Registrar saída</button>
-          </li>
-        ))}
-        {onSite.items.length === 0 && <li>Ninguém no local.</li>}
-      </ul>
       <h3>Entradas recentes</h3>
       <ul>
         {attempts.items.map((a) => (

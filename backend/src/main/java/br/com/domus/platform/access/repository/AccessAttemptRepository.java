@@ -19,16 +19,27 @@ public interface AccessAttemptRepository extends JpaRepository<AccessAttempt, UU
     @Query(value = """
             SELECT a FROM AccessAttempt a
             WHERE a.condominiumId = :condominiumId
-              AND a.credentialId IN (SELECT c.id FROM AccessCredential c
-                                     WHERE c.condominiumId = :condominiumId AND c.unitId = :unitId)
+              AND (a.credentialId IN (SELECT c.id FROM AccessCredential c
+                                      WHERE c.condominiumId = :condominiumId AND c.unitId = :unitId)
+                   OR a.visitRequestId IN (SELECT v.id FROM VisitRequest v
+                                           WHERE v.condominiumId = :condominiumId AND v.unitId = :unitId))
             """, countQuery = """
             SELECT count(a) FROM AccessAttempt a
             WHERE a.condominiumId = :condominiumId
-              AND a.credentialId IN (SELECT c.id FROM AccessCredential c
-                                     WHERE c.condominiumId = :condominiumId AND c.unitId = :unitId)
+              AND (a.credentialId IN (SELECT c.id FROM AccessCredential c
+                                      WHERE c.condominiumId = :condominiumId AND c.unitId = :unitId)
+                   OR a.visitRequestId IN (SELECT v.id FROM VisitRequest v
+                                           WHERE v.condominiumId = :condominiumId AND v.unitId = :unitId))
             """)
     Page<AccessAttempt> findByUnit(@Param("condominiumId") UUID condominiumId, @Param("unitId") UUID unitId,
                                    Pageable pageable);
+
+    boolean existsByVisitRequestId(UUID visitRequestId);
+
+    /** Quais pedidos (entre os informados) já tiveram a entrada registrada. */
+    @Query("SELECT a.visitRequestId FROM AccessAttempt a WHERE a.condominiumId = :condominiumId AND a.visitRequestId IN :ids")
+    java.util.List<UUID> findEnteredRequestIds(@Param("condominiumId") UUID condominiumId,
+                                               @Param("ids") java.util.Collection<UUID> ids);
 
     Optional<AccessAttempt> findByIdAndCondominiumId(UUID id, UUID condominiumId);
 

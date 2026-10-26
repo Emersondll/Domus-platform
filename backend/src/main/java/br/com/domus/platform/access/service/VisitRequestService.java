@@ -1,12 +1,15 @@
 package br.com.domus.platform.access.service;
 
+import br.com.domus.platform.access.entity.AccessAttempt;
 import br.com.domus.platform.access.entity.VisitRequest;
+import br.com.domus.platform.access.repository.AccessAttemptRepository;
 import br.com.domus.platform.access.repository.VisitRequestRepository;
 import br.com.domus.platform.commercial.service.CommercialService;
 import br.com.domus.platform.notifications.service.NotificationService;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.config.CorrelationIdFilter;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
@@ -16,7 +19,10 @@ import br.com.domus.platform.shared.tenant.ResidentContext;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Set;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,12 +44,15 @@ public class VisitRequestService {
     private final NotificationService notifications;
     private final AccessService access;
     private final AuditService audit;
+    private final AccessAttemptRepository attempts;
     private final Clock clock;
 
-    public VisitRequestService(VisitRequestRepository requests, CommercialService commercial,
+    public VisitRequestService(VisitRequestRepository requests, AccessAttemptRepository attempts,
+                               CommercialService commercial,
                                ResidentRepository residents, NotificationService notifications,
                                AccessService access, AuditService audit, Clock clock) {
         this.requests = requests;
+        this.attempts = attempts;
         this.commercial = commercial;
         this.residents = residents;
         this.notifications = notifications;
@@ -96,6 +105,36 @@ public class VisitRequestService {
         audit.record(me.actor().userId(), null, condominiumId, action, "visit_request", requestId.toString(),
                 AuditOutcome.SUCCESS);
         return request;
+    }
+
+    /**
+     * Registra a entrada de quem o morador autorizou na portaria (sem convite). Passa a contar como "no local" e pode ter a
+     * saída registrada. Não abre porta: a liberação física segue sendo da portaria. Uma entrada por pedido aprovado.
+     */
+    @Transactional
+    public AccessAttempt registerEntry(UUID condominiumId, UUID requestId, String entrance) {
+        Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "visit.entry");
+        VisitRequest request = requests.findByIdAndCondominiumId(requestId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Visit request not found"));
+        if (!VisitRequest.APPROVED.equals(request.effectiveStatus(Instant.now(clock)))) {
+            throw new ConflictException("Only an approved request can have an entry");
+        }
+        if (attempts.existsByVisitRequestId(requestId)) {
+            throw new ConflictException("Entry already registered for this request");
+        }
+        AccessAttempt attempt = attempts.save(AccessAttempt.walkIn(condominiumId, requestId, entrance, actor.userId(),
+                MDC.get(CorrelationIdFilter.MDC_KEY), Instant.now(clock)));
+        audit.record(actor.userId(), null, condominiumId, "visit.entry", "access_attempt", attempt.getId().toString(),
+                AuditOutcome.SUCCESS);
+        notifications.notifyUnit(condominiumId, request.getUnitId(), NotificationService.VISITOR_ARRIVED,
+                request.getVisitorName() + " entrou", "A portaria registrou a entrada de " + request.getVisitorName() + ".");
+        return attempt;
+    }
+
+    /** Dos pedidos informados, os que já tiveram a entrada registrada. */
+    @Transactional(readOnly = true)
+    public Set<UUID> enteredIds(UUID condominiumId, Collection<UUID> requestIds) {
+        return requestIds.isEmpty() ? Set.of() : Set.copyOf(attempts.findEnteredRequestIds(condominiumId, requestIds));
     }
 
     private UUID myUnit(ResidentContext me, UUID condominiumId) {

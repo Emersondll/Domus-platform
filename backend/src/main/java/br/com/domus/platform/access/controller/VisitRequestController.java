@@ -55,13 +55,27 @@ public class VisitRequestController {
      * @param createdAt   quando a portaria pediu
      * @param expiresAt   prazo para o morador responder
      * @param decidedAt   quando o morador respondeu
+     * @param entered     se a portaria já registrou a entrada de quem foi autorizado (só informado na lista da portaria)
      */
     public record VisitRequestResponse(UUID id, UUID unitId, UUID callId, String visitorName, String kind,
-                                       String status, Instant createdAt, Instant expiresAt, Instant decidedAt) {
+                                       String status, Instant createdAt, Instant expiresAt, Instant decidedAt,
+                                       boolean entered) {
         static VisitRequestResponse from(VisitRequest r) {
-            return new VisitRequestResponse(r.getId(), r.getUnitId(), r.getCallId(), r.getVisitorName(), r.getKind(),
-                    r.effectiveStatus(Instant.now()), r.getCreatedAt(), r.getExpiresAt(), r.getDecidedAt());
+            return from(r, false);
         }
+
+        static VisitRequestResponse from(VisitRequest r, boolean entered) {
+            return new VisitRequestResponse(r.getId(), r.getUnitId(), r.getCallId(), r.getVisitorName(), r.getKind(),
+                    r.effectiveStatus(Instant.now()), r.getCreatedAt(), r.getExpiresAt(), r.getDecidedAt(), entered);
+        }
+    }
+
+    /** @param entrance entrada por onde a pessoa passou (ex.: portaria, garagem) */
+    public record EntryRequest(@NotBlank @Size(max = 60) String entrance) {
+    }
+
+    /** @param attemptId registro de entrada criado; use-o para registrar a saída */
+    public record EntryResponse(UUID attemptId) {
     }
 
     @PostMapping("/visit-requests")
@@ -75,7 +89,17 @@ public class VisitRequestController {
     public PageResponse<VisitRequestResponse> list(@PathVariable UUID condominiumId,
             @RequestParam(required = false) UUID callId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(service.list(condominiumId, callId, pageable), VisitRequestResponse::from);
+        org.springframework.data.domain.Page<VisitRequest> page = service.list(condominiumId, callId, pageable);
+        java.util.Set<UUID> entered = service.enteredIds(condominiumId, page.getContent().stream().map(VisitRequest::getId).toList());
+        return PageResponse.of(page, r -> VisitRequestResponse.from(r, entered.contains(r.getId())));
+    }
+
+    /** A portaria registra a entrada de quem o morador autorizou. Não abre porta. */
+    @PostMapping("/visit-requests/{requestId}/entry")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EntryResponse entry(@PathVariable UUID condominiumId, @PathVariable UUID requestId,
+                               @Valid @RequestBody EntryRequest r) {
+        return new EntryResponse(service.registerEntry(condominiumId, requestId, r.entrance().trim()).getId());
     }
 
     @GetMapping("/me/visit-requests")

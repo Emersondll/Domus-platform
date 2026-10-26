@@ -119,6 +119,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/vehicles` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/visit-requests` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/visit-requests` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/visit-requests/{requestId}/entry` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/visitors` | condomínio | sim |
 | POST | `/api/v1/devices/{deviceId}/events` | agente/dispositivo/mídia | sim |
 | GET | `/api/v1/me/residencies` | morador | sim |

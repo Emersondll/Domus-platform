@@ -24,6 +24,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Notificações de visitantes e retorno da chamada | Feito | No app do morador as notificações são separadas por assunto (Visitas, Encomendas, Avisos, Mensagens, Portaria), cada aba com a contagem de não lidas |
 | Portaria avisa chegada de visita conhecida ou prestador (com empresa) | Feito | Aba Visitantes; o morador recebe a notificação na aba Visitas |
 | Encomendas a retirar na portaria (contagem, aba com número, lembrete ao morador) | Feito | Lista filtrada por status no servidor |
+| Entrada e saída de visitante/prestador autorizado pelo morador (conta como "no local" e reduz ao registrar a saída) | Feito | Antes só convite validado entrava na contagem; ver V14 |
 | Voltar ao início em todas as telas (app do morador e painel) | Feito | |
 | Aprovar/negar visitante pelo celular | **Feito** | |
 | Abertura remota de portão pelo morador | **Feito** | Desligada por padrão; duas travas (política do condomínio, ligada pelo síndico, e porta marcada); 1 abertura a cada 30 s por morador; mesma regra "aceito ≠ aberto" |

@@ -41,7 +41,10 @@ function fakeApi() {
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
-    if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null }]);
+    if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null },
+      { id: "vr10", unitId: "un1", callId: null, visitorName: "João Autorizado", kind: "SERVICE_PROVIDER", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: false },
+      { id: "vr11", unitId: "un1", callId: null, visitorName: "Maria Já Entrou", kind: "VISITOR", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: true }]);
+    if (url.includes("/visit-requests/") && url.endsWith("/entry")) return json({ attemptId: "e50" });
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr8" });
     if (url.endsWith("/access/validate")) return json({ granted: true, reason: "OK", unitId: "un1", visitorName: "Dona Rosa", attemptId: "e9" });
     if (url.endsWith("/exit") && init?.method === "POST") return json({ attemptId: "e1" });
@@ -266,8 +269,21 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
     expect(await screen.findByText(/Dona Rosa/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Registrar saída" }));
+    await user.click(screen.getByRole("button", { name: "Registrar saída de Dona Rosa" }));
     await waitFor(() => expect(posted.some((p) => p.url.endsWith("/access/entries/e1/exit"))).toBe(true));
+  });
+
+  it("registers the entry of a walk-in the resident approved, once", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    expect(await screen.findByText(/Tia Balcão/)).toBeInTheDocument();
+    // aguardando o morador: ainda não há botão de entrada
+    expect(screen.queryByRole("button", { name: "Registrar entrada de Tia Balcão" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Registrar entrada de João Autorizado" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar entrada de Maria Já Entrou" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Registrar entrada de João Autorizado" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visit-requests/vr10/entry"))?.body).toEqual({ entrance: "portaria" }));
   });
 
   it("keeps remote opening off until the manager enables it, then marks a door for residents", async () => {

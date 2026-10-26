@@ -48,7 +48,7 @@ export type PanicAlert = { callId: string; condominiumId: string; condominiumNam
 export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null; residentOpenable?: boolean; liveVideo?: boolean };
 export type CommandRow = { id: string; deviceId: string; state: string; failureReason: string | null; requestedAt: string };
 
-export type VisitRequest = { id: string; unitId: string; callId: string | null; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null };
+export type VisitRequest = { id: string; unitId: string; callId: string | null; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null; entered?: boolean };
 
 export type AccessRow = { attemptId: string; occurredAt: string; entrance: string; result: string; reason: string; unitId: string | null; unitLabel: string | null; visitorName: string | null; exitedAt: string | null };
 export type Announcement = { id: string; title: string; body: string; createdAt: string };

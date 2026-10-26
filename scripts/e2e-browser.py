@@ -361,10 +361,26 @@ try:
         expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_have_count(0, timeout=15000)
         check("visitante no local tem a saída registrada e some da lista", True)
 
+        # prestador sem convite: a portaria avisa, o morador autoriza, a portaria registra a entrada e depois a saída
+        pan.get_by_label("Unidade visitada").select_option(label="A / 101")
+        pan.get_by_label("Nome do visitante").fill("Prestador E2E")
+        pan.get_by_label("Tipo").select_option("SERVICE_PROVIDER")
+        pan.get_by_label("Empresa ou serviço (opcional)").fill("Net")
+        pan.get_by_role("button", name="Pedir autorização ao morador").click()
+        res.get_by_role("button", name="Início", exact=True).click()
+        expect(res.get_by_text("Prestador E2E (Net)").first).to_be_visible(timeout=15000)
+        res.get_by_role("button", name="Autorizar").click()
+        pan.get_by_role("button", name="Registrar entrada de Prestador E2E (Net)").click()
+        expect(pan.get_by_text(re.compile("Prestador E2E \\(Net\\) · unidade A / 101"))).to_be_visible(timeout=15000)
+        check("prestador autorizado pelo morador tem a entrada registrada e passa a contar no local", True)
+        pan.get_by_role("button", name="Registrar saída de Prestador E2E (Net)").click()
+        expect(pan.get_by_text(re.compile("Prestador E2E \\(Net\\) · unidade A / 101"))).to_have_count(0, timeout=15000)
+        check("a saída do prestador reduz o número de visitantes no local", True)
+
         pan.get_by_role("tab", name="Relatórios").click()
         pan.get_by_role("button", name="Consultar").click()
         expect(pan.get_by_text(re.compile("Visitante Saida E2E")).first).to_be_visible()
-        expect(pan.get_by_text(re.compile("saiu"))).to_be_visible()
+        expect(pan.get_by_text(re.compile("saiu")).first).to_be_visible()
         with pan.expect_download() as dl:
             pan.get_by_role("button", name="Exportar CSV").click()
         csv_path = dl.value.path()

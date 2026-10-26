@@ -39,6 +39,9 @@ public class AccessAttempt {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 
+    @Column(name = "visit_request_id", updatable = false)
+    private UUID visitRequestId;
+
     @Column(name = "exited_at")
     private Instant exitedAt;
 
@@ -59,6 +62,19 @@ public class AccessAttempt {
         this.actorUserId = actorUserId;
         this.correlationId = correlationId;
         this.occurredAt = occurredAt;
+    }
+
+    /** Entrada de visitante autorizado pelo morador na portaria (sem credencial), ligada ao pedido aprovado. */
+    public static AccessAttempt walkIn(UUID condominiumId, UUID visitRequestId, String entrance, UUID actorUserId,
+                                       String correlationId, Instant occurredAt) {
+        AccessAttempt a = new AccessAttempt(condominiumId, null, entrance, "GRANTED", "WALK_IN_APPROVED", actorUserId,
+                correlationId, occurredAt);
+        a.visitRequestId = visitRequestId;
+        return a;
+    }
+
+    public UUID getVisitRequestId() {
+        return visitRequestId;
     }
 
     public UUID getCondominiumId() {

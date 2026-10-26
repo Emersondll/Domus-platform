@@ -2,9 +2,11 @@ package br.com.domus.platform.access.service;
 
 import br.com.domus.platform.access.entity.AccessAttempt;
 import br.com.domus.platform.access.entity.AccessCredential;
+import br.com.domus.platform.access.entity.VisitRequest;
 import br.com.domus.platform.access.entity.Visitor;
 import br.com.domus.platform.access.repository.AccessAttemptRepository;
 import br.com.domus.platform.access.repository.AccessCredentialRepository;
+import br.com.domus.platform.access.repository.VisitRequestRepository;
 import br.com.domus.platform.access.repository.VisitorRepository;
 import br.com.domus.platform.commercial.entity.Block;
 import br.com.domus.platform.commercial.entity.Unit;
@@ -57,6 +59,7 @@ public class AccessReportService {
     private final AccessAttemptRepository attempts;
     private final AccessCredentialRepository credentials;
     private final VisitorRepository visitors;
+    private final VisitRequestRepository visitRequests;
     private final UnitRepository units;
     private final BlockRepository blocks;
     private final AccessService access;
@@ -64,11 +67,12 @@ public class AccessReportService {
     private final Clock clock;
 
     public AccessReportService(AccessAttemptRepository attempts, AccessCredentialRepository credentials,
-                               VisitorRepository visitors, UnitRepository units, BlockRepository blocks,
+                               VisitorRepository visitors, VisitRequestRepository visitRequests, UnitRepository units, BlockRepository blocks,
                                AccessService access, AuditService audit, Clock clock) {
         this.attempts = attempts;
         this.credentials = credentials;
         this.visitors = visitors;
+        this.visitRequests = visitRequests;
         this.units = units;
         this.blocks = blocks;
         this.access = access;
@@ -157,15 +161,21 @@ public class AccessReportService {
         Map<UUID, Visitor> byVisitor = new HashMap<>();
         visitors.findAllById(visitorIds).stream().filter(v -> v.getCondominiumId().equals(condominiumId))
                 .forEach(v -> byVisitor.put(v.getId(), v));
-        Map<UUID, String> unitLabels = unitLabels(condominiumId,
-                byCredential.values().stream().map(AccessCredential::getUnitId).collect(Collectors.toSet()));
+        Map<UUID, VisitRequest> byRequest = new HashMap<>();
+        visitRequests.findAllById(batch.stream().map(AccessAttempt::getVisitRequestId).filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toSet())).stream().filter(v -> v.getCondominiumId().equals(condominiumId))
+                .forEach(v -> byRequest.put(v.getId(), v));
+        Set<UUID> labelUnits = byCredential.values().stream().map(AccessCredential::getUnitId).collect(Collectors.toSet());
+        byRequest.values().forEach(v -> labelUnits.add(v.getUnitId()));
+        Map<UUID, String> unitLabels = unitLabels(condominiumId, labelUnits);
         return a -> {
             AccessCredential c = byCredential.get(a.getCredentialId());
             Visitor v = c == null || c.getVisitorId() == null ? null : byVisitor.get(c.getVisitorId());
-            UUID unitId = c == null ? null : c.getUnitId();
+            VisitRequest walkIn = a.getVisitRequestId() == null ? null : byRequest.get(a.getVisitRequestId());
+            UUID unitId = c != null ? c.getUnitId() : walkIn == null ? null : walkIn.getUnitId();
+            String name = v != null ? v.getFullName() : walkIn == null ? null : walkIn.getVisitorName();
             return new Row(a.getId(), a.getOccurredAt(), a.getEntrance(), a.getResult(), a.getReason(), unitId,
-                    unitId == null ? null : unitLabels.get(unitId), v == null ? null : v.getFullName(),
-                    a.getExitedAt());
+                    unitId == null ? null : unitLabels.get(unitId), name, a.getExitedAt());
         };
     }
 

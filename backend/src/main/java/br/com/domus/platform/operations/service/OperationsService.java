@@ -307,6 +307,32 @@ public class OperationsService {
         return incidents.findByCondominiumId(condominiumId, pageable);
     }
 
+    /** Alerta de pânico aguardando atendimento, com o local que a portaria precisa para agir. */
+    public record PanicAlert(UUID callId, UUID condominiumId, String condominiumName, UUID unitId, String unitLabel,
+                             Instant createdAt) {
+    }
+
+    /** Alertas de pânico na fila dos condomínios que o usuário enxerga (mais antigos primeiro). */
+    @Transactional(readOnly = true)
+    public List<PanicAlert> queuedPanicAlerts() {
+        Actor actor = access.currentActor();
+        if (access.directCondominiumIds(actor).isEmpty() && access.companyIdsAdministeredBy(actor).isEmpty()
+                && !access.isPlatformAdmin(actor)) {
+            throw new ForbiddenException("Staff role required");
+        }
+        return commercial.listCondominiums(PageRequest.of(0, 200)).getContent().stream()
+                .flatMap(c -> calls.findByCondominiumIdAndSourceAndStatusOrderByCreatedAt(c.getId(), "PANIC",
+                        ServiceCall.QUEUED).stream().map(call -> new PanicAlert(call.getId(), c.getId(), c.getName(),
+                        call.getUnitId(), commercial.unitLabel(c.getId(), call.getUnitId()), call.getCreatedAt())))
+                .toList();
+    }
+
+    /** "Bloco / número" da unidade do atendimento (null quando não há unidade). */
+    @Transactional(readOnly = true)
+    public String unitLabel(ServiceCall call) {
+        return commercial.unitLabel(call.getCondominiumId(), call.getUnitId());
+    }
+
     // ---- visão geral ----
 
     @Transactional(readOnly = true)

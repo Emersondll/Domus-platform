@@ -19,6 +19,7 @@ export type Call = {
   assignedUserId: string | null;
   createdAt: string;
   outcome: string | null;
+  unitLabel?: string | null;
 };
 
 export type CallEvent = { type: string; detail: string | null; actorUserId: string | null; occurredAt: string };
@@ -43,6 +44,7 @@ export type Unit = { id: string; blockId: string; number: string };
 export type Parcel = { id: string; unitId: string; carrier: string | null; description: string | null; status: string; receivedAt: string; pickedUpAt: string | null; pickedUpByName: string | null };
 export type Visitor = { id: string; unitId: string; fullName: string; kind: string };
 export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };
+export type PanicAlert = { callId: string; condominiumId: string; condominiumName: string; unitId: string | null; unitLabel: string | null; createdAt: string };
 export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null; residentOpenable?: boolean; liveVideo?: boolean };
 export type CommandRow = { id: string; deviceId: string; state: string; failureReason: string | null; requestedAt: string };
 

@@ -73,15 +73,35 @@ public class ParcelService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Parcel> list(UUID condominiumId, Pageable pageable) {
+    public Page<Parcel> list(UUID condominiumId, String status, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "parcel.list");
-        return parcels.findByCondominiumId(condominiumId, pageable);
+        return status == null ? parcels.findByCondominiumId(condominiumId, pageable)
+                : parcels.findByCondominiumIdAndStatus(condominiumId, status, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<Parcel> listMine(UUID condominiumId, Pageable pageable) {
+    public Page<Parcel> listMine(UUID condominiumId, String status, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "parcel.list.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
-        return parcels.findByCondominiumIdAndUnitId(condominiumId, unitId, pageable);
+        return status == null ? parcels.findByCondominiumIdAndUnitId(condominiumId, unitId, pageable)
+                : parcels.findByCondominiumIdAndUnitIdAndStatus(condominiumId, unitId, status, pageable);
+    }
+
+    /** Reenvia o aviso de uma encomenda que continua na portaria (lembrete ao morador). */
+    @Transactional
+    public Parcel remind(UUID condominiumId, UUID parcelId) {
+        Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "parcel.remind");
+        Parcel parcel = parcels.findByIdAndCondominiumId(parcelId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Parcel not found"));
+        if (!Parcel.RECEIVED.equals(parcel.getStatus())) {
+            throw new ConflictException("Parcel is not waiting for pickup");
+        }
+        audit.record(actor.userId(), null, condominiumId, "parcel.remind", "parcel", parcelId.toString(),
+                AuditOutcome.SUCCESS);
+        notifications.notifyUnit(condominiumId, parcel.getUnitId(), NotificationService.PARCEL_RECEIVED,
+                "Lembrete: encomenda aguardando retirada",
+                parcel.getCarrier() == null ? "Há uma encomenda esperando por você na portaria."
+                        : "A encomenda de " + parcel.getCarrier() + " continua na portaria.");
+        return parcel;
     }
 }

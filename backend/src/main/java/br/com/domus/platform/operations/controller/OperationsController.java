@@ -84,15 +84,32 @@ public class OperationsController {
      * @param createdAt      entrada na fila
      * @param closedAt       encerramento
      * @param outcome        desfecho
+     * @param unitLabel      "Bloco / número" da unidade, quando há (alertas de pânico sempre têm)
      */
     public record CallResponse(UUID id, UUID condominiumId, UUID unitId, String source, String callerName,
                                String status, UUID assignedUserId, Instant createdAt, Instant closedAt,
-                               String outcome) {
-        static CallResponse from(ServiceCall c) {
+                               String outcome, String unitLabel) {
+        static CallResponse from(ServiceCall c, String unitLabel) {
             return new CallResponse(c.getId(), c.getCondominiumId(), c.getUnitId(), c.getSource(),
                     c.getCallerName(), c.getStatus(), c.getAssignedUserId(), c.getCreatedAt(), c.getClosedAt(),
-                    c.getOutcome());
+                    c.getOutcome(), unitLabel);
         }
+    }
+
+    /**
+     * @param callId          atendimento do alerta
+     * @param condominiumId   condomínio
+     * @param condominiumName nome do condomínio
+     * @param unitId          unidade que acionou
+     * @param unitLabel       "Bloco / número" da unidade que acionou
+     * @param createdAt       quando foi acionado
+     */
+    public record PanicAlertResponse(UUID callId, UUID condominiumId, String condominiumName, UUID unitId,
+                                     String unitLabel, Instant createdAt) {
+    }
+
+    private CallResponse view(ServiceCall c) {
+        return CallResponse.from(c, service.unitLabel(c));
     }
 
     /**
@@ -188,13 +205,20 @@ public class OperationsController {
 
     @PostMapping("/operator/calls/next")
     public ResponseEntity<CallResponse> claimNext() {
-        return service.claimNext().map(c -> ResponseEntity.ok(CallResponse.from(c)))
+        return service.claimNext().map(c -> ResponseEntity.ok(view(c)))
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/operator/calls/mine")
     public PageResponse<CallResponse> myCalls(@PageableDefault(size = 50, sort = "assignedAt") Pageable pageable) {
-        return PageResponse.of(service.myActiveCalls(pageable), CallResponse::from);
+        return PageResponse.of(service.myActiveCalls(pageable), this::view);
+    }
+
+    /** Alertas de pânico aguardando atendimento (a portaria consulta com frequência para alertar na tela). */
+    @GetMapping("/operator/panics")
+    public List<PanicAlertResponse> panics() {
+        return service.queuedPanicAlerts().stream().map(p -> new PanicAlertResponse(p.callId(), p.condominiumId(),
+                p.condominiumName(), p.unitId(), p.unitLabel(), p.createdAt())).toList();
     }
 
     @GetMapping("/operator/overview")
@@ -207,14 +231,14 @@ public class OperationsController {
     @PostMapping("/condominiums/{condominiumId}/calls")
     @ResponseStatus(HttpStatus.CREATED)
     public CallResponse createCall(@PathVariable UUID condominiumId, @Valid @RequestBody CreateCallRequest r) {
-        return CallResponse.from(service.createCall(condominiumId, r.unitId(), r.callerName()));
+        return view(service.createCall(condominiumId, r.unitId(), r.callerName()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/me/calls")
     @ResponseStatus(HttpStatus.CREATED)
     public CallResponse createResidentCall(@PathVariable UUID condominiumId,
                                            @Valid @RequestBody ResidentCallRequest r) {
-        return CallResponse.from(service.createCallAsResident(condominiumId, r.callerName()));
+        return view(service.createCallAsResident(condominiumId, r.callerName()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/me/panic")
@@ -233,19 +257,19 @@ public class OperationsController {
     @GetMapping("/condominiums/{condominiumId}/calls")
     public PageResponse<CallResponse> listCalls(@PathVariable UUID condominiumId,
                                                 @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
-        return PageResponse.of(service.listCalls(condominiumId, pageable), CallResponse::from);
+        return PageResponse.of(service.listCalls(condominiumId, pageable), this::view);
     }
 
     @PostMapping("/condominiums/{condominiumId}/calls/{callId}/transfer")
     public CallResponse transfer(@PathVariable UUID condominiumId, @PathVariable UUID callId,
                                  @Valid @RequestBody TransferRequest r) {
-        return CallResponse.from(service.transfer(condominiumId, callId, r.toUserId(), r.reason()));
+        return view(service.transfer(condominiumId, callId, r.toUserId(), r.reason()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/calls/{callId}/close")
     public CallResponse close(@PathVariable UUID condominiumId, @PathVariable UUID callId,
                               @Valid @RequestBody CloseRequest r) {
-        return CallResponse.from(service.close(condominiumId, callId, r.outcome(), r.justification()));
+        return view(service.close(condominiumId, callId, r.outcome(), r.justification()));
     }
 
     @GetMapping("/condominiums/{condominiumId}/calls/{callId}/events")

@@ -4,9 +4,9 @@ import type { Parcel, Vehicle } from "./types";
 import { errorText, useList } from "./useApi";
 
 export function Parcels({ token, condo }: { token: string; condo: string }) {
-  const { items } = useList<Parcel>(token, `/api/v1/condominiums/${condo}/me/parcels`, 5000);
-  const pending = items.filter((p) => p.status === "RECEIVED");
-  const done = items.filter((p) => p.status !== "RECEIVED");
+  const base = `/api/v1/condominiums/${condo}/me/parcels`;
+  const pending = useList<Parcel>(token, `${base}?status=RECEIVED&size=100`, 5000).items;
+  const done = useList<Parcel>(token, `${base}?status=PICKED_UP&size=20&sort=receivedAt,desc`, 5000).items;
   return (
     <section aria-label="Encomendas">
       <h2>Encomendas</h2>

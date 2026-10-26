@@ -4,7 +4,8 @@ import { VisitAuthorization } from "./VisitAuthorization";
 import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type Command, type Device, type OnDuty } from "./types";
 
 /** Atendimento selecionado: histórico, desfecho com justificativa, transferência e (futuro) abertura de porta. */
-export function CallWorkbench({ token, call, onChanged }: { token: string; call: Call; onChanged: () => void }) {
+export function CallWorkbench({ token, call, onChanged, onBack }:
+  { token: string; call: Call; onChanged: () => void; onBack: () => void }) {
   const base = `/api/v1/condominiums/${call.condominiumId}/calls/${call.id}`;
   const [events, setEvents] = useState<CallEvent[]>([]);
   const [operators, setOperators] = useState<OnDuty[]>([]);
@@ -68,7 +69,14 @@ export function CallWorkbench({ token, call, onChanged }: { token: string; call:
 
   return (
     <section aria-label="Atendimento">
-      <h2>Atendimento {call.callerName ?? "(sem nome)"}</h2>
+      <button className="back" onClick={onBack}>← Voltar (o atendimento continua em andamento)</button>
+      <h2>Atendimento {call.source === "PANIC" ? "de PÂNICO" : (call.callerName ?? "(sem nome)")}</h2>
+      {call.unitLabel && <p><strong>Unidade: {call.unitLabel}</strong></p>}
+      {call.source === "PANIC" && (
+        <p role="alert" className="badge err">
+          Alerta de pânico acionado pelo morador. Contate a unidade e acione o socorro necessário antes de encerrar.
+        </p>
+      )}
       <p>
         Origem: {call.source} · Status: {call.status}
       </p>

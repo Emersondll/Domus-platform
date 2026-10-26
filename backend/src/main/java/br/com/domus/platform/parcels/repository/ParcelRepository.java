@@ -12,6 +12,10 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
 
     Page<Parcel> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
+    Page<Parcel> findByCondominiumIdAndStatus(UUID condominiumId, String status, Pageable pageable);
+
+    Page<Parcel> findByCondominiumIdAndUnitIdAndStatus(UUID condominiumId, UUID unitId, String status, Pageable pageable);
+
     Page<Parcel> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
 
     Optional<Parcel> findByIdAndCondominiumId(UUID id, UUID condominiumId);

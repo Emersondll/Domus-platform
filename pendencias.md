@@ -9,9 +9,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 141 testes (30 unitários + 111 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 143 testes (30 unitários + 113 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 58 testes (36 painel + 22 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 63 testes (39 painel + 24 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
 | `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |

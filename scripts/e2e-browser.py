@@ -77,7 +77,7 @@ def take_next(pan):
 
 def more(page, name):
     """Itens do app do morador que ficam em "Mais" (a barra inferior só traz o uso diário)."""
-    page.get_by_role("button", name="Mais").click()
+    page.get_by_role("button", name="Mais", exact=True).click()
     page.get_by_role("button", name=name).click()
 
 
@@ -175,7 +175,7 @@ try:
         check("porta com confirmação do dispositivo -> 'Porta aberta — confirmado'", True)
 
         # o morador acompanha: atendida -> encerrada, com o desfecho (a tela atualiza sozinha a cada 5 s)
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
         expect(res.get_by_text("Em atendimento pela central")).to_be_visible(timeout=15000)
         check("morador vê que a chamada está em atendimento", True)
         pan.get_by_role("button", name="Encerrar atendimento").click()
@@ -190,7 +190,7 @@ try:
         check("abas Visitas e Encomendas abrem", True)
 
         # segunda chamada, porta que aceita o comando mas nunca confirma
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
         expect(res.get_by_role("button", name="Chamar a central")).to_be_enabled()
         res.get_by_role("button", name="Chamar a central").click()
         take_next(pan)
@@ -233,10 +233,17 @@ try:
         res.get_by_role("button", name="Alerta de pânico").click()
         res.get_by_role("button", name="Confirmar pânico").click()
         expect(res.get_by_text("Seu alerta de pânico")).to_be_visible()
-        expect(pan.get_by_text(re.compile("PÂNICO na fila"))).to_be_visible(timeout=15000)
-        check("pânico aparece em destaque na central", True)
-        take_next(pan)
+        dialog = pan.get_by_role("alertdialog", name="Alerta de pânico")
+        expect(dialog).to_be_visible(timeout=15000)
+        expect(dialog).to_contain_text("A / 101")
+        check("pânico abre um alerta em tela cheia na central, com a unidade de origem", True)
+        pan.get_by_role("button", name="Silenciar som").click()
+        expect(dialog).to_be_visible()  # silenciar não dispensa o alerta
+        dialog.get_by_role("button", name="Atender agora").click()
+        expect(dialog).to_have_count(0, timeout=15000)
+        expect(pan.get_by_text("Unidade: A / 101")).to_be_visible()
         expect(pan.get_by_text("PÂNICO", exact=True).first).to_be_visible()
+        check("o operador atende o pânico pela janela de alerta", True)
         expect(res.get_by_text("Em atendimento pela central")).to_be_visible(timeout=15000)
         check("o morador vê que o pânico foi atendido", True)
         pan.get_by_role("button", name="Encerrar atendimento").click()
@@ -249,7 +256,7 @@ try:
         pan.get_by_role("button", name="Registrar encomenda").click()
         expect(pan.get_by_text("Aguardando retirada (1)")).to_be_visible()
         check("operador registra uma encomenda", True)
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
         expect(res.get_by_role("button", name="Encomendas a retirar")).to_contain_text("1", timeout=15000)
         check("morador vê 1 encomenda a retirar no início", True)
         pan.get_by_role("button", name="Entregar").click()
@@ -306,7 +313,7 @@ try:
         pan.get_by_role("button", name="Animais").click()
         expect(pan.get_by_text(re.compile("Rex E2E"))).to_be_visible(timeout=15000)
         check("morador cadastra cônjuge e animal no app e a portaria os vê em Cadastros", True)
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
 
         # câmeras: o síndico cadastra (API de apoio); sem RTSP não há botão de vídeo, e nada é simulado
         api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
@@ -367,7 +374,7 @@ try:
 
         # abertura remota pelo morador: desligada por padrão; síndico liga a política e marca a porta
         more(res, "Convites")
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
         expect(res.get_by_role("button", name="Chamar a central")).to_be_visible()
         check("com a política desligada o morador não vê 'Abrir portão'",
               res.get_by_role("heading", name="Abrir portão").count() == 0)
@@ -376,7 +383,7 @@ try:
         api("PUT", f"{base}/remote-open", "manager-sol", {"enabled": True})
         api("PUT", f"{base}/devices/{door['id']}/resident-openable", "manager-sol", {"allowed": True})
         more(res, "Convites")
-        res.get_by_role("button", name="Início").click()
+        res.get_by_role("button", name="Início", exact=True).click()
         res.get_by_role("button", name="Abrir Portão principal").click()
         expect(res.get_by_text("Porta aberta (confirmado pelo equipamento).")).to_be_visible(timeout=20000)
         check("morador abre o portão pelo app e só vê 'aberta' com a confirmação do equipamento", True)

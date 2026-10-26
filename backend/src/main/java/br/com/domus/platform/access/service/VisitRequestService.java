@@ -61,8 +61,10 @@ public class VisitRequestService {
                 actor.userId(), now, now.plus(RESPONSE_WINDOW)));
         audit.record(actor.userId(), null, condominiumId, "visit.request", "visit_request",
                 request.getId().toString(), AuditOutcome.SUCCESS);
+        boolean provider = "SERVICE_PROVIDER".equals(kind);
         notifications.notifyUnit(condominiumId, unitId, NotificationService.VISIT_REQUEST,
-                "Visitante na portaria", visitorName + " aguarda a sua autorização. Responda pelo app em até 5 minutos.");
+                provider ? "Prestador de serviço na portaria" : "Visita na portaria",
+                visitorName + " aguarda a sua autorização. Responda pelo app em até 5 minutos.");
         return request;
     }
 

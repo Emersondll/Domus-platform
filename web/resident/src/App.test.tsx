@@ -11,6 +11,7 @@ let calls: { url: string; method: string; body?: string }[];
 let reservationStatus = 201;
 let myCalls: unknown[] = [];
 let myParcels: unknown[] = [];
+let myNotes: unknown[] = [];
 let myInvitations: unknown[] = [];
 let myHistory: unknown[] = [];
 let myVisitRequests: unknown[] = [];
@@ -26,7 +27,7 @@ function fakeApi() {
     const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
     if (url.startsWith("/dev/token")) return json({ access_token: "t" });
     if (url === "/api/v1/me/residencies") return json(residency);
-    if (url.endsWith("/me/notifications")) return json(page([]));
+    if (url.endsWith("/me/notifications")) return json(page(myNotes));
     if (url.endsWith("/me/common-areas")) return json(page([area]));
     if (url.endsWith("/me/reservations") && method === "POST")
       return reservationStatus === 201 ? json({ id: "x" }, 201) : json({ detail: "conflict" }, 409);
@@ -51,7 +52,10 @@ function fakeApi() {
     if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
     if (url.endsWith("/me/calls") && method === "POST") return json({ id: "c1" }, 201);
     if (url.endsWith("/me/calls")) return json(page(myCalls));
-    if (url.endsWith("/me/parcels")) return json(page(myParcels));
+    if (url.includes("/me/parcels")) {
+      const wanted = new URL(url, "http://x").searchParams.get("status");
+      return json(page((myParcels as { status: string }[]).filter((p) => !wanted || p.status === wanted)));
+    }
     if (url.endsWith("/me/profile")) return json({ fullName: "Fulano", email: null, phone: null });
     if (url.endsWith("/me/preferences") && method === "PUT") return json(JSON.parse(init!.body as string));
     if (url.endsWith("/me/preferences")) return json({ parcelsEnabled: true, visitorArrivalEnabled: true });
@@ -78,6 +82,7 @@ describe("resident app", () => {
     reservationStatus = 201;
     myCalls = [];
     myParcels = [];
+    myNotes = [];
     myInvitations = [];
     myHistory = [];
     myVisitRequests = [];
@@ -266,5 +271,40 @@ describe("resident app", () => {
     const user = await openTab("Início");
     await user.click(await screen.findByRole("button", { name: "Abrir Social" }));
     expect(await screen.findByText(/Aguarde alguns segundos/)).toBeInTheDocument();
+  });
+
+  it("separates notifications by subject, with the unread count on each tab", async () => {
+    const at = new Date().toISOString();
+    myNotes = [
+      { id: "n1", type: "PARCEL_RECEIVED", title: "Encomenda recebida", body: "Correios", createdAt: at, readAt: null },
+      { id: "n2", type: "VISIT_REQUEST", title: "Prestador de serviço na portaria", body: "João aguarda", createdAt: at, readAt: null },
+      { id: "n3", type: "ANNOUNCEMENT", title: "Manutenção", body: "Sexta", createdAt: at, readAt: at },
+    ];
+    const user = await openTab("Início");
+    const tabs = await screen.findByRole("tablist", { name: "Tipos de notificação" });
+    expect(tabs).toBeInTheDocument();
+    // abre na primeira aba com novidade: só a notificação de visitas aparece
+    expect(await screen.findByText("Prestador de serviço na portaria")).toBeInTheDocument();
+    expect(screen.queryByText("Encomenda recebida")).not.toBeInTheDocument();
+    expect(screen.queryByText("Manutenção")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /Encomendas/ }));
+    expect(screen.getByText("Encomenda recebida")).toBeInTheDocument();
+    expect(screen.queryByText("Prestador de serviço na portaria")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Avisos" }));
+    expect(screen.getByText("Manutenção")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Mensagens" }));
+    expect(screen.getByText("Nenhuma mensagem nova.")).toBeInTheDocument();
+  });
+
+  it("offers a way back to the home screen from every section", async () => {
+    const user = await openTab("Encomendas");
+    await user.click(await screen.findByRole("button", { name: "← Voltar ao início" }));
+    expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    await user.click(screen.getByRole("button", { name: "Veículos" }));
+    await user.click(await screen.findByRole("button", { name: "← Voltar para Mais opções" }));
+    expect(await screen.findByRole("region", { name: "Mais opções" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "← Voltar ao início" }));
+    expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
   });
 });

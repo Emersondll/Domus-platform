@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Invitation, MyCall, Notification, Parcel, VisitRequest } from "./types";
+import { NotificationTabs } from "./NotificationTabs";
 import { RemoteDoors } from "./RemoteDoors";
 import { errorText, useList } from "./useApi";
 
@@ -29,7 +30,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
   const base = `/api/v1/condominiums/${condo}/me`;
   const notes = useList<Notification>(token, `${base}/notifications`, POLL_MS);
   const calls = useList<MyCall>(token, `${base}/calls`, POLL_MS);
-  const parcels = useList<Parcel>(token, `${base}/parcels`, POLL_MS);
+  const parcels = useList<Parcel>(token, `${base}/parcels?status=RECEIVED&size=100`, POLL_MS);
   const invitations = useList<Invitation>(token, `${base}/invitations`, POLL_MS);
   const visitRequests = useList<VisitRequest>(token, `${base}/visit-requests`, POLL_MS);
   const [msg, setMsg] = useState<string | null>(null);
@@ -123,15 +124,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       )}
 
       <h3>Notificações</h3>
-      <ul>
-        {notes.items.map((n) => (
-          <li key={n.id} className={n.readAt ? "" : "unread"}>
-            <strong>{n.title}</strong> {n.body} <small>{new Date(n.createdAt).toLocaleString()}</small>{" "}
-            {!n.readAt && <button onClick={() => markRead(n.id)}>Marcar como lida</button>}
-          </li>
-        ))}
-        {notes.items.length === 0 && <li>Nada por aqui.</li>}
-      </ul>
+      <NotificationTabs items={notes.items} onRead={markRead} />
       <p className="hint">Notificações push, e-mail e WhatsApp ainda não estão integrados; por ora os avisos aparecem aqui e a tela se atualiza sozinha a cada poucos segundos.</p>
     </section>
   );

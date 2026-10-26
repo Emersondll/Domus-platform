@@ -27,3 +27,8 @@ button.danger { background: #b3261e; color: #fff; }
 .panic-confirm { margin: 12px 0; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--err); display: flex; flex-direction: column; gap: 8px; }
 .more-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .more-menu .card { margin: 0; text-align: left; padding: 18px 16px; font-size: 16px; font-weight: 600; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.chips button { margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600; background: var(--surface-2); color: var(--muted); border-radius: 999px; }
+.chips button[aria-selected="true"] { background: var(--accent-strong); color: var(--fg); }
+.chips .count { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #07142b; font-size: 12px; }
+button.back { margin: 12px 0 0; padding: 8px 12px; font-size: 14px; background: none; color: var(--accent); }

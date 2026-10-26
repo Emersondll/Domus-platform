@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -28,6 +28,9 @@ let posted: { url: string; body: unknown }[] = [];
 let visitStatus = "PENDING";
 let remoteEnabled = false;
 let videoDown = false;
+let panics: unknown[] = [];
+let claimed: Record<string, unknown> | null = null;
+const sirenStarts: number[] = [];
 const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", callerName: "Entregador",
   status: "ASSIGNED", assignedUserId: "u1", createdAt: new Date().toISOString(), outcome: null };
 
@@ -75,8 +78,11 @@ function fakeApi() {
       { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null, liveVideo: true },
     ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
+    if (url === "/api/v1/operator/panics") return json(panics);
+    if (url === "/api/v1/operator/calls/next") { panics = []; claimed = { ...call, id: "k9", source: "PANIC", callerName: null, unitLabel: "A / 101" }; return json(claimed); }
+    if (url.endsWith("/remind")) return json({ id: "p1" });
     if (url === "/api/v1/operator/overview") return json(overview);
-    if (url === "/api/v1/operator/calls/mine") return json({ items: [call], page: 0, size: 50, totalElements: 1 });
+    if (url === "/api/v1/operator/calls/mine") return json({ items: claimed ? [call, claimed] : [call], page: 0, size: 50, totalElements: 1 });
     if (url === "/api/v1/operator/shifts/current")
       return json({ id: "s1", startedAt: new Date().toISOString(), endedAt: null });
     if (url.endsWith("/events")) return json([{ type: "CLAIMED", detail: null, actorUserId: "u1", occurredAt: new Date().toISOString() }]);
@@ -102,11 +108,26 @@ describe("operator panel", () => {
     posted = [];
     visitStatus = "PENDING";
     videoDown = false;
+    panics = [];
+    claimed = null;
+    sirenStarts.length = 0;
     remoteEnabled = false;
     parcelList = [];
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  function stubAudio() {
+    class FakeAudio {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      resume() { return Promise.resolve(); }
+      createGain() { return { gain: { value: 0 }, connect() {} }; }
+      createOscillator() { return { type: "", frequency: { value: 0 }, connect() {}, start() { sirenStarts.push(1); }, stop() {} }; }
+    }
+    vi.stubGlobal("AudioContext", FakeAudio);
+  }
 
   it("shows authorized condominiums and flags unimplemented integrations", async () => {
     await login();
@@ -382,5 +403,56 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("button", { name: "Imprimir comprovante" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+  });
+
+  it("raises a full-screen panic alert with the unit, plays the siren and lets the operator attend or silence", async () => {
+    stubAudio();
+    panics = [{ callId: "k9", condominiumId: "c1", condominiumName: "Residencial Sol", unitId: "un1", unitLabel: "A / 101", createdAt: new Date().toISOString() }];
+    const user = await login();
+    const dialog = await screen.findByRole("alertdialog", { name: "Alerta de pânico" });
+    expect(dialog).toHaveTextContent("A / 101");
+    expect(dialog).toHaveTextContent("Residencial Sol");
+    await waitFor(() => expect(sirenStarts.length).toBeGreaterThan(0));
+    await user.click(screen.getByRole("button", { name: "Silenciar som" }));
+    const after = sirenStarts.length;
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(sirenStarts.length).toBe(after); // silenciado: nenhum tom novo
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument(); // o alerta segue na tela até alguém atender
+    await user.click(screen.getByRole("button", { name: "Atender agora" }));
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/operator/calls/next")).toBe(true));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(), { timeout: 5000 });
+    expect(await screen.findByText(/Unidade: A \/ 101/)).toBeInTheDocument();
+    expect(screen.getByText(/Alerta de pânico acionado pelo morador/)).toBeInTheDocument();
+  });
+
+  it("summarizes parcels to pick up for the desk, lets the doorman remind the resident and go back", async () => {
+    parcelList = [{ id: "p1abcdef12", unitId: "un1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null, pickedUpByName: null }];
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    expect(await screen.findByRole("tab", { name: "Encomendas" })).toHaveTextContent("Encomendas (1)");
+    expect(within(screen.getByRole("status", { name: "Resumo da portaria" })).getByText("encomenda a retirar")).toBeInTheDocument();
+    expect(await screen.findByText(/1 encomenda aguardando retirada na portaria/)).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /Lembrar morador/ }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/parcels/p1abcdef12/remind"))).toBe(true));
+    expect(await screen.findByText(/lembrete enviado/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "← Voltar aos condomínios" }));
+    expect(screen.queryByRole("region", { name: "Mesa do condomínio" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Condomínios" })).toBeInTheDocument();
+  });
+
+  it("announces a service provider with the company and a known visitor as separate kinds", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.selectOptions(await screen.findByLabelText("Unidade visitada"), "un1");
+    await user.type(screen.getByLabelText("Nome do visitante"), "João");
+    await user.selectOptions(screen.getByLabelText("Tipo"), "SERVICE_PROVIDER");
+    await user.type(screen.getByLabelText(/Empresa ou serviço/), "Net");
+    await user.click(screen.getByRole("button", { name: "Pedir autorização ao morador" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visit-requests"))?.body).toEqual({ unitId: "un1", visitorName: "João (Net)", kind: "SERVICE_PROVIDER", callId: null }));
+    await user.selectOptions(screen.getByLabelText("Tipo"), "VISITOR");
+    await user.type(screen.getByLabelText("Nome do visitante"), "Tia Rosa");
+    await user.click(screen.getByRole("button", { name: "Pedir autorização ao morador" }));
+    await waitFor(() => expect(posted.filter((p) => p.url.endsWith("/visit-requests")).at(-1)?.body).toEqual({ unitId: "un1", visitorName: "Tia Rosa", kind: "VISITOR", callId: null }));
   });
 });

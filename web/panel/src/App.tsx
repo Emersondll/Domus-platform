@@ -6,6 +6,7 @@ import { CallWorkbench } from "./CallWorkbench";
 import { CondoDesk } from "./CondoDesk";
 import { Login } from "./Login";
 import { OverviewPanel } from "./OverviewPanel";
+import { PanicAlerts } from "./PanicAlerts";
 import type { Call, Overview, Shift } from "./types";
 
 const POLL_MS = 5000;
@@ -83,10 +84,23 @@ export function App() {
 
   const call = calls.find((c) => c.id === selectedCall) ?? null;
 
+  /** Decisão do operador diante de um alerta de pânico: assumir o alerta mais antigo (abre o turno se preciso). */
+  async function attendPanic() {
+    if (!shift) await request(session!.token, "POST", "/api/v1/operator/shifts/start");
+    const next = await request<Call>(session!.token, "POST", "/api/v1/operator/calls/next");
+    if (next) {
+      setSelectedCondo(next.condominiumId);
+      setSelectedCall(next.id);
+    }
+    await refresh();
+  }
+
   return (
     <div className="layout">
+      <PanicAlerts token={session.token} onAttend={attendPanic} />
       <header>
         <strong>Domus Central</strong>
+        <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); }}>Início</button>
         <span>{session.subject}</span>
         <span>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
         {shift ? (
@@ -123,7 +137,7 @@ export function App() {
           {calls.map((c) => (
             <li key={c.id}>
               <button onClick={() => setSelectedCall(c.id)}>
-                {c.source === "PANIC" ? <span className="badge err">PÂNICO</span> : null} {c.callerName ?? "(sem nome)"} · {c.source}
+                {c.source === "PANIC" ? <span className="badge err">PÂNICO</span> : null} {c.callerName ?? c.unitLabel ?? "(sem nome)"} · {c.source}{c.unitLabel && c.callerName ? ` · ${c.unitLabel}` : ""}
               </button>
             </li>
           ))}
@@ -131,10 +145,12 @@ export function App() {
         </ul>
       </section>
 
-      {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh} />}
+      {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh}
+        onBack={() => setSelectedCall(null)} />}
       {selectedCondo && (
         <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
-          name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"} />
+          name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"}
+          onBack={() => setSelectedCondo(null)} />
       )}
     </div>
   );

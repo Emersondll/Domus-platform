@@ -94,6 +94,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/parcels` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/parcels` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/parcels/{parcelId}/pickup` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/parcels/{parcelId}/remind` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/pets` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/pets` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/pets/{petId}` | condomínio | sim |
@@ -124,6 +125,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/operator/calls/mine` | portaria/painel | sim |
 | POST | `/api/v1/operator/calls/next` | portaria/painel | sim |
 | GET | `/api/v1/operator/overview` | portaria/painel | sim |
+| GET | `/api/v1/operator/panics` | portaria/painel | sim |
 | GET | `/api/v1/operator/shifts/current` | portaria/painel | sim |
 | POST | `/api/v1/operator/shifts/end` | portaria/painel | sim |
 | POST | `/api/v1/operator/shifts/start` | portaria/painel | sim |

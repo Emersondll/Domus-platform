@@ -9,14 +9,14 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **141 testes** (30 unitários + 111 integração com PostgreSQL real), 0 falhas |
+| `mvn -f backend/pom.xml verify` | **143 testes** (30 unitários + 113 integração com PostgreSQL real), 0 falhas |
 | `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
-| `cd web && npm test` / `npm run build` | **36** (painel) + **22** (app do morador); build com checagem de tipos ok |
+| `cd web && npm test` / `npm run build` | **39** (painel) + **24** (app do morador); build com checagem de tipos ok |
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
-| `scripts/e2e-browser.py` (navegador real) | OK (35 verificações, 2026-10-25; inclui cadastro de cônjuge e animal pelo morador visto na portaria, conversa morador ↔ portaria, validação de convite pela tela e câmeras, com o player de vídeo ao vivo chegando a "Ao vivo" via MediaMTX real): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
+| `scripts/e2e-browser.py` (navegador real) | OK (36 verificações, 2026-10-25; inclui a janela de alerta de pânico na central com a unidade de origem; inclui cadastro de cônjuge e animal pelo morador visto na portaria, conversa morador ↔ portaria, validação de convite pela tela e câmeras, com o player de vídeo ao vivo chegando a "Ao vivo" via MediaMTX real): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
 | `scripts/api-smoke.py` (API em execução) | OK (2026-10-25): 125 endpoints mapeados; 45 GETs de condomínio × 4 papéis sem 5xx, sem vazamento entre empresas e sem acesso sem token. Matriz em `docs/endpoint-coverage.md` |
 | `scripts/restore-drill.sh` | PASS (13 migrações, V1–V13): tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |

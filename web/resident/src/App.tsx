@@ -118,6 +118,11 @@ export function App() {
             </div>
           </section>
         )}
+        {condo && tab !== "Início" && (
+          <button className="back" onClick={() => setTab(tab !== "Mais" && isMore(tab) ? "Mais" : "Início")}>
+            {tab !== "Mais" && isMore(tab) ? "← Voltar para Mais opções" : "← Voltar ao início"}
+          </button>
+        )}
         {condo && tab === "Início" && <Home token={token} condo={condo} onNavigate={setTab} />}
         {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
         {condo && tab === "Mensagens" && <Messages token={token} condo={condo} />}

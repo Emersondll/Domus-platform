@@ -6,6 +6,7 @@ import br.com.domus.platform.shared.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -74,15 +76,24 @@ public class ParcelController {
         return ParcelResponse.from(service.pickUp(condominiumId, parcelId, r.pickedUpByName()));
     }
 
+    /** Reenvia o aviso ao morador (a encomenda precisa continuar aguardando retirada). */
+    @PostMapping("/parcels/{parcelId}/remind")
+    public ParcelResponse remind(@PathVariable UUID condominiumId, @PathVariable UUID parcelId) {
+        return ParcelResponse.from(service.remind(condominiumId, parcelId));
+    }
+
+    /** Lista encomendas; {@code status} (RECEIVED ou PICKED_UP) filtra, para não depender da paginação. */
     @GetMapping("/parcels")
     public PageResponse<ParcelResponse> list(@PathVariable UUID condominiumId,
+                                             @RequestParam(required = false) @Pattern(regexp = "RECEIVED|PICKED_UP") String status,
                                              @PageableDefault(size = 50, sort = "receivedAt") Pageable pageable) {
-        return PageResponse.of(service.list(condominiumId, pageable), ParcelResponse::from);
+        return PageResponse.of(service.list(condominiumId, status, pageable), ParcelResponse::from);
     }
 
     @GetMapping("/me/parcels")
     public PageResponse<ParcelResponse> listMine(@PathVariable UUID condominiumId,
+                                                 @RequestParam(required = false) @Pattern(regexp = "RECEIVED|PICKED_UP") String status,
                                                  @PageableDefault(size = 50, sort = "receivedAt") Pageable pageable) {
-        return PageResponse.of(service.listMine(condominiumId, pageable), ParcelResponse::from);
+        return PageResponse.of(service.listMine(condominiumId, status, pageable), ParcelResponse::from);
     }
 }

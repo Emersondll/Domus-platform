@@ -21,7 +21,10 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 ## 2. Aplicativo do morador
 | Recurso | Situação | Observação |
 |---|---|---|
-| Notificações de visitantes e retorno da chamada | Feito | |
+| Notificações de visitantes e retorno da chamada | Feito | No app do morador as notificações são separadas por assunto (Visitas, Encomendas, Avisos, Mensagens, Portaria), cada aba com a contagem de não lidas |
+| Portaria avisa chegada de visita conhecida ou prestador (com empresa) | Feito | Aba Visitantes; o morador recebe a notificação na aba Visitas |
+| Encomendas a retirar na portaria (contagem, aba com número, lembrete ao morador) | Feito | Lista filtrada por status no servidor |
+| Voltar ao início em todas as telas (app do morador e painel) | Feito | |
 | Aprovar/negar visitante pelo celular | **Feito** | |
 | Abertura remota de portão pelo morador | **Feito** | Desligada por padrão; duas travas (política do condomínio, ligada pelo síndico, e porta marcada); 1 abertura a cada 30 s por morador; mesma regra "aceito ≠ aberto" |
 | Interfone móvel (voz/vídeo) | Externo | SIP/WebRTC e servidor de mídia |
@@ -41,7 +44,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Câmeras: lista e estado | Feito | |
 | Câmeras: vídeo ao vivo (RTSP → HLS pelo MediaMTX) | Feito (provado só com fonte RTSP de teste) | Câmera real, câmera atrás de NAT (o agente ainda não publica o fluxo) e ONVIF `GetStreamUri` seguem pendentes; ver `docs/cameras.md` |
 | Abertura automatizada de acessos | Parcial | Comando físico com confirmação por evento; automação por regra (lote C) |
-| Alerta de pânico | **Feito** | Botão com confirmação no app; entra na fila com prioridade e abre incidente de severidade alta. Botão físico é externo |
+| Alerta de pânico | **Feito** | Botão com confirmação no app; entra na fila com prioridade e abre incidente de severidade alta. **Na central: janela de alerta em tela cheia com a unidade de origem e sirene (Web Audio), até alguém atender; o operador decide atender (abre o turno se preciso) ou silenciar o som.** O som depende de o navegador permitir áudio (há botão "Ativar som"). Botão físico é externo |
 | Reconhecimento facial, biometria, placas (LPR) | Externo | Equipamento + base legal LGPD (dado sensível); não se implementa por software próprio sem decisão |
 | Portaria virtual / remota | Feito | Central de operadores multicondomínio, fila, turnos, contingência offline |
 

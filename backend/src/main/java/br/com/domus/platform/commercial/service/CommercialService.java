@@ -149,6 +149,18 @@ public class CommercialService {
         return condominiums.findById(condominiumId).orElseThrow(() -> new NotFoundException("Condominium not found"));
     }
 
+    /** "Bloco / número" da unidade, para telas operacionais; uso interno, sem política de acesso. */
+    @Transactional(readOnly = true)
+    public String unitLabel(UUID condominiumId, UUID unitId) {
+        if (unitId == null) {
+            return null;
+        }
+        return units.findByIdAndCondominiumId(unitId, condominiumId)
+                .map(u -> blocks.findByIdAndCondominiumId(u.getBlockId(), condominiumId).map(Block::getName).orElse("?")
+                        + " / " + u.getNumber())
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public Unit requireUnit(UUID condominiumId, UUID unitId) {
         return units.findByIdAndCondominiumId(unitId, condominiumId)

@@ -3,6 +3,7 @@ package br.com.domus.platform.operations.repository;
 import br.com.domus.platform.operations.entity.ServiceCall;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,8 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
 
     Optional<ServiceCall> findFirstByCondominiumIdAndUnitIdAndSourceAndStatusNot(UUID condominiumId, UUID unitId,
                                                                                 String source, String status);
+
+    List<ServiceCall> findByCondominiumIdAndSourceAndStatusOrderByCreatedAt(UUID condominiumId, String source, String status);
 
     Page<ServiceCall> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
 

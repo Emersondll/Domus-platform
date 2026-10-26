@@ -135,6 +135,20 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | D10 | Licença do projeto | **decidido: Apache 2.0** (trocada de MIT em 2026-10-25; metadados e avisos alinhados) |
 | D11 | `.claude/` e `CLAUDE.md` fora do Git | **decidido: só locais** |
 
+### Perguntas objetivas para o jurídico (detalham a D16)
+O consentimento do morador é necessário mas **não basta sozinho**. Perguntas a responder por escrito antes de coletar a foto ou criar gabarito facial:
+1. **Base legal.** Consentimento (art. 11, I) ou prevenção à fraude e segurança do titular na identificação e autenticação em sistemas eletrônicos (art. 11, II, "g")?
+   Se for a segunda, quais limites e quais salvaguardas? Se for consentimento, como garantir que seja **livre** (a entrada não pode depender da biometria)?
+2. **Alternativa sem biometria** (cartão, QR): é obrigatória? Que condições mínimas (sem constrangimento, sem prazo maior, sem custo)?
+3. **Quem não consentiu:** visitantes, prestadores e dependentes passam pelo terminal ou pela câmera. Como tratar? Menores (art. 14) exigem o responsável.
+4. **Condomínio:** é preciso alterar o regulamento interno ou aprovar em assembleia? Quem é o controlador (condomínio ou empresa operadora) e quem é o operador?
+5. **Documentos obrigatórios:** RIPD, encarregado (DPO), registro das operações, contrato controlador/operador, aviso de videomonitoramento e texto da tela de transparência.
+6. **Retenção:** prazo da foto, do gabarito e do histórico de entradas e saídas; exclusão ao deixar o condomínio.
+7. **Histórico de acessos do morador** (rotina e localização): quem pode ver (titular, outros moradores da unidade, síndico, portaria) e em que condições (D17).
+8. **Gabarito no terminal ou na central** e o que o fabricante faz com o dado (D18); transferência internacional, se houver.
+9. **Incidentes:** procedimento e prazo de comunicação à ANPD e aos titulares em caso de vazamento de foto ou gabarito.
+*Enquanto estas perguntas não forem respondidas:* a foto de cadastro e o gabarito facial **não são coletados em produção**; o recurso nasce desligado.
+
 ## 7. Auditoria de proveniência e licenças (2026-10-22)
 **Medido:** varredura de trechos (janelas normalizadas de 4 linhas e linhas longas) dos 288 arquivos de texto versionados contra os 3 repositórios de
 referência e contra o `node-dahua-api` (GPL-3.0): **0 coincidências**; o controle positivo (fork contra original) detectou 2.927, então a ferramenta funciona.

@@ -66,19 +66,20 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 4. Pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
-2. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
-3. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
-4. **Telas de administração da plataforma e da empresa operadora — PENDENTE (só existe API).** Escopo:
+2. **Telas de câmeras e imagem da entrada junto do pedido de visita — PLANEJADO:** ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md) (grade de câmeras, câmera de entrada de visitas, captura de quadro, imagem cifrada com retenção, prévia na portaria e visão no app). Aguarda as decisões D12–D15.
+3. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
+4. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
+5. **Telas de administração da plataforma e da empresa operadora — PENDENTE (só existe API).** Escopo:
    - **Administrador da plataforma:** cadastrar e listar empresas operadoras (`/companies`) e os administradores de cada empresa (`/companies/{id}/admins`); criar condomínios; visão de todas as empresas.
    - **Administrador da empresa operadora:** criar e gerenciar os condomínios da empresa, operadores e síndicos (hoje só a equipe de um condomínio, na aba Equipe), agentes locais (`/condominiums/{id}/agents`: cadastro e chave), rotação de chave de dispositivo (`rotate-key`) e conflitos de sincronização (`/sync-conflicts`).
    - **Antes de começar, decidir D8** (o que cada papel pode ver e fazer) e D7 (planos e limites por empresa). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.
-5. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
-6. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
-7. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.
-10. **Qualidade:** teste de carga (`scripts/load-test.py`) não foi reexecutado depois das últimas rodadas; PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
-11. **Retenção de mensagens** individuais (flagrado em `docs/lgpd.md`) e saída automática de visitante esquecido no local (hoje só aviso após 12 h).
-8. **Agente:** pacote `.deb` e suporte além de Linux/systemd.
-9. Testes de integração organizados por domínio (hoje ficam todos em `br.com.domus.platform`).
+6. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
+7. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
+8. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.
+9. **Qualidade:** teste de carga (`scripts/load-test.py`) não foi reexecutado depois das últimas rodadas; PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
+10. **Retenção de mensagens** individuais (flagrado em `docs/lgpd.md`) e saída automática de visitante esquecido no local (hoje só aviso após 12 h).
+11. **Agente:** pacote `.deb` e suporte além de Linux/systemd.
+12. Testes de integração organizados por domínio (hoje ficam todos em `br.com.domus.platform`).
 
 ## 5. Pendências que dependem de equipamento, contrato ou terceiros
 - **Hardware real:** testar o `DAHUA_CGI` com uma controladora; obter a documentação oficial do modelo exato (NDA/revendedor); teste com perda de conectividade no meio do comando.

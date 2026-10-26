@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DeskAnnouncements } from "./DeskAnnouncements";
+import { CameraMonitor } from "./CameraMonitor";
 import { DeskCameras } from "./DeskCameras";
 import { DeskDoors } from "./DeskDoors";
 import { DeskParcels } from "./DeskParcels";
@@ -51,6 +52,7 @@ export function CondoDesk({ token, condominiumId, name, onBack }:
           <span>{onSite.items.length === 1 ? "visitante no local" : "visitantes no local"}</span>
         </button>
       </div>
+      <CameraMonitor token={token} condominiumId={condominiumId} />
       <div role="tablist" aria-label="Seções do condomínio" className="tab-groups">
         {GROUPS.map((g) => (
           <div key={g.label} role="group" aria-label={g.label} className="tab-group">

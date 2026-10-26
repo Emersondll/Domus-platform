@@ -23,6 +23,11 @@ câmera (RTSP) ──► MediaMTX (RTSP → HLS) ──► navegador do painel (
    (`/internal/media/auth`) se o token vale para aquele caminho.
 5. Cada abertura de visualização grava `camera.view` na auditoria, na mesma transação. Morador e quem é de outro condomínio recebem 404.
 
+**Monitoramento na mesa e no atendimento:** ao abrir um condomínio, e também ao atender uma chamada dele, o operador vê o bloco
+"Câmeras do condomínio" com as câmeras ativas e o estado de cada uma. O vídeo **só abre quando o operador pede** ("Monitorar
+<câmera>" ou "Abrir até 4 câmeras"), nunca sozinho, porque cada abertura é auditada e usa banda. Máximo de 4 ao mesmo tempo.
+Cadastro e edição continuam na aba Câmeras.
+
 Abrir o vídeo **não aciona nenhuma porta**. Se o servidor de mídia estiver desligado ou fora do ar, o painel mostra o erro; nunca
 mostra imagem simulada.
 

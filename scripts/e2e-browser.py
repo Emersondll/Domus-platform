@@ -339,7 +339,7 @@ try:
         # a câmera simulada do hall é a câmera de entrada de visitas (imagem sintética, nunca parece real)
         api("POST", f"{base}/devices/{hall['id']}/visitor-entrance", "manager-sol", {"enabled": True})
         pan.get_by_role("tab", name="Câmeras").click()
-        expect(pan.get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
+        expect(pan.locator("div[aria-label='Câmeras']").get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
         expect(pan.get_by_text("sem vídeo configurado").first).to_be_visible()
         check("câmera sem RTSP aparece na aba Câmeras sem botão de vídeo", True)
 
@@ -357,6 +357,16 @@ try:
             expect(pan.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
             check("vídeo ao vivo sem servidor de mídia: erro explícito, sem imagem simulada", True)
         pan.get_by_role("button", name="Fechar vídeo").click()
+        # monitoramento na mesa: a câmera aparece junto das demais informações do condomínio e só abre quando o operador pede
+        monitor = pan.get_by_role("region", name="Monitoramento de câmeras")
+        monitor.get_by_role("button", name="Monitorar Câmera RTSP E2E").click(timeout=40000)
+        if os.environ.get("E2E_LIVE_VIDEO") == "1":
+            expect(pan.get_by_text("Ao vivo · Câmera RTSP E2E")).to_be_visible(timeout=30000)
+            check("a mesa do condomínio monitora as câmeras ao vivo sem sair da tela", True)
+        else:
+            expect(pan.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
+            check("a mesa do condomínio monitora as câmeras (sem servidor de mídia: erro explícito)", True)
+        pan.get_by_role("button", name="Fechar vídeo Câmera RTSP E2E").click()
         if os.environ.get("E2E_LIVE_VIDEO") == "1":
             # captura de quadro de câmera pelo servidor de mídia + ffmpeg (fonte RTSP de teste): precisa devolver um JPEG
             api("POST", f"{base}/devices/{rtsp_cam['id']}/visitor-entrance", "manager-sol", {"enabled": True})

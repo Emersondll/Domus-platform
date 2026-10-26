@@ -243,6 +243,24 @@ describe("operator panel", () => {
     expect(hlsInstances.at(-1)?.destroyed).toBe(true);
   });
 
+  it("monitors the condominium cameras from the desk and from a call, only when asked", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Entregador/ }));
+    const inCall = await screen.findByRole("region", { name: "Monitoramento de câmeras" });
+    expect(within(inCall).queryByRole("button", { name: "Monitorar Câmera velha" })).not.toBeInTheDocument(); // desativada
+    expect(posted.some((p) => p.url.endsWith("/stream-session"))).toBe(false); // nada abre sozinho
+    await user.click(within(inCall).getByRole("button", { name: "Monitorar Câmera garagem" }));
+    expect(await screen.findByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
+    expect(posted.some((p) => p.url.endsWith("/devices/d2/stream-session"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Início" }));
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    const desk = await screen.findByRole("region", { name: "Monitoramento de câmeras" });
+    await user.click(within(desk).getByRole("button", { name: "Abrir até 4 câmeras" }));
+    const grid = await screen.findByLabelText("Câmeras monitoradas");
+    expect(within(grid).getByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
+    expect(within(grid).getByRole("region", { name: "Vídeo de Câmera hall" })).toBeInTheDocument();
+  });
+
   it("shows an explicit error, not a picture, when the media server is down", async () => {
     videoDown = true;
     const hlsBefore = hlsInstances.length;

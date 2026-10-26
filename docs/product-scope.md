@@ -52,7 +52,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 ## 5. Gestão administrativa
 | Recurso | Situação | Observação |
 |---|---|---|
-| Moradores e unidades | Feito | Falta tela de administração (pendência 5) |
+| Moradores e unidades | Feito | Telas do síndico/portaria feitas (aba Cadastros) |
 | Reserva de áreas comuns | Feito | |
 | Livro de ocorrências | **Feito** | Ocorrências + livro de turno (registros e passagens, texto cifrado) |
 | Comunicados internos | **Feito** | Publica no painel; chega como aviso no app |
@@ -66,7 +66,8 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 |---|---|---|
 | Vários condomínios, isolamento, perfis, auditoria | Feito | |
 | Planos comerciais (recursos liberados por plano) | Lote C | Mecanismo de liberação por condomínio; **valores e regras do plano são decisão de negócio (D7)** |
-| Telas de administração (plataforma, empresa, síndico) | Falta | Pendência 5 |
+| Telas de administração (síndico) | **Feito** | Aba Cadastros |
+| Telas de administração (plataforma e empresa operadora) | Falta | Empresas e administradores, agentes, rotação de chave, conflitos de sincronização (só API) |
 
 ## Ordem
 - **Lote A (feito em 2026-10-23):** autorização do visitante pelo celular e botão de pânico.

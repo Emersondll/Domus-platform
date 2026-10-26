@@ -1,9 +1,9 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Relatório de 2026-10-22. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-10-26. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
-> Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, o CI foi corrigido mas não reexecutado, e há decisões jurídicas e de infraestrutura em aberto.
+> Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
 ## 1. Evidência do estado atual
 
@@ -13,11 +13,12 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | Agente `mvn test` | 36 testes, 0 falhas |
 | Web `npm test` + build | 64 testes (40 painel + 24 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
-| `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
+| `scripts/e2e-browser.py` | OK, 38 verificações (navegador real: chamada, pânico com janela de alerta, porta só confirma com evento, visitantes, encomendas, mensagens, cadastros, vídeo ao vivo) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
 | `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
-| `scripts/restore-drill.sh` | PASS |
-| CI no GitHub | **verde (7 jobs)** em 2026-10-22 |
+| `scripts/restore-drill.sh` | PASS (14 migrações, V1–V14) |
+| `scripts/api-smoke.py` | OK: 128 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
+| CI no GitHub | **verde** nos pushes até `5d4caa4` (2026-10-26); o de `5fdaaea` estava em andamento ao escrever |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -32,10 +33,11 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | 1. Retorno da chamada ao morador | **Feito.** Notificação ao ser atendida e ao ser encerrada (com o desfecho, sem a justificativa interna), `GET me/calls`, status "aguardando / em atendimento / encerrada" na tela, atualização automática a cada 5 s, uma chamada ativa por vez |
 | 2. App do morador: início, visitas, encomendas | **Feito.** Cartões de encomendas a retirar e visitas esperadas, aba Visitas (esperadas, chegaram, histórico de entradas com o nome do convite), encomendas pendentes em destaque |
 | 3. Painel: encomendas e visitantes | **Feito.** "Mesa do condomínio": registrar chegada, entregar com nome de quem retirou, entradas recentes e visitantes |
-| 4. Painel: portas e dispositivos | **Parcial.** Estado das portas, atualização de estado e histórico de comandos (com "aceito ≠ aberto"). **Falta** abrir porta fora de um atendimento (hoje só dentro do atendimento, onde a justificativa e a base de autorização são registradas) |
+| 4. Painel: portas e dispositivos | **Parcial.** Estado das portas, atualização de estado e histórico de comandos (com "aceito ≠ aberto"). A abertura pela portaria só existe dentro de um atendimento (decisão: é lá que justificativa e base de autorização ficam registradas); a API aceita também a base "credencial validada há menos de 5 min", sem tela |
 | 5. Câmeras | **Parcial.** Cadastro, estado e **vídeo ao vivo (RTSP → HLS pelo MediaMTX, com token curto e auditoria)**, provado com uma fonte RTSP de teste (`docs/cameras.md`). **Falta**: teste com câmera real, câmera atrás de NAT (o agente local ainda não publica o fluxo), ONVIF `GetStreamUri`, gravação (decisão LGPD) |
 | Lote A (escopo de produto) | **Feito:** autorização de visitante pelo celular e alerta de pânico. Ver `docs/product-scope.md` para os lotes B e C |
 | Lote B (escopo de produto) | **Feito (2026-10-24):** saída de visitantes, relatório de acessos com CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio; desligada por padrão) e mensagens individuais morador ↔ portaria (2026-10-25). Evidência: 134 testes de backend, 52 de tela, E2E em navegador (31 verificações, ainda sem o passo de mensagens), `restore-drill` PASS (12 migrações), teste de carga sem erros |
+| Rodada 2026-10-25/26 | **Feito:** cadastros (moradores, cônjuge, dependentes, animais, equipe), vídeo ao vivo, alerta de pânico em tela cheia com sirene e unidade de origem, notificações do morador por assunto, encomendas a retirar (contagem, lembrete), aviso de visita/prestador, entrada e saída de visitante autorizado na portaria, "voltar" em todas as telas |
 | Fora do plano | Notificação push/e-mail/WhatsApp ao morador (D5); aderência a outros produtos de portaria depende de você descrever os fluxos desejados |
 
 ## 3. Bugs
@@ -64,11 +66,14 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 4. Pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
+2. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
 3. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
-4. **Telas de administração** para administrador da plataforma, da empresa e síndico (hoje só existe API).
+4. **Telas de administração da plataforma e da empresa operadora** (empresas e seus administradores, agentes locais, rotação de chave de dispositivo, conflitos de sincronização). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.
 5. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
 6. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
-7. **Relatórios** por condomínio e exportação.
+7. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.
+10. **Qualidade:** teste de carga (`scripts/load-test.py`) não foi reexecutado depois das últimas rodadas; PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
+11. **Retenção de mensagens** individuais (flagrado em `docs/lgpd.md`) e saída automática de visitante esquecido no local (hoje só aviso após 12 h).
 8. **Agente:** pacote `.deb` e suporte além de Linux/systemd.
 9. Testes de integração organizados por domínio (hoje ficam todos em `br.com.domus.platform`).
 
@@ -129,7 +134,7 @@ python3 scripts/e2e-browser.py        # precisa de Playwright e do jar do backen
 Detalhes e limites de cada prova: [`docs/STATUS.md`](docs/STATUS.md), [`docs/operations.md`](docs/operations.md), [`docs/security.md`](docs/security.md), [`docs/agent.md`](docs/agent.md).
 
 ## Auditoria de telas × API (2026-10-25)
-Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 123 endpoints; **11 não têm tela**:
+Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 128 endpoints; **11 não têm tela**:
 - **Sem tela, a API existe:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas. É a administração da plataforma/empresa, ainda só pela API.
 - **Sem tela por desenho:** `agent/*` (o agente local usa a API direto).
 - **Telas de cadastro feitas em 2026-10-25** (aba Cadastros, Gestão): blocos e unidades, moradores por unidade (titular, cônjuge, dependentes; desativar, acesso ao app, exportar e anonimizar), animais, equipe. O morador cuida da própria família e dos animais em "Mais > Minha casa". Escrever exige síndico ou administração; o operador consulta.

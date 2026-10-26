@@ -24,13 +24,14 @@ renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. I
 1. **Login OIDC dos frontends implementado, mas não exercitado em navegador real.** O painel e o app do morador usam Authorization Code +
    PKCE (S256) com `state`, token só em memória e configuração por `/config.json` do proxy; o login de desenvolvimento não vai para o bundle
    de produção (verificado). Validado: vetor da RFC 7636, `state` forjado/reuso recusados (testes de UI) e o protocolo completo contra o
-   Keycloak real (`scripts/verify_keycloak.py`: verifier errado → 400, código reutilizado → 400, token aceito pela API). Falta um teste
-   automatizado em navegador (Playwright) e refresh de token (hoje expira em 5 min → novo login transparente pelo SSO).
-2. **Validação de audiência (`aud`)** do token não está ativada: qualquer token do realm assinado pelo Keycloak é aceito.
+   Keycloak real (`scripts/verify_keycloak.py`: verifier errado → 400, código reutilizado → 400, token aceito pela API). A renovação
+   silenciosa do token está implementada nos dois apps. Falta exercitar o login OIDC num navegador contra o Keycloak real (o E2E de navegador usa o login de desenvolvimento).
+2. **Validação de audiência (`aud=portaria-api`)**: implementada e provada com Keycloak real. Em Keycloak já existente é preciso adicionar o mapper de audiência (`docs/operations.md`).
 3. **mTLS por dispositivo/agente** não implementado (hoje: chave por agente/dispositivo sobre TLS).
-4. **Nada testado com hardware real** (controladoras, câmeras, SIP, vídeo).
-5. Dados em repouso: SQLite do agente e campos pessoais no PostgreSQL **sem criptografia de campo** (use disco cifrado).
+4. **Nada testado com hardware real** (controladoras, câmeras, SIP). O vídeo ao vivo foi provado só com fonte RTSP de teste (`docs/cameras.md`).
+5. Dados em repouso: campos pessoais no PostgreSQL e o SQLite do agente têm **criptografia de campo/arquivo** (AES-256-GCM); falta criptografia do disco/banco como um todo e guardar as chaves em KMS/cofre (D3).
 6. Sem WAF/proteção DDoS; sem teste de intrusão independente; sem varredura de imagem de contêiner.
 7. Limitação de taxa e agendamentos por instância (ver [operations.md](operations.md)).
 8. Front-end exige Node ≥ 22.12; `npm audit` completo = 0 vulnerabilidades (revalidar a cada atualização de dependências).
-9. O CI foi escrito mas **não executado** no GitHub Actions.
+9. CI no GitHub Actions: 7 jobs verdes desde 2026-10-22 e nos pushes seguintes.
+10. **Vídeo ao vivo:** o endereço RTSP e a senha da câmera nunca vão ao navegador; a sessão usa token HMAC de 10 min preso ao caminho da câmera, validado pelo servidor de mídia em `/internal/media/auth` (bloqueado no proxy e restrito por IP). O MediaMTX precisa de TLS na frente e de `hlsAllowOrigin` restrito ao painel em produção.

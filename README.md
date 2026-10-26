@@ -1,6 +1,6 @@
 # Domus — plataforma de portaria virtual multicondomínio
 
-Monólito modular Java (Spring Boot 4.0.7, Java 26) para empresas que operam portaria remota de vários condomínios.
+Monólito modular Java (Spring Boot 4.0.9, Java 26) para empresas que operam portaria remota de vários condomínios.
 Fases 0–8 executadas, **não pronto para produção** (nada testado com hardware real). Veja [docs/STATUS.md](docs/STATUS.md) para o que está
 concluído, simulado e pendente.
 

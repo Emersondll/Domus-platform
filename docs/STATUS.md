@@ -1,6 +1,6 @@
-# Status do projeto — 2026-10-24
+# Status do projeto — 2026-10-26
 
-Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.7, Java 26), painel da central e app do
+Domus, plataforma de portaria virtual multicondomínio: monólito modular Java (Spring Boot 4.0.9, Java 26), painel da central e app do
 morador (React + TypeScript), agente local de contingência (Java + SQLite). **Fases 0–8 executadas.**
 **Isto NÃO é "pronto para produção"**: nada foi testado com hardware real e há lacunas listadas abaixo.
 
@@ -17,12 +17,12 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
 | `scripts/e2e-browser.py` (navegador real) | OK (38 verificações, 2026-10-25; inclui entrada e saída de prestador autorizado pelo morador, a janela de alerta de pânico na central com a unidade de origem; inclui cadastro de cônjuge e animal pelo morador visto na portaria, conversa morador ↔ portaria, validação de convite pela tela e câmeras, com o player de vídeo ao vivo chegando a "Ao vivo" via MediaMTX real): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
-| `scripts/api-smoke.py` (API em execução) | OK (2026-10-25): 126 endpoints mapeados; 45 GETs de condomínio × 4 papéis sem 5xx, sem vazamento entre empresas e sem acesso sem token. Matriz em `docs/endpoint-coverage.md` |
+| `scripts/api-smoke.py` (API em execução) | OK (2026-10-25): 128 endpoints mapeados; 45 GETs de condomínio × 4 papéis sem 5xx, sem vazamento entre empresas e sem acesso sem token. Matriz em `docs/endpoint-coverage.md` |
 | `scripts/restore-drill.sh` | PASS (14 migrações, V1–V14): tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
 | `scripts/load-test.py` (mesma máquina, piso) | após a criptografia de campos: leitura ~900–1.500 req/s (inclusive `GET condomínios`, que não tem dado pessoal), escrita ~1.600 req/s; p95 21–36 ms; 0 erros; 0 timeouts. **A/B/A/B/A/B contra o jar anterior à cifra (2026-10-22): sem diferença além do ruído (±40% entre rodadas do mesmo jar); cifra ≈2 µs/op. A queda de 3.000 req/s vinha do ambiente. Dimensionar produção em hardware dedicado** |
-| CI (`.github/workflows/ci.yml`) | **verde em 2026-10-22 (7 jobs)**: backend, agente, web, compose, CodeQL (Java 26 e JS/TS), OSV (via SBOM CycloneDX: 417 pacotes, sem achados) e gitleaks. A rodada achou e corrigiu vulnerabilidades reais de dependências (Boot 4.0.9, Jackson 3.1.7/2.21.7, OpenTelemetry 1.62.0, assertj 3.27.7) |
+| CI (`.github/workflows/ci.yml`) | **verde em 2026-10-22 (7 jobs) e nos pushes seguintes até 2026-10-26 (`5d4caa4`; o de `5fdaaea` estava em andamento)**: backend, agente, web, compose, CodeQL (Java 26 e JS/TS), OSV (via SBOM CycloneDX: 417 pacotes, sem achados) e gitleaks. A rodada achou e corrigiu vulnerabilidades reais de dependências (Boot 4.0.9, Jackson 3.1.7/2.21.7, OpenTelemetry 1.62.0, assertj 3.27.7) |
 
 ## Concluído e verificado
 - **Fundação:** multi-tenant (empresa → condomínio → bloco → unidade → morador) com 404 entre tenants, FKs compostas, papéis por
@@ -75,7 +75,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
    rotação da chave de lançamento do agente; chaves de criptografia em gerenciador de segredos/KMS (hoje variável de ambiente).
 6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos por instância (Redis/lock distribuído); cada instância abre sua conexão de eventos Dahua; PostgreSQL sem réplica/PITR; RTO/RPO não medidos.
 7. **LGPD:** decisões jurídicas/operacionais (base legal, DPO, RIPD, contratos, retenção final) — `docs/lgpd.md`; política para dados de visitantes; gravações quando houver vídeo.
-8. **Administração e relatórios:** não existem telas para administrador da plataforma, da empresa e síndico (só há API); relatórios por condomínio/exportação; planos, contratos e limites.
+8. **Administração:** as telas do síndico e da portaria existem (aba Cadastros); **faltam** as da plataforma e da empresa operadora (empresas e administradores, agentes, rotação de chave, conflitos de sincronização — só API). Relatório de acessos com CSV existe; faltam os de encomendas, ocorrências e turnos. Planos, contratos e limites: decisão D7.
 9. Instalador/pacote (.deb) do agente e suporte a outros sistemas além de Linux/systemd.
 10. App nativo (React Native) se houver necessidade de push nativo, NFC ou lojas (ADR 0004).
 11. **CI:** validado em 2026-10-22. Licença Apache 2.0 (`LICENSE`); `.claude/` e `CLAUDE.md` ficam só na máquina local e fora do histórico.

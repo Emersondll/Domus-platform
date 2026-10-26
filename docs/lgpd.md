@@ -16,9 +16,9 @@
 | Segurança | TLS, MFA para equipe, segregação por papéis, backups com checksum e criptografia opcional |
 
 ## Pendências técnicas
-- **Imagens e áudios**: a plataforma **não** armazena nem grava. O vídeo ao vivo das câmeras (`docs/cameras.md`) é só transmissão para
-  quem opera a portaria, e cada abertura de visualização é auditada (`camera.view`). Antes de ligar **gravação**, é obrigatório definir
-  retenção, controle de acesso às gravações e registro de cada consulta.
+- **Imagens e áudios**: não há gravação de vídeo nem de áudio. O vídeo ao vivo das câmeras (`docs/cameras.md`) é só transmissão para quem opera
+  a portaria, e cada abertura é auditada (`camera.view`). **Exceção:** a imagem da câmera de entrada de visitas (seção abaixo).
+  Antes de ligar **gravação**, é obrigatório definir retenção, controle de acesso às gravações e registro de cada consulta.
 - **`audit_log` não é expurgado automaticamente** (trigger append-only). O descarte exige procedimento de manutenção
   controlado e aprovado (desabilitar o trigger por DBA, em transação auditada) conforme a política de retenção definida pelo controlador.
 - A anonimização não altera `audit_log` nem `access_attempt`/`access_command` (registros de segurança), que não contêm o nome do morador;
@@ -36,6 +36,16 @@
 
 ## Pedidos de autorização de visitante (visit_request)
 O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_request.visitor_name`), como nas demais tabelas. O pedido expira em 5 minutos sem resposta; o registro permanece para auditoria e deve entrar na política de retenção que o controlador definir (D1).
+
+## Imagem da câmera de entrada de visitas (2026-10-26)
+Imagem de uma pessoa (o visitante) é dado sensível por natureza. O recurso fica **desligado por padrão** (`SNAPSHOTS_ENABLED`) até a decisão D13
+(base legal, aviso de videomonitoramento na entrada, quem é o controlador). Como funciona: a portaria captura **um quadro** da câmera de entrada,
+confere a prévia e o envia junto do pedido de autorização; o morador **da unidade do pedido** o vê no app. Tecnicamente: um quadro por pedido,
+JPEG de até 640 px e 200 KB, **cifrado em nível de campo** (`visit_snapshot.content`), sem URL pública (baixado com o token), `Cache-Control: no-store`,
+cada captura e cada visualização na auditoria (`snapshot.capture`, `snapshot.view`, `snapshot.view.self`; a auditoria não guarda a imagem).
+**Retenção:** imagem não enviada, 10 min; enviada, 30 dias (`SNAPSHOTS_RETENTION_DAYS`, decisão D12 a confirmar). **Pendente (D13):** atendimento a
+pedido do titular quando o fotografado é visitante (não há cadastro para localizá-lo além do pedido), aviso na entrada e base legal. O sistema não faz
+reconhecimento facial e a tela não induz a isso. O morador pode fazer captura de tela do celular: não há como impedir.
 
 ## Entrada de visitante autorizado na portaria (2026-10-26)
 A portaria registra a entrada de quem o morador autorizou (`access_attempt.visit_request_id`, uma por pedido). O nome vem do pedido (cifrado) e aparece decifrado só no painel, no relatório e no CSV. Entra na mesma política de retenção do histórico de acessos (D1). Não há saída automática: quem ficou sem saída registrada por mais de 12 h recebe só um aviso na tela.

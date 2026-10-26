@@ -1,6 +1,6 @@
 # Câmeras e vídeo ao vivo
 
-Estado: **implementado e provado com uma fonte RTSP de teste** (padrão de imagem do ffmpeg). **Não foi testado com uma câmera
+Estado: **implementado e provado com uma fonte RTSP de teste** (vídeo ao vivo, grade, edição e a imagem da câmera de entrada, ver `docs/plano-cameras-visitas.md`) (padrão de imagem do ffmpeg). **Não foi testado com uma câmera
 real** nem com ONVIF `GetStreamUri`; isso depende de equipamento e está em `pendencias.md`.
 
 ## Como funciona
@@ -61,10 +61,10 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 - **Câmera atrás de NAT do condomínio:** a central na nuvem não alcança o RTSP da rede local. O modelo "puxar" só serve quando
   o RTSP é alcançável (rede privada/VPN). Para o caso comum, o **agente local deveria publicar** o fluxo no MediaMTX (a autorização
   de publicação já existe: `action=publish` com `MEDIA_PUBLISH_SECRET`), mas o agente **ainda não faz isso**.
-- **Sem gravação, sem fotos, sem histórico de imagens** (retenção e acesso a gravações são decisão LGPD; ver `docs/lgpd.md`).
+- **Sem gravação e sem histórico de vídeo.** Há **um quadro** por aviso de visita (câmera de entrada), cifrado e com retenção, desligado por padrão (`docs/plano-cameras-visitas.md`). Retenção e acesso a gravações são decisão LGPD (`docs/lgpd.md`).
   O vídeo é só ao vivo.
 - **Latência HLS** de alguns segundos; para baixa latência seria preciso WebRTC (não implementado).
-- **Só o painel da portaria** vê as câmeras; o morador não tem acesso (decisão de produto pendente).
+- **Só o painel da portaria** vê o vídeo ao vivo; o morador vê apenas a imagem enviada junto do aviso de visita da própria unidade.
 - **Produção:** `/internal/*` não pode ser publicado no proxy reverso (o `Caddyfile` bloqueia `/internal` com 404; confira se mudar o proxy); o MediaMTX precisa de TLS
   na frente e `hlsAllowOrigin` restrito à origem do painel (hoje `*` no arquivo de exemplo).
 - A conversão RTSP → HLS roda no MediaMTX (MIT), executável **separado**; ele não é embutido no jar do Domus.

@@ -39,11 +39,17 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/common-areas` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/devices` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices` | condomínio | sim |
+| PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/active` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/open` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/refresh-status` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/resident-openable` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/rotate-key` | condomínio | **não** |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/visitor-entrance` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/entrance-snapshots` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/entrance-snapshots/availability` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/entrance-snapshots/{snapshotId}/image` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/incidents` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/incidents` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/incidents/{incidentId}/resolve` | condomínio | sim |
@@ -84,6 +90,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/me/visit-requests` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/visit-requests/{requestId}/approve` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/visit-requests/{requestId}/deny` | morador | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/me/visit-requests/{requestId}/snapshot` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/members` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/members` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/members/{membershipId}/revoke` | condomínio | sim |
@@ -120,6 +127,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/visit-requests` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/visit-requests` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/visit-requests/{requestId}/entry` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/visit-requests/{requestId}/snapshot` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/visitors` | condomínio | sim |
 | POST | `/api/v1/devices/{deviceId}/events` | agente/dispositivo/mídia | sim |
 | GET | `/api/v1/me/residencies` | morador | sim |

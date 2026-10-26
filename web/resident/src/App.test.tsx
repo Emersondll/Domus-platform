@@ -49,6 +49,7 @@ function fakeApi() {
     if (url.endsWith("/me/pets")) return json([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: null }]);
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
+    if (url.endsWith("/me/visit-requests/vr1/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (url.endsWith("/me/visit-requests")) return json(page(myVisitRequests));
     if (url.endsWith("/me/calls") && method === "POST") return json({ id: "c1" }, 201);
     if (url.endsWith("/me/calls")) return json(page(myCalls));
@@ -78,6 +79,8 @@ async function openTab(name: string) {
 
 describe("resident app", () => {
   beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => "blob:entrada");
+    URL.revokeObjectURL = vi.fn();
     calls = [];
     reservationStatus = 201;
     myCalls = [];
@@ -306,5 +309,18 @@ describe("resident app", () => {
     expect(await screen.findByRole("region", { name: "Mais opções" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "← Voltar ao início" }));
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
+  });
+
+  it("shows the entrance image with the visitor request, or says there is none", async () => {
+    const at = new Date().toISOString();
+    myVisitRequests = [
+      { id: "vr1", unitId: "u1", visitorName: "Moço da entrega", kind: "VISITOR", status: "PENDING", createdAt: at, expiresAt: new Date(Date.now() + 300000).toISOString(), decidedAt: null, hasSnapshot: true },
+      { id: "vr2", unitId: "u1", visitorName: "Sem foto", kind: "VISITOR", status: "PENDING", createdAt: at, expiresAt: new Date(Date.now() + 300000).toISOString(), decidedAt: null, hasSnapshot: false },
+    ];
+    await openTab("Início");
+    expect(await screen.findByRole("img", { name: "Imagem da entrada: Moço da entrega" })).toBeInTheDocument();
+    expect(screen.getByText("Sem imagem da entrada.")).toBeInTheDocument();
+    expect(calls.some((c) => c.url.endsWith("/me/visit-requests/vr1/snapshot"))).toBe(true);
+    expect(calls.some((c) => c.url.endsWith("/me/visit-requests/vr2/snapshot"))).toBe(false);
   });
 });

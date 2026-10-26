@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
+import { AuthImage } from "../../shared/src/AuthImage";
 import type { Invitation, MyCall, Notification, Parcel, VisitRequest } from "./types";
 import { NotificationTabs } from "./NotificationTabs";
 import { RemoteDoors } from "./RemoteDoors";
@@ -87,6 +88,14 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       {waiting.map((r) => (
         <div key={r.id} className="visit-request" role="alert">
           <strong>{r.visitorName}</strong> {r.kind === "SERVICE_PROVIDER" ? "(prestador) " : ""}está na portaria e aguarda a sua autorização.
+          {r.hasSnapshot ? (
+            <figure>
+              <AuthImage token={token} path={`${base}/visit-requests/${r.id}/snapshot`} alt={`Imagem da entrada: ${r.visitorName}`} />
+              <figcaption><small>Imagem da câmera da portaria, apagada depois do prazo de retenção.</small></figcaption>
+            </figure>
+          ) : (
+            <small>Sem imagem da entrada.</small>
+          )}
           <div className="actions">
             <button onClick={() => answer(r.id, "approve")}>Autorizar</button>
             <button className="danger" onClick={() => answer(r.id, "deny")}>Negar</button>

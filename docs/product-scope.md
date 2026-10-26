@@ -15,7 +15,8 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Registro de entradas **e saídas** | **Feito** | A portaria registra a saída; a tela mostra quem está no local |
 | Gestão de veículos | Feito | Placa cifrada, índice cego |
 | Histórico de acessos | Feito | Sem fotos |
-| Histórico com **fotos** | Externo | Exige câmera e política de retenção de imagem (LGPD) |
+| Imagem da câmera de entrada junto do aviso de visita | **Feito (câmera simulada)** | Desligado por padrão; cifrada, com retenção e auditoria. Câmera real e base legal (D13) pendentes; ver `docs/plano-cameras-visitas.md` |
+| Histórico com **fotos** de todo acesso | Externo | Exige política de retenção de imagem (LGPD) |
 | Notificações de visita e chegada | Parcial | In-app; push/e-mail/WhatsApp são externos (D5) |
 
 ## 2. Aplicativo do morador

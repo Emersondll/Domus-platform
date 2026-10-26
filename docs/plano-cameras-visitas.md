@@ -1,6 +1,6 @@
 # Plano: telas de câmeras e imagem da entrada junto do pedido de visita
 
-Status: **plano, nada implementado.** Redigido em 2026-10-26. Base: `docs/cameras.md` (vídeo ao vivo já existe), fluxo de visita
+Status: **implementado em 2026-10-26 com câmera simulada** (fases 1 a 6; ver a seção 7). Redigido em 2026-10-26. Base: `docs/cameras.md` (vídeo ao vivo já existe), fluxo de visita
 no balcão (`visit_request`, V9/V14) e `docs/lgpd.md`.
 
 ## 1. Objetivo
@@ -123,3 +123,21 @@ Cada passo termina com testes, `mvn verify`, documentos atualizados e commit; pu
 - A imagem prova **quem estava na entrada naquele momento**, não que a pessoa é quem disse ser; a tela não deve induzir a
   "reconhecimento".
 - Imagem capturada pela portaria pode não corresponder ao visitante se a câmera pegar outra pessoa: por isso a prévia obrigatória.
+
+## 7. O que foi entregue (2026-10-26) e o que mudou em relação ao plano
+- **Fase 1:** grade de até 4 câmeras ao vivo, tela cheia, editar (`PUT devices/{id}`), desativar/reativar e marcar a câmera de entrada
+  de visitas (`device.active`, `device.visitor_entrance`, índice único por entrada; migração **V15**). `CameraAdminIT` (3 testes).
+- **Fases 2 e 3:** captura (`POST entrance-snapshots`) com prévia, vínculo ao pedido (`snapshotId`), imagem cifrada (campo AES-GCM em
+  `visit_snapshot`, migração **V16**, não V15 como o plano previa), consulta pela portaria e pelo morador da unidade
+  (404 para outras unidades e condomínios), `Cache-Control: no-store`, auditoria de captura e visualização, expurgo no `RetentionService`
+  (10 min sem pedido; 30 dias com pedido). `VisitSnapshotIT` (4 testes).
+- **Fontes de imagem:** `SIMULATOR` (imagem sintética listrada "IMAGEM SIMULADA") e **via MediaMTX + ffmpeg** (o backend lê o fluxo da câmera pelo
+  servidor de mídia com um token de 60 s; a senha da câmera não aparece na linha de comando). Provado com a fonte RTSP de teste no E2E.
+  **Não** foi feita a captura direta HTTP/ONVIF (`GetSnapshotUri`): falta equipamento.
+- **Fases 4 e 5:** painel (capturar, prévia, "Capturar de novo", enviar, selo e imagem na lista) e app do morador (imagem no cartão de autorização
+  e a seção "Avisos da portaria" na aba Visitas). Componente `AuthImage` compartilhado (a imagem é baixada com o token).
+- **Fase 6:** E2E com 40 verificações, `restore-drill` PASS (16 migrações), teste de carga sem erros (0 em ~43 mil requisições) e captura
+  simulada com p95 de 92 ms.
+- **Recurso desligado por padrão** (`SNAPSHOTS_ENABLED=false`); o perfil `dev` e os testes ligam. D12 (30 dias) foi adotada como padrão
+  configurável (`SNAPSHOTS_RETENTION_DAYS`); D13 (base legal, aviso de videomonitoramento) **continua jurídica e em aberto**; D15: o ffmpeg precisa
+  estar no servidor do backend (`FFMPEG_PATH`) para câmeras reais.

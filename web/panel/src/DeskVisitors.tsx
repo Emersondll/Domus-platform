@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { request } from "../../shared/src/api";
+import { AuthImage } from "../../shared/src/AuthImage";
 import type { AccessRow, Attempt, VisitRequest, Visitor } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 import { useUnitLabels } from "./useUnitLabels";
@@ -15,6 +17,27 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const [reqUnit, setReqUnit] = useState("");
   const [reqName, setReqName] = useState("");
   const [reqCompany, setReqCompany] = useState("");
+  const [avail, setAvail] = useState<{ enabled: boolean; entrances: string[] }>({ enabled: false, entrances: [] });
+  const [snapEntrance, setSnapEntrance] = useState("");
+  const [snap, setSnap] = useState<{ id: string; camera: string } | null>(null);
+  const [seeing, setSeeing] = useState<string | null>(null);
+
+  useEffect(() => {
+    request<{ enabled: boolean; entrances: string[] }>(token, "GET", `${base}/entrance-snapshots/availability`)
+      .then((a) => setAvail(a ?? { enabled: false, entrances: [] })).catch(() => {});
+  }, [token, base]);
+
+  async function captureImage() {
+    setError(null);
+    try {
+      const c = await request<{ id: string; cameraName: string }>(token, "POST", `${base}/entrance-snapshots`,
+        { entrance: snapEntrance || null });
+      if (c) setSnap({ id: c.id, camera: c.cameraName });
+    } catch {
+      setSnap(null);
+      setError("Não foi possível capturar a imagem: confira se a câmera de entrada está ativa e com vídeo. O aviso pode ser enviado sem imagem.");
+    }
+  }
   const [reqKind, setReqKind] = useState("VISITOR");
   const [error, setError] = useState<string | null>(null);
   const [token_, setToken] = useState("");
@@ -45,7 +68,9 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   async function askResident() {
     setError(null);
     try {
-      await request(token, "POST", `${base}/visit-requests`, { unitId: reqUnit, visitorName: visitorLabel(), kind: reqKind, callId: null });
+      await request(token, "POST", `${base}/visit-requests`, { unitId: reqUnit, visitorName: visitorLabel(), kind: reqKind, callId: null,
+        ...(snap ? { snapshotId: snap.id } : {}) });
+      setSnap(null);
       setReqName("");
       setReqCompany("");
       await requests.reload();
@@ -117,7 +142,34 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
             onChange={(e) => setReqCompany(e.target.value)} />
         </>
       )}
-      <button disabled={!reqUnit || !reqName.trim()} onClick={askResident}>Pedir autorização ao morador</button>
+      {avail.enabled && avail.entrances.length > 0 && (
+        <div aria-label="Imagem da entrada">
+          <h4>Imagem da entrada</h4>
+          <p className="hint">Capture a imagem da câmera de entrada e confira se mostra a pessoa certa: ela vai junto do aviso e o morador a vê no app. A imagem é apagada depois do prazo de retenção.</p>
+          {avail.entrances.length > 1 && (
+            <>
+              <label htmlFor="snap-entrance">Entrada</label>
+              <select id="snap-entrance" value={snapEntrance} onChange={(e) => { setSnapEntrance(e.target.value); setSnap(null); }}>
+                <option value="">Selecione</option>
+                {avail.entrances.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </>
+          )}
+          <button disabled={avail.entrances.length > 1 && !snapEntrance} onClick={captureImage}>
+            {snap ? "Capturar de novo" : "Capturar imagem da entrada"}
+          </button>
+          {snap && (
+            <div role="group" aria-label="Prévia da imagem">
+              <AuthImage token={token} path={`${base}/entrance-snapshots/${snap.id}/image`} alt={`Prévia da imagem de ${snap.camera}`} />
+              <p className="hint">Câmera: {snap.camera}. Esta imagem será enviada com o aviso.</p>
+              <button onClick={() => setSnap(null)}>Descartar imagem</button>
+            </div>
+          )}
+        </div>
+      )}
+      <button disabled={!reqUnit || !reqName.trim()} onClick={askResident}>
+        {snap ? "Pedir autorização ao morador (com imagem)" : "Pedir autorização ao morador"}
+      </button>
       <h4>Pedidos recentes</h4>
       <ul>
         {requests.items.map((r) => (
@@ -130,6 +182,15 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
               <button aria-label={`Registrar entrada de ${r.visitorName}`} onClick={() => registerEntry(r.id)}>Registrar entrada</button>
             )}
             {r.entered && <small> · entrada registrada</small>}
+            {r.hasSnapshot && (
+              <>
+                {" "}<span className="badge ok">com imagem</span>{" "}
+                <button onClick={() => setSeeing(seeing === r.id ? null : r.id)} aria-label={`Ver imagem de ${r.visitorName}`}>
+                  {seeing === r.id ? "Ocultar imagem" : "Ver imagem"}
+                </button>
+                {seeing === r.id && <AuthImage token={token} path={`${base}/visit-requests/${r.id}/snapshot`} alt={`Imagem da entrada de ${r.visitorName}`} />}
+              </>
+            )}
           </li>
         ))}
         {requests.items.length === 0 && <li>Nenhum pedido de autorização.</li>}

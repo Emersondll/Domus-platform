@@ -42,7 +42,7 @@ function fakeApi() {
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
     if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null },
-      { id: "vr10", unitId: "un1", callId: null, visitorName: "João Autorizado", kind: "SERVICE_PROVIDER", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: false },
+      { id: "vr10", unitId: "un1", callId: null, visitorName: "João Autorizado", kind: "SERVICE_PROVIDER", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: false, hasSnapshot: true },
       { id: "vr11", unitId: "un1", callId: null, visitorName: "Maria Já Entrou", kind: "VISITOR", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: true }]);
     if (url.includes("/visit-requests/") && url.endsWith("/entry")) return json({ attemptId: "e50" });
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr8" });
@@ -52,6 +52,10 @@ function fakeApi() {
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
     if (url.endsWith("/remote-open")) return json({ enabled: remoteEnabled });
     if (url.endsWith("/resident-openable")) return json({ id: "d1", residentOpenable: true });
+    if (url.endsWith("/entrance-snapshots/availability")) return json({ enabled: true, entrances: ["portaria"] });
+    if (url.endsWith("/entrance-snapshots") && init?.method === "POST") return json({ id: "s1", expiresAt: new Date().toISOString(), cameraName: "Câmera hall" });
+    if (url.includes("/entrance-snapshots/") && url.endsWith("/image")) return new Response(new Blob(["jpeg"]), { status: 200 });
+    if (url.endsWith("/visit-requests/vr10/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
     if (url.endsWith("/active") || url.endsWith("/visitor-entrance")) return json({ id: "d2" });
     if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
@@ -124,6 +128,10 @@ describe("operator panel", () => {
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => "blob:preview");
+    URL.revokeObjectURL = vi.fn();
+  });
 
   function stubAudio() {
     class FakeAudio {
@@ -505,5 +513,27 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d4/active"))?.body).toEqual({ active: true }));
     await user.click(screen.getByRole("button", { name: "Marcar Câmera garagem como câmera de entrada de visitas" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d2/visitor-entrance"))?.body).toEqual({ enabled: true }));
+  });
+
+  it("captures the entrance image, shows the preview and sends it with the request", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.selectOptions(await screen.findByLabelText("Unidade visitada"), "un1");
+    await user.type(screen.getByLabelText("Nome do visitante"), "Moço da entrega");
+    await user.click(await screen.findByRole("button", { name: "Capturar imagem da entrada" }));
+    const preview = await screen.findByRole("group", { name: "Prévia da imagem" });
+    expect(await within(preview).findByRole("img", { name: /Prévia da imagem de Câmera hall/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pedir autorização ao morador (com imagem)" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visit-requests"))?.body).toEqual({ unitId: "un1", visitorName: "Moço da entrega", kind: "VISITOR", callId: null, snapshotId: "s1" }));
+    expect(screen.queryByRole("group", { name: "Prévia da imagem" })).not.toBeInTheDocument(); // imagem consumida
+  });
+
+  it("shows the image of a request that carries one", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.click(await screen.findByRole("button", { name: "Ver imagem de João Autorizado" }));
+    expect(await screen.findByRole("img", { name: /Imagem da entrada de João Autorizado/ })).toBeInTheDocument();
   });
 });

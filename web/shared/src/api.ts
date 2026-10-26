@@ -56,3 +56,11 @@ export async function request<T>(token: string, method: string, path: string, bo
   }
   return (await res.json()) as T;
 }
+
+/** Baixa uma imagem protegida (o cabeçalho Authorization não vai em `<img>`) e devolve uma URL local para exibi-la. */
+export async function requestImageUrl(token: string, path: string): Promise<string> {
+  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) onUnauthorized?.();
+  if (!res.ok) throw new ApiError(res.status, res.statusText);
+  return URL.createObjectURL(await res.blob());
+}

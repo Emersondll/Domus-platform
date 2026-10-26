@@ -1,4 +1,5 @@
-import type { Attempt, Invitation } from "./types";
+import { AuthImage } from "../../shared/src/AuthImage";
+import type { Attempt, Invitation, VisitRequest } from "./types";
 import { isExpected } from "./Home";
 import { useList } from "./useApi";
 
@@ -9,6 +10,8 @@ export function Visits({ token, condo }: { token: string; condo: string }) {
   const base = `/api/v1/condominiums/${condo}/me`;
   const invitations = useList<Invitation>(token, `${base}/invitations`, POLL_MS);
   const history = useList<Attempt>(token, `${base}/access-history`, POLL_MS);
+  const asked = useList<VisitRequest>(token, `${base}/visit-requests`, POLL_MS);
+  const STATUS: Record<string, string> = { PENDING: "aguardando a sua resposta", APPROVED: "autorizado", DENIED: "negado", EXPIRED: "sem resposta" };
 
   const expected = invitations.items.filter((i) => isExpected(i));
   const arrived = invitations.items.filter((i) => i.useCount > 0);
@@ -17,6 +20,17 @@ export function Visits({ token, condo }: { token: string; condo: string }) {
   return (
     <section aria-label="Visitas">
       <h2>Visitas</h2>
+      <h3>Avisos da portaria</h3>
+      <ul>
+        {asked.items.map((r) => (
+          <li key={r.id}>
+            <strong>{r.visitorName}</strong> · {r.kind === "SERVICE_PROVIDER" ? "prestador" : "visita"} · {STATUS[r.status] ?? r.status} ·{" "}
+            {new Date(r.createdAt).toLocaleString()}
+            {r.hasSnapshot && <AuthImage token={token} path={`${base}/visit-requests/${r.id}/snapshot`} alt={`Imagem da entrada: ${r.visitorName}`} />}
+          </li>
+        ))}
+        {asked.items.length === 0 && <li>Nenhum aviso da portaria.</li>}
+      </ul>
       <h3>Esperadas</h3>
       <ul>
         {expected.map((i) => (

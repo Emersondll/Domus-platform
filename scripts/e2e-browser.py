@@ -316,8 +316,10 @@ try:
         res.get_by_role("button", name="Início", exact=True).click()
 
         # câmeras: o síndico cadastra (API de apoio); sem RTSP não há botão de vídeo, e nada é simulado
-        api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
-                                                       "entrance": "portaria", "config": {}})
+        hall = api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
+                                                              "entrance": "portaria", "config": {}})
+        # a câmera simulada do hall é a câmera de entrada de visitas (imagem sintética, nunca parece real)
+        api("POST", f"{base}/devices/{hall['id']}/visitor-entrance", "manager-sol", {"enabled": True})
         pan.get_by_role("tab", name="Câmeras").click()
         expect(pan.get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
         expect(pan.get_by_text("sem vídeo configurado").first).to_be_visible()
@@ -325,8 +327,8 @@ try:
 
         # vídeo ao vivo: com MediaMTX + fonte de teste (E2E_LIVE_VIDEO=1, ver docs/cameras.md) o player precisa chegar a "Ao vivo";
         # sem eles, o painel precisa mostrar o erro (nunca imagem falsa)
-        api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera RTSP E2E", "kind": "CAMERA", "adapter": "ONVIF",
-                                                       "entrance": "garagem", "config": {"rtspUrl": "rtsp://127.0.0.1:8554/fake-src"}})
+        rtsp_cam = api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera RTSP E2E", "kind": "CAMERA", "adapter": "ONVIF",
+                                                                  "entrance": "garagem", "config": {"rtspUrl": "rtsp://127.0.0.1:8554/fake-src"}})
         pan.get_by_role("tab", name="Portas").click()
         pan.get_by_role("tab", name="Câmeras").click()
         pan.get_by_role("button", name="Ver ao vivo Câmera RTSP E2E").click()
@@ -337,6 +339,19 @@ try:
             expect(pan.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
             check("vídeo ao vivo sem servidor de mídia: erro explícito, sem imagem simulada", True)
         pan.get_by_role("button", name="Fechar vídeo").click()
+        if os.environ.get("E2E_LIVE_VIDEO") == "1":
+            # captura de quadro de câmera pelo servidor de mídia + ffmpeg (fonte RTSP de teste): precisa devolver um JPEG
+            api("POST", f"{base}/devices/{rtsp_cam['id']}/visitor-entrance", "manager-sol", {"enabled": True})
+            token = json.load(urllib.request.urlopen("http://localhost:8081/dev/token?subject=operator-sol"))["access_token"]
+            snap_req = urllib.request.Request(f"http://localhost:8081{base}/entrance-snapshots", method="POST",
+                                              data=json.dumps({"entrance": "garagem"}).encode(),
+                                              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+            snap_id = json.load(urllib.request.urlopen(snap_req, timeout=30))["id"]
+            img_req = urllib.request.Request(f"http://localhost:8081{base}/entrance-snapshots/{snap_id}/image",
+                                             headers={"Authorization": f"Bearer {token}"})
+            img = urllib.request.urlopen(img_req).read()
+            check("captura de quadro pela câmera RTSP (MediaMTX + ffmpeg) devolve um JPEG", img[:2] == b"\xff\xd8" and len(img) > 1000)
+            api("POST", f"{base}/devices/{rtsp_cam['id']}/visitor-entrance", "manager-sol", {"enabled": False})
 
         pan.get_by_role("tab", name="Livro de turno").click()
         pan.get_by_label("Texto").fill("Ronda das 22h concluída sem ocorrências")
@@ -376,6 +391,18 @@ try:
         pan.get_by_role("button", name="Registrar saída de Prestador E2E (Net)").click()
         expect(pan.get_by_text(re.compile("Prestador E2E \\(Net\\) · unidade A / 101"))).to_have_count(0, timeout=15000)
         check("a saída do prestador reduz o número de visitantes no local", True)
+
+        # imagem da câmera de entrada junto do aviso: a portaria captura, confere a prévia e envia; o morador vê a imagem
+        pan.get_by_label("Unidade visitada").select_option(label="A / 101")
+        pan.get_by_label("Nome do visitante").fill("Entrega E2E")
+        pan.get_by_label("Tipo").select_option("VISITOR")
+        pan.get_by_role("button", name="Capturar imagem da entrada").click()
+        expect(pan.get_by_role("img", name=re.compile("Prévia da imagem")).first).to_be_visible(timeout=15000)
+        pan.get_by_role("button", name=re.compile(r"Pedir autorização ao morador \(com imagem\)")).click()
+        res.get_by_role("button", name="Início", exact=True).click()
+        expect(res.get_by_role("img", name="Imagem da entrada: Entrega E2E")).to_be_visible(timeout=15000)
+        res.get_by_role("button", name="Autorizar").click()
+        check("a imagem da câmera de entrada vai junto do aviso e o morador a vê antes de autorizar", True)
 
         pan.get_by_role("tab", name="Relatórios").click()
         pan.get_by_role("button", name="Consultar").click()

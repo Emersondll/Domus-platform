@@ -9,15 +9,15 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 145 testes (30 unitários + 115 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 152 testes (30 unitários + 122 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 64 testes (40 painel + 24 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 68 testes (43 painel + 25 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
-| `scripts/e2e-browser.py` | OK, 38 verificações (navegador real: chamada, pânico com janela de alerta, porta só confirma com evento, visitantes, encomendas, mensagens, cadastros, vídeo ao vivo) |
+| `scripts/e2e-browser.py` | OK, 40 verificações (navegador real: chamada, pânico com janela de alerta, porta só confirma com evento, visitantes, encomendas, mensagens, cadastros, vídeo ao vivo) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
 | `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
-| `scripts/restore-drill.sh` | PASS (14 migrações, V1–V14) |
-| `scripts/api-smoke.py` | OK: 128 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
+| `scripts/restore-drill.sh` | PASS (16 migrações, V1–V16) |
+| `scripts/api-smoke.py` | OK: 136 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
 | CI no GitHub | **verde** nos pushes até `5fdaaea` (2026-10-26); o de `d716a2a` (só documentação) foi disparado e não foi conferido |
 
 ## 2. Melhorias já aplicadas (resumo)
@@ -66,7 +66,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 4. Pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
-2. **Telas de câmeras e imagem da entrada junto do pedido de visita — PLANEJADO:** ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md) (grade de câmeras, câmera de entrada de visitas, captura de quadro, imagem cifrada com retenção, prévia na portaria e visão no app). Aguarda as decisões D12–D15.
+2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
 3. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
 4. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
 5. **Telas de administração da plataforma e da empresa operadora — PENDENTE (só existe API).** Escopo:
@@ -138,7 +138,7 @@ python3 scripts/e2e-browser.py        # precisa de Playwright e do jar do backen
 Detalhes e limites de cada prova: [`docs/STATUS.md`](docs/STATUS.md), [`docs/operations.md`](docs/operations.md), [`docs/security.md`](docs/security.md), [`docs/agent.md`](docs/agent.md).
 
 ## Auditoria de telas × API (2026-10-25)
-Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 128 endpoints; **11 não têm tela**:
+Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 136 endpoints; **11 não têm tela**:
 - **Sem tela, a API existe:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas. É a administração da plataforma/empresa, ainda só pela API.
 - **Sem tela por desenho:** `agent/*` (o agente local usa a API direto).
 - **Telas de cadastro feitas em 2026-10-25** (aba Cadastros, Gestão): blocos e unidades, moradores por unidade (titular, cônjuge, dependentes; desativar, acesso ao app, exportar e anonimizar), animais, equipe. O morador cuida da própria família e dos animais em "Mais > Minha casa". Escrever exige síndico ou administração; o operador consulta.

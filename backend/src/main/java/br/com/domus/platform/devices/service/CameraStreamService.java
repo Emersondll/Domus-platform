@@ -12,6 +12,7 @@ import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
+import br.com.domus.platform.shared.tenant.ResidentContext;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -21,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -90,7 +92,30 @@ public class CameraStreamService {
     @Transactional
     public Session open(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "camera.view");
+        return start(actor.userId(), condominiumId, devices.find(condominiumId, deviceId), "camera.view");
+    }
+
+    /** Câmeras que o síndico liberou para o morador, com vídeo disponível. Só morador do condomínio; outro papel = 404. */
+    @Transactional(readOnly = true)
+    public List<Device> camerasForResident(UUID condominiumId) {
+        access.requireResident(condominiumId, "camera.list.resident");
+        return devices.residentViewable(condominiumId).stream()
+                .filter(d -> d.isActive() && d.getConfig().containsKey("rtspUrl")).toList();
+    }
+
+    /** Sessão de visualização para o morador: só câmeras liberadas pelo síndico; cada abertura é auditada. */
+    @Transactional
+    public Session openForResident(UUID condominiumId, UUID deviceId) {
+        ResidentContext me = access.requireResident(condominiumId, "camera.view.resident");
         Device device = devices.find(condominiumId, deviceId);
+        if (!device.isResidentViewable()) {
+            throw new NotFoundException("Camera not found");
+        }
+        return start(me.actor().userId(), condominiumId, device, "camera.view.resident");
+    }
+
+    private Session start(UUID userId, UUID condominiumId, Device device, String auditAction) {
+        UUID deviceId = device.getId();
         String rtspUrl = device.getConfig().get("rtspUrl");
         if (!"CAMERA".equals(device.getKind()) || rtspUrl == null) {
             throw new ConflictException("Camera has no video source configured");
@@ -108,7 +133,7 @@ public class CameraStreamService {
             throw new ConflictException("Media server unavailable");
         }
         Instant expiresAt = clock.instant().plus(tokenTtl);
-        audit.record(actor.userId(), null, condominiumId, "camera.view", "device", deviceId.toString(),
+        audit.record(userId, null, condominiumId, auditAction, "device", deviceId.toString(),
                 AuditOutcome.SUCCESS);
         return new Session(publicHlsUrl + "/" + path + "/index.m3u8?token=" + sign(path, expiresAt), expiresAt);
     }

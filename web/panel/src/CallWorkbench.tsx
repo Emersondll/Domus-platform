@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
-import { CameraMonitor } from "./CameraMonitor";
 import { VisitAuthorization } from "./VisitAuthorization";
 import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type Command, type Device, type OnDuty } from "./types";
 
@@ -84,8 +83,6 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
 
       <VisitAuthorization token={token} call={call}
         onApproved={(visitor) => setDoorReason((r) => r || `Morador autorizou pelo app (visitante: ${visitor})`)} />
-
-      <CameraMonitor token={token} condominiumId={call.condominiumId} />
 
       <h3>Abrir porta</h3>
       <label htmlFor="door-device">Dispositivo</label>

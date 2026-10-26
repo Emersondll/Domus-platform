@@ -69,7 +69,10 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 - **Sem gravação e sem histórico de vídeo.** Há **um quadro** por aviso de visita (câmera de entrada), cifrado e com retenção, desligado por padrão (`docs/plano-cameras-visitas.md`). Retenção e acesso a gravações são decisão LGPD (`docs/lgpd.md`).
   O vídeo é só ao vivo.
 - **Latência HLS** de alguns segundos; para baixa latência seria preciso WebRTC (não implementado).
-- **Só o painel da portaria** vê o vídeo ao vivo; o morador vê apenas a imagem enviada junto do aviso de visita da própria unidade.
+- **Quem vê o quê:** a portaria vê **todas** as câmeras ativas. O morador vê ao vivo **só as câmeras de entrada que o síndico
+  liberou** (`resident_viewable`, no máximo 4 por condomínio; padrão desligado), em Mais > Câmeras no app. Cada abertura do
+  morador é auditada (`camera.view.resident`); câmera não liberada, equipe e outro condomínio recebem 404. Desativar a câmera
+  retira a liberação. Sem gravação. A decisão jurídica de mostrar imagem de áreas comuns aos moradores está em `pendencias.md` (D21).
 - **Produção:** `/internal/*` não pode ser publicado no proxy reverso (o `Caddyfile` bloqueia `/internal` com 404; confira se mudar o proxy); o MediaMTX precisa de TLS
   na frente e `hlsAllowOrigin` restrito à origem do painel (hoje `*` no arquivo de exemplo).
 - A conversão RTSP → HLS roda no MediaMTX (MIT), executável **separado**; ele não é embutido no jar do Domus.

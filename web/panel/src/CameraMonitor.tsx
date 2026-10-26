@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DeviceFull } from "./types";
-import { CameraPlayer } from "./CameraPlayer";
+import { CameraPlayer } from "../../shared/src/CameraPlayer";
 import { useCondoList } from "./useCondoList";
 
 const MAX_LIVE = 4;

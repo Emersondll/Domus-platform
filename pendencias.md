@@ -110,6 +110,15 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | MA12 | **Identificação facial:** só reservada (`method=FACE`, `kind=FACE_REF` no banco); **não existe** `ENROLL_FACE` no contrato de adaptadores, gabarito, nem alternativa de cadastro no terminal | depende de D16 a D18, RIPD e terminal facial |
 | MA13 | Texto "apagados em 90 dias" na tela é fixo; se o prazo mudar, a tela precisa acompanhar | expor o prazo pela API |
 
+**Limites do vídeo para o morador (2026-10-26):**
+
+| # | Limite | O que falta |
+|---|---|---|
+| CR1 | O teto de 4 câmeras liberadas é verificado no serviço, sem trava: duas liberações simultâneas poderiam passar de 4 | restrição no banco ou trava por condomínio |
+| CR2 | Qualquer morador vinculado ao condomínio (inclusive dependente) vê as câmeras liberadas; não há horário nem restrição por unidade | decisão D21 |
+| CR3 | Mesmos limites do vídeo da portaria: nenhuma câmera real testada, H.264 apenas, câmera atrás de NAT depende do agente publicar o fluxo | `docs/cameras.md` |
+| CR4 | O app não impede captura de tela nem gravação do celular | só aviso na tela |
+
 **B. Demais pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)**
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
@@ -141,6 +150,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | D16 | **Base legal e consentimento para a foto de cadastro e para a identificação facial** (dado sensível quando vira gabarito biométrico): texto, versão, registro, revogação, quem é o controlador, RIPD, DPO | em aberto (jurídico); **bloqueia** a coleta em produção e a identificação facial |
 | D17 | **Menores e dependentes; quem enxerga o histórico de acessos** (o titular, os moradores da unidade, o síndico, a portaria) e em que condições | em aberto |
 | D19 | **Prazo de retenção do histórico de entradas e saídas do morador** (recomendado: 90 dias, configurável) | em aberto; hoje 90 dias por padrão |
+| D21 | **Morador ver ao vivo as câmeras de entrada** (base legal, aviso no local, quantas e quais câmeras, se o morador pode ver à noite/sempre) | em aberto; recurso por câmera, padrão desligado, até 4, auditado, sem gravação |
 | D20 | **Como saber o sentido (entrada ou saída)** em cada ponto de acesso (leitor nos dois sentidos? antipassback?) | em aberto; hoje "passagem" quando o ponto não informa |
 | D18 | **Onde mora o gabarito facial** (no terminal ou na central), fabricante/modelo do terminal e alternativa sem biometria | em aberto; depende de D2 |
 | D1 | **LGPD:** base legal por tratamento, DPO, RIPD, contratos controlador/operador, retenção final, política para dados de visitantes e de gravações | em aberto (jurídico); o lado técnico está em `docs/lgpd.md` |

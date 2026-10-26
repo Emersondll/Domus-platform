@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { DeviceFull } from "./types";
-import { CameraPlayer } from "./CameraPlayer";
+import { CameraPlayer } from "../../shared/src/CameraPlayer";
 import { errorMessage, useCondoList } from "./useCondoList";
 
 const MAX_LIVE = 4;
@@ -78,7 +78,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   }
 
   /** Desativar/reativar e marcar a câmera de entrada de visitas. */
-  async function act(id: string, what: "active" | "visitor-entrance", body: unknown) {
+  async function act(id: string, what: "active" | "visitor-entrance" | "resident-viewable", body: unknown) {
     setError(null);
     try {
       await request(token, "POST", `${base}/${id}/${what}`, body);
@@ -122,6 +122,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
           <li key={c.id} className={c.active === false ? "inactive" : ""}>
             <strong>{c.name}</strong> ({c.entrance}) · {c.active === false ? "desativada" : (STATUS_TEXT[c.status] ?? "estado desconhecido")}
             {c.visitorEntrance && <span className="badge ok"> câmera de entrada de visitas</span>}{" "}
+            {c.residentViewable && <span className="badge ok"> visível ao morador</span>}{" "}
             {c.active !== false && (
               <button onClick={() => refresh(c.id)} aria-label={`Atualizar estado de ${c.name}`}>Atualizar estado</button>
             )}{" "}
@@ -132,6 +133,12 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
             <button onClick={() => startEdit(c)} aria-label={`Editar ${c.name}`}>Editar</button>{" "}
             <button onClick={() => act(c.id, "active", { active: c.active === false })}
               aria-label={`${c.active === false ? "Reativar" : "Desativar"} ${c.name}`}>{c.active === false ? "Reativar" : "Desativar"}</button>{" "}
+            {c.active !== false && c.liveVideo && (
+              <button onClick={() => act(c.id, "resident-viewable", { enabled: !c.residentViewable })}
+                aria-label={`${c.residentViewable ? "Retirar" : "Liberar"} ${c.name} ${c.residentViewable ? "do" : "para o"} morador`}>
+                {c.residentViewable ? "Retirar do morador" : "Liberar ao morador"}
+              </button>
+            )}{" "}
             {c.active !== false && (
               <button onClick={() => act(c.id, "visitor-entrance", { enabled: !c.visitorEntrance })}
                 aria-label={`${c.visitorEntrance ? "Desmarcar" : "Marcar"} ${c.name} como câmera de entrada de visitas`}>

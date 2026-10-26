@@ -37,7 +37,7 @@ const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", ca
 /** Substitui apenas a rede (fetch): a UI e a lógica do cliente rodam de verdade. */
 function fakeApi() {
   return vi.fn(async (url: string, init?: RequestInit) => {
-    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
@@ -57,7 +57,7 @@ function fakeApi() {
     if (url.includes("/entrance-snapshots/") && url.endsWith("/image")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (url.endsWith("/visit-requests/vr10/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
-    if (url.endsWith("/active") || url.endsWith("/visitor-entrance")) return json({ id: "d2" });
+    if (url.endsWith("/active") || url.endsWith("/visitor-entrance") || url.endsWith("/resident-viewable")) return json({ id: "d2" });
     if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/devices/d2/stream-session") && videoDown) return new Response(JSON.stringify({ detail: "Media server unavailable" }), { status: 409 });
     if (url.endsWith("/devices/d2/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
@@ -243,18 +243,19 @@ describe("operator panel", () => {
     expect(hlsInstances.at(-1)?.destroyed).toBe(true);
   });
 
-  it("monitors the condominium cameras from the desk and from a call, only when asked", async () => {
+  it("monitors the cameras of the focused condominium beside the desk and the call, only when asked", async () => {
     const user = await login();
+    expect(screen.queryByRole("region", { name: "Monitoramento de câmeras" })).not.toBeInTheDocument(); // nada em foco
     await user.click(await screen.findByRole("button", { name: /Entregador/ }));
-    const inCall = await screen.findByRole("region", { name: "Monitoramento de câmeras" });
-    expect(within(inCall).queryByRole("button", { name: "Monitorar Câmera velha" })).not.toBeInTheDocument(); // desativada
+    const side = await screen.findByRole("complementary", { name: "Câmeras do condomínio em monitoramento" });
+    expect(within(side).queryByRole("button", { name: "Monitorar Câmera velha" })).not.toBeInTheDocument(); // desativada
     expect(posted.some((p) => p.url.endsWith("/stream-session"))).toBe(false); // nada abre sozinho
-    await user.click(within(inCall).getByRole("button", { name: "Monitorar Câmera garagem" }));
+    await user.click(within(side).getByRole("button", { name: "Monitorar Câmera garagem" }));
     expect(await screen.findByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
     expect(posted.some((p) => p.url.endsWith("/devices/d2/stream-session"))).toBe(true);
     await user.click(screen.getByRole("button", { name: "Início" }));
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    const desk = await screen.findByRole("region", { name: "Monitoramento de câmeras" });
+    const desk = await screen.findByRole("complementary", { name: "Câmeras do condomínio em monitoramento" });
     await user.click(within(desk).getByRole("button", { name: "Abrir até 4 câmeras" }));
     const grid = await screen.findByLabelText("Câmeras monitoradas");
     expect(within(grid).getByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
@@ -533,6 +534,9 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d3/active"))?.body).toEqual({ active: false }));
     await user.click(screen.getByRole("button", { name: "Reativar Câmera velha" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d4/active"))?.body).toEqual({ active: true }));
+    await user.click(screen.getByRole("button", { name: "Liberar Câmera garagem para o morador" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/devices/d2/resident-viewable") && (p.body as { enabled: boolean }).enabled === true)).toBe(true));
+    expect(screen.queryByRole("button", { name: /Câmera velha para o morador/ })).not.toBeInTheDocument(); // desativada
     await user.click(screen.getByRole("button", { name: "Marcar Câmera garagem como câmera de entrada de visitas" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d2/visitor-entrance"))?.body).toEqual({ enabled: true }));
   });

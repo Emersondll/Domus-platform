@@ -367,6 +367,22 @@ try:
             expect(pan.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
             check("a mesa do condomínio monitora as câmeras (sem servidor de mídia: erro explícito)", True)
         pan.get_by_role("button", name="Fechar vídeo Câmera RTSP E2E").click()
+        # o síndico libera a câmera ao morador (máx. 4); o morador a vê em Mais > Câmeras e só ela
+        api("POST", f"{base}/devices/{rtsp_cam['id']}/resident-viewable", "manager-sol", {"enabled": True})
+        res.get_by_role("button", name="Mais", exact=True).click()
+        res.get_by_role("button", name="Câmeras", exact=True).click()
+        expect(res.get_by_text("Câmera hall E2E")).to_have_count(0)
+        res.get_by_role("button", name="Ver Câmera RTSP E2E").click()
+        if os.environ.get("E2E_LIVE_VIDEO") == "1":
+            expect(res.get_by_text("Ao vivo · Câmera RTSP E2E")).to_be_visible(timeout=30000)
+            check("o morador vê ao vivo a câmera de entrada liberada pelo síndico (e só as liberadas)", True)
+        else:
+            expect(res.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
+            check("o morador vê a câmera liberada (sem servidor de mídia: erro explícito)", True)
+        res.get_by_role("button", name="Fechar vídeo Câmera RTSP E2E").click()
+        res.get_by_role("button", name="Ir para o início").click()
+        expect(res.get_by_role("heading", name="Início")).to_be_visible()
+        check("o botão Início do cabeçalho do morador volta ao início de qualquer tela", True)
         if os.environ.get("E2E_LIVE_VIDEO") == "1":
             # captura de quadro de câmera pelo servidor de mídia + ffmpeg (fonte RTSP de teste): precisa devolver um JPEG
             api("POST", f"{base}/devices/{rtsp_cam['id']}/visitor-entrance", "manager-sol", {"enabled": True})

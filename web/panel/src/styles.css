@@ -3,10 +3,10 @@
 .layout { max-width: 1320px; margin: 0 auto; padding: 0 20px 48px; display: grid; gap: 0 20px; align-content: start; }
 .layout > header, .layout > .message, .layout > section[aria-label="Condomínios"] { grid-column: 1 / -1; }
 @media (min-width: 1000px) {
-  .layout { grid-template-columns: minmax(300px, 1fr) minmax(480px, 1.5fr); grid-auto-flow: row; }
-  .layout > section[aria-label="Meus atendimentos"] { grid-column: 1; grid-row: 4; }
-  .layout > section[aria-label="Mesa do condomínio"] { grid-column: 1; grid-row: 5; align-self: start; }
-  .layout > section[aria-label="Atendimento"] { grid-column: 2; grid-row: 4 / span 2; align-self: start; }
+  /* esquerda: atendimentos, atendimento e mesa; direita: câmeras do condomínio em foco, logo abaixo de "Condomínios" */
+  .layout { grid-template-columns: minmax(420px, 1.2fr) minmax(360px, 1fr); }
+  .layout > .col-main { grid-column: 1; grid-row: 4; min-width: 0; }
+  .layout > .col-cameras { grid-column: 2; grid-row: 4; align-self: start; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
 }
 
 .layout section li button { margin: 0; padding: 0; background: none; border-radius: 0; font-size: 15px; font-weight: 600; text-align: left; width: 100%; color: var(--fg); }

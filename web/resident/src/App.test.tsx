@@ -3,6 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
+const hlsLoaded: string[] = [];
+vi.mock("hls.js", () => {
+  class FakeHls {
+    static Events = { MANIFEST_PARSED: "manifest", ERROR: "error" };
+    static isSupported() { return true; }
+    on() {}
+    loadSource(url: string) { hlsLoaded.push(url); }
+    attachMedia() {}
+    destroy() {}
+  }
+  return { default: FakeHls };
+});
+
 const residency = [{ condominiumId: "c1", condominiumName: "Residencial Sol", unitId: "u1", unitNumber: "101", residentId: "r1" }];
 const area = { id: "a1", name: "Salão", capacity: 40 };
 const page = (items: unknown[]) => ({ items, page: 0, size: 50, totalElements: items.length });
@@ -17,6 +30,7 @@ let myHistory: unknown[] = [];
 let myVisitRequests: unknown[] = [];
 let myDoors: unknown[] = [];
 let myAccesses: unknown[] = [];
+let myCameras: unknown[] = [];
 let lastAccess: unknown = null;
 let photoStatus: Record<string, unknown> = { enabled: false, textVersion: "v1", text: "", consentId: null, hasPhoto: false, photoCapturedAt: null };
 let openStatus = 202;
@@ -60,6 +74,8 @@ function fakeApi() {
       const wanted = new URL(url, "http://x").searchParams.get("status");
       return json(page((myParcels as { status: string }[]).filter((p) => !wanted || p.status === wanted)));
     }
+    if (url.endsWith("/me/cameras")) return json(myCameras);
+    if (url.endsWith("/me/cameras/k1/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-k1/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/me/accesses/last")) return json({ last: lastAccess });
     if (url.includes("/me/accesses?")) return json(page(myAccesses));
     if (url.endsWith("/me/photo/status")) return json(photoStatus);
@@ -325,14 +341,37 @@ describe("resident app", () => {
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
   });
 
-  it("keeps a home shortcut in the header on every screen except the home itself", async () => {
+  it("keeps the home shortcut always visible in the header", async () => {
     const user = await openTab("Início");
-    expect(screen.queryByRole("button", { name: "Ir para o início" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ir para o início" })).toHaveAttribute("aria-current", "true");
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(screen.getByRole("button", { name: "Veículos" }));
-    await user.click(await screen.findByRole("button", { name: "Ir para o início" }));
+    const home = screen.getByRole("button", { name: "Ir para o início" });
+    expect(home).toHaveAttribute("aria-current", "false");
+    await user.click(home);
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ir para o início" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ir para o início" })).toBeInTheDocument();
+  });
+
+  it("lets the resident watch only the entrance cameras the manager released", async () => {
+    myCameras = [{ id: "k1", name: "Câmera portaria", entrance: "portaria" }];
+    hlsLoaded.length = 0;
+    const user = await openTab("Mais");
+    await user.click(screen.getByRole("button", { name: "Câmeras" }));
+    expect(await screen.findByText("Câmera portaria")).toBeInTheDocument();
+    expect(calls.some((c) => c.url.endsWith("/stream-session"))).toBe(false); // nada abre sozinho
+    await user.click(screen.getByRole("button", { name: "Ver Câmera portaria" }));
+    expect(await screen.findByRole("region", { name: "Vídeo de Câmera portaria" })).toBeInTheDocument();
+    await waitFor(() => expect(hlsLoaded).toEqual(["http://media.test:8888/cam-k1/index.m3u8?token=9999999999.sig"]));
+    await user.click(screen.getByRole("button", { name: "Fechar vídeo Câmera portaria" }));
+    expect(screen.queryByRole("region", { name: "Vídeo de Câmera portaria" })).not.toBeInTheDocument();
+  });
+
+  it("says so when no camera was released to residents", async () => {
+    myCameras = [];
+    const user = await openTab("Mais");
+    await user.click(screen.getByRole("button", { name: "Câmeras" }));
+    expect(await screen.findByText(/Nenhuma câmera foi liberada/)).toBeInTheDocument();
   });
 
   it("shows the entrance image with the visitor request, or says there is none", async () => {

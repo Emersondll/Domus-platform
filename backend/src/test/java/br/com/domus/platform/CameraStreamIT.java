@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -143,5 +144,55 @@ class CameraStreamIT extends AbstractIntegrationTest {
                                     + "\"entrance\":\"P\",\"config\":" + cfg + "}"))
                     .andExpect(status().isBadRequest());
         }
+    }
+
+    private void viewable(String id, boolean enabled, String as) throws Exception {
+        mvc.perform(post(devices() + "/" + id + "/resident-viewable").with(as(as)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"enabled\":" + enabled + "}")).andExpect(status().isOk());
+    }
+
+    @Test
+    void residentSeesOnlyTheEntranceCamerasTheManagerReleased() throws Exception {
+        String shown = registerCamera("Cam Entrada Res", "{\"rtspUrl\":\"rtsp://localhost:8554/entrada\"}");
+        String hidden = registerCamera("Cam Interna Res", "{\"rtspUrl\":\"rtsp://localhost:8554/interna\"}");
+        String me = "/api/v1/condominiums/" + condo + "/me/cameras";
+        mvc.perform(post(devices() + "/" + shown + "/resident-viewable").with(as("cs-operator"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andExpect(status().isForbidden());
+        viewable(shown, true, "cs-manager");
+
+        mvc.perform(get(me).with(as("cs-res"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id=='" + shown + "')].name").value("Cam Entrada Res"))
+                .andExpect(jsonPath("$[?(@.id=='" + hidden + "')]").isEmpty());
+        mvc.perform(post(me + "/" + shown + "/stream-session").with(as("cs-res")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.expiresAt").exists());
+        mvc.perform(post(me + "/" + hidden + "/stream-session").with(as("cs-res"))).andExpect(status().isNotFound());
+        // equipe e quem é de outro condomínio não usam o caminho do morador
+        mvc.perform(get(me).with(as("cs-operator"))).andExpect(status().isNotFound());
+        mvc.perform(get(me).with(as("cs-other-operator"))).andExpect(status().isNotFound());
+        mvc.perform(get(me)).andExpect(status().isUnauthorized());
+
+        viewable(shown, false, "cs-manager");
+        mvc.perform(post(me + "/" + shown + "/stream-session").with(as("cs-res"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void atMostFourCamerasCanBeReleasedAndDeactivatingWithdrawsIt() throws Exception {
+        String[] ids = new String[5];
+        for (int i = 0; i < 5; i++) {
+            ids[i] = registerCamera("Cam Lim " + i, "{\"rtspUrl\":\"rtsp://localhost:8554/l" + i + "\"}");
+        }
+        // as câmeras liberadas em outros testes da classe contam; libera até completar 4 e confere o 409 no seguinte
+        int released = 0;
+        for (String id : ids) {
+            int st = mvc.perform(post(devices() + "/" + id + "/resident-viewable").with(as("cs-manager"))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andReturn().getResponse().getStatus();
+            if (st == 200) released++;
+            else org.junit.jupiter.api.Assertions.assertEquals(409, st);
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(released >= 1 && released <= 4);
+        org.junit.jupiter.api.Assertions.assertTrue(released < 5, "a quinta liberação deve ser recusada");
+        // desativar a câmera retira a liberação
+        mvc.perform(post(devices() + "/" + ids[0] + "/active").with(as("cs-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":false}")).andExpect(status().isOk()).andExpect(jsonPath("$.residentViewable").value(false));
     }
 }

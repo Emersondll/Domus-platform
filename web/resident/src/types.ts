@@ -19,3 +19,5 @@ export type HouseholdMember = { id: string; fullName: string; relationship: stri
 export type Pet = { id: string; unitId: string; name: string; species: string; breed: string | null; notes: string | null };
 export type MyAccess = { id: string; occurredAt: string; direction: "IN" | "OUT" | "UNKNOWN"; entrance: string; method: string; result: "GRANTED" | "DENIED" };
 export type PhotoStatus = { enabled: boolean; textVersion: string; text: string; consentId: string | null; hasPhoto: boolean; photoCapturedAt: string | null };
+
+export type EntranceCamera = { id: string; name: string; entrance: string };

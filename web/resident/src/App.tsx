@@ -12,11 +12,12 @@ import { Messages } from "./Messages";
 import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
 import { MyAccesses } from "./MyAccesses";
+import { ResidentCameras } from "./ResidentCameras";
 import type { Residency } from "./types";
 
 /** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
 const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
-const MORE = ["Avisos", "Meus acessos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
+const MORE = ["Avisos", "Meus acessos", "Câmeras", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
 type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
 const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
@@ -98,8 +99,9 @@ export function App() {
     <div className="app">
       <header>
         <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Domus"}</strong>
-        {condo && tab !== "Início" && (
-          <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início">🏠</button>
+        {condo && (
+          <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início"
+            aria-current={tab === "Início"}>🏠</button>
         )}
         <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
@@ -131,6 +133,7 @@ export function App() {
         {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
         {condo && tab === "Mensagens" && <Messages token={token} condo={condo} />}
         {condo && tab === "Visitas" && <Visits token={token} condo={condo} />}
+        {condo && tab === "Câmeras" && <ResidentCameras token={token} condo={condo} />}
         {condo && tab === "Meus acessos" && <MyAccesses token={token} condo={condo} />}
         {condo && tab === "Convites" && <Invitations token={token} condo={condo} />}
         {condo && tab === "Encomendas" && <Parcels token={token} condo={condo} />}

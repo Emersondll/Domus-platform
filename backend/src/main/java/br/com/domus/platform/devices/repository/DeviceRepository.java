@@ -24,5 +24,9 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
 
     List<Device> findByCondominiumIdAndEntranceAndVisitorEntranceTrue(UUID condominiumId, String entrance);
 
+    long countByCondominiumIdAndResidentViewableTrue(UUID condominiumId);
+
+    List<Device> findByCondominiumIdAndResidentViewableTrue(UUID condominiumId);
+
     boolean existsByCondominiumIdAndName(UUID condominiumId, String name);
 }

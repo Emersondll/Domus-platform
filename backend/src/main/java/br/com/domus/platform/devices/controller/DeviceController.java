@@ -68,16 +68,18 @@ public class DeviceController {
      * @param liveVideo        se a câmera tem fonte de vídeo (RTSP) configurada para a visualização ao vivo
      * @param active           falso quando a câmera foi desativada (sem vídeo e fora da câmera de entrada)
      * @param visitorEntrance  se é a câmera de entrada de visitas da sua entrada
+     * @param residentViewable se o morador pode ver esta câmera ao vivo (no máximo 4 por condomínio)
      * @param config           configuração não secreta (para câmeras: endereço RTSP e nome da variável de credencial)
      */
     public record DeviceResponse(UUID id, String name, String kind, String adapter, String entrance, String status,
                                  Instant lastSeenAt, String apiKey, boolean residentOpenable, boolean liveVideo,
-                                 boolean active, boolean visitorEntrance, Map<String, String> config) {
+                                 boolean active, boolean visitorEntrance, boolean residentViewable,
+                                 Map<String, String> config) {
         public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
                     d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable(),
                     "CAMERA".equals(d.getKind()) && d.getConfig().containsKey("rtspUrl"), d.isActive(),
-                    d.isVisitorEntrance(), "CAMERA".equals(d.getKind()) ? d.getConfig() : Map.of());
+                    d.isVisitorEntrance(), d.isResidentViewable(), "CAMERA".equals(d.getKind()) ? d.getConfig() : Map.of());
         }
     }
 
@@ -152,6 +154,9 @@ public class DeviceController {
     }
 
     /** @param enabled verdadeiro marca como câmera de entrada de visitas; falso desmarca */
+    public record ResidentViewableRequest(boolean enabled) {
+    }
+
     public record VisitorEntranceRequest(boolean enabled) {
     }
 
@@ -172,6 +177,12 @@ public class DeviceController {
     public DeviceResponse visitorEntrance(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                           @RequestBody VisitorEntranceRequest r) {
         return DeviceResponse.from(devices.setVisitorEntrance(condominiumId, deviceId, r.enabled()), null);
+    }
+
+    @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/resident-viewable")
+    public DeviceResponse residentViewable(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
+                                           @RequestBody ResidentViewableRequest r) {
+        return DeviceResponse.from(devices.setResidentViewable(condominiumId, deviceId, r.enabled()), null);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/refresh-status")

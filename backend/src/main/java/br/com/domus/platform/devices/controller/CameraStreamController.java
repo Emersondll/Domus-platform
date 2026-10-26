@@ -3,8 +3,10 @@ package br.com.domus.platform.devices.controller;
 import br.com.domus.platform.devices.service.CameraStreamService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,6 +43,27 @@ public class CameraStreamController {
     @PostMapping("/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session")
     public StreamSessionResponse open(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         CameraStreamService.Session s = streams.open(condominiumId, deviceId);
+        return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());
+    }
+
+    /**
+     * @param id       identificador da câmera
+     * @param name     nome
+     * @param entrance entrada onde fica
+     */
+    public record ResidentCameraResponse(UUID id, String name, String entrance) {
+    }
+
+    /** Câmeras de entrada que o síndico liberou para o morador (vazio se nenhuma). */
+    @GetMapping("/api/v1/condominiums/{condominiumId}/me/cameras")
+    public List<ResidentCameraResponse> myCameras(@PathVariable UUID condominiumId) {
+        return streams.camerasForResident(condominiumId).stream()
+                .map(d -> new ResidentCameraResponse(d.getId(), d.getName(), d.getEntrance())).toList();
+    }
+
+    @PostMapping("/api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session")
+    public StreamSessionResponse openMine(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
+        CameraStreamService.Session s = streams.openForResident(condominiumId, deviceId);
         return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());
     }
 

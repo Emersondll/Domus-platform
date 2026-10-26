@@ -55,6 +55,13 @@ O recurso de foto vem **desligado** (`RESIDENT_PHOTO_ENABLED=false`) até D16. *
 - Aplicativos que extrapolaram o que informaram ao usuário são um risco real; o projeto trava os limites em código e deixa a avaliação jurídica das
   decisões e da jurisprudência para o parecer do jurídico (não foi feita aqui).
 
+## Vídeo ao vivo das câmeras de entrada para o morador (2026-10-26)
+
+O síndico escolhe até 4 câmeras de entrada que os moradores podem ver ao vivo (padrão: nenhuma). Não há gravação nem histórico de
+vídeo; cada abertura é registrada na auditoria (`camera.view.resident`). A imagem mostra terceiros (visitantes, entregadores,
+outros moradores). **Não declaro conformidade:** base legal, aviso de câmeras no local e quem pode ver exigem parecer jurídico
+(D21 em `pendencias.md`) antes de liberar em produção.
+
 ## Imagem da câmera de entrada de visitas (2026-10-26)
 Imagem de uma pessoa (o visitante) é dado sensível por natureza. O recurso fica **desligado por padrão** (`SNAPSHOTS_ENABLED`) até a decisão D13
 (base legal, aviso de videomonitoramento na entrada, quem é o controlador). Como funciona: a portaria captura **um quadro** da câmera de entrada,

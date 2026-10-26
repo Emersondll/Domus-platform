@@ -51,6 +51,9 @@ public class Device {
     @Column(name = "visitor_entrance", nullable = false)
     private boolean visitorEntrance;
 
+    @Column(name = "resident_viewable", nullable = false)
+    private boolean residentViewable;
+
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
@@ -87,11 +90,20 @@ public class Device {
         this.active = active;
         if (!active) {
             this.visitorEntrance = false; // câmera desativada não pode ser a câmera de entrada
+            this.residentViewable = false;
         }
     }
 
     public void setVisitorEntrance(boolean visitorEntrance) {
         this.visitorEntrance = visitorEntrance;
+    }
+
+    public void setResidentViewable(boolean residentViewable) {
+        this.residentViewable = residentViewable;
+    }
+
+    public boolean isResidentViewable() {
+        return residentViewable;
     }
 
     public boolean isActive() {

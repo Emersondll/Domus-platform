@@ -3,6 +3,7 @@ import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shar
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
 import { CallWorkbench } from "./CallWorkbench";
+import { CameraMonitor } from "./CameraMonitor";
 import { CondoDesk } from "./CondoDesk";
 import { Login } from "./Login";
 import { OverviewPanel } from "./OverviewPanel";
@@ -83,6 +84,7 @@ export function App() {
   }
 
   const call = calls.find((c) => c.id === selectedCall) ?? null;
+  const monitoredCondo = call?.condominiumId ?? selectedCondo; // câmeras do condomínio em foco, ao lado da mesa/atendimento
 
   /** Decisão do operador diante de um alerta de pânico: assumir o alerta mais antigo (abre o turno se preciso). */
   async function attendPanic() {
@@ -131,26 +133,33 @@ export function App() {
 
       <OverviewPanel items={overview} selected={selectedCondo} onSelect={setSelectedCondo} />
 
-      <section aria-label="Meus atendimentos">
-        <h2>Meus atendimentos</h2>
-        <ul>
-          {calls.map((c) => (
-            <li key={c.id}>
-              <button onClick={() => setSelectedCall(c.id)}>
-                {c.source === "PANIC" ? <span className="badge err">PÂNICO</span> : null} {c.callerName ?? c.unitLabel ?? "(sem nome)"} · {c.source}{c.unitLabel && c.callerName ? ` · ${c.unitLabel}` : ""}
-              </button>
-            </li>
-          ))}
-          {calls.length === 0 && <li>Nenhum atendimento em andamento.</li>}
-        </ul>
-      </section>
+      <div className="col-main">
+        <section aria-label="Meus atendimentos">
+          <h2>Meus atendimentos</h2>
+          <ul>
+            {calls.map((c) => (
+              <li key={c.id}>
+                <button onClick={() => setSelectedCall(c.id)}>
+                  {c.source === "PANIC" ? <span className="badge err">PÂNICO</span> : null} {c.callerName ?? c.unitLabel ?? "(sem nome)"} · {c.source}{c.unitLabel && c.callerName ? ` · ${c.unitLabel}` : ""}
+                </button>
+              </li>
+            ))}
+            {calls.length === 0 && <li>Nenhum atendimento em andamento.</li>}
+          </ul>
+        </section>
 
-      {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh}
-        onBack={() => setSelectedCall(null)} />}
-      {selectedCondo && (
-        <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
-          name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"}
-          onBack={() => setSelectedCondo(null)} />
+        {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh}
+          onBack={() => setSelectedCall(null)} />}
+        {selectedCondo && (
+          <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
+            name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"}
+            onBack={() => setSelectedCondo(null)} />
+        )}
+      </div>
+      {monitoredCondo && (
+        <aside className="col-cameras" aria-label="Câmeras do condomínio em monitoramento">
+          <CameraMonitor key={monitoredCondo} token={session.token} condominiumId={monitoredCondo} />
+        </aside>
       )}
     </div>
   );

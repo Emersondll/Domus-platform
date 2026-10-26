@@ -1,7 +1,6 @@
 import Hls from "hls.js";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, request } from "../../shared/src/api";
-import { errorMessage } from "./useCondoList";
 
 type Session = { hlsUrl: string; expiresAt: string };
 
@@ -58,7 +57,7 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
         if (stopped) return;
         setError(e instanceof ApiError && e.status === 409
           ? "Vídeo indisponível: o servidor de mídia está desligado ou fora do ar, ou a câmera não tem fonte de vídeo."
-          : errorMessage(e));
+          : e instanceof ApiError ? e.detail : "Unexpected error");
       }
     }
 

@@ -34,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeviceService implements DeviceHealthLookup {
 
+    public static final int MAX_RESIDENT_CAMERAS = 4;
+
     /** Dispositivo recém-criado, com a chave de API em claro (exibida somente uma vez). */
     public record Registered(Device device, String apiKey) {
     }
@@ -154,6 +156,28 @@ public class DeviceService implements DeviceHealthLookup {
         return device;
     }
 
+    /** Libera (ou retira) a câmera para o morador ver ao vivo; no máximo {@value #MAX_RESIDENT_CAMERAS} por condomínio. */
+    @Transactional
+    public Device setResidentViewable(UUID condominiumId, UUID deviceId, boolean enabled) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.resident-viewable");
+        Device device = find(condominiumId, deviceId);
+        if (!"CAMERA".equals(device.getKind())) {
+            throw new ConflictException("Only a camera can be shown to residents");
+        }
+        if (enabled && !device.isResidentViewable()) {
+            if (!device.isActive()) {
+                throw new ConflictException("Activate the camera first");
+            }
+            if (devices.countByCondominiumIdAndResidentViewableTrue(condominiumId) >= MAX_RESIDENT_CAMERAS) {
+                throw new ConflictException("At most " + MAX_RESIDENT_CAMERAS + " cameras can be shown to residents");
+            }
+        }
+        device.setResidentViewable(enabled);
+        audit.record(actor.userId(), null, condominiumId, "device.resident-viewable." + enabled, "device",
+                deviceId.toString(), AuditOutcome.SUCCESS);
+        return device;
+    }
+
     @Transactional
     public String rotateKey(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.rotate-key");
@@ -193,6 +217,11 @@ public class DeviceService implements DeviceHealthLookup {
         long offline = all.stream().filter(d -> "OFFLINE".equals(d.getStatus())).count();
         String label = offline > 0 ? "DEGRADED" : online == all.size() ? "ONLINE" : "UNKNOWN";
         return label + " " + (label.equals("DEGRADED") ? offline : online) + "/" + all.size();
+    }
+
+    /** Câmeras liberadas para o morador; quem chama já verificou que é morador do condomínio. */
+    public List<Device> residentViewable(UUID condominiumId) {
+        return devices.findByCondominiumIdAndResidentViewableTrue(condominiumId);
     }
 
     public Device find(UUID condominiumId, UUID deviceId) {

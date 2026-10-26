@@ -43,7 +43,7 @@ export type Unit = { id: string; blockId: string; number: string };
 export type Parcel = { id: string; unitId: string; carrier: string | null; description: string | null; status: string; receivedAt: string; pickedUpAt: string | null; pickedUpByName: string | null };
 export type Visitor = { id: string; unitId: string; fullName: string; kind: string };
 export type Attempt = { id: string; credentialId: string | null; entrance: string; result: string; reason: string; occurredAt: string };
-export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null; residentOpenable?: boolean };
+export type DeviceFull = Device & { adapter: string; lastSeenAt: string | null; residentOpenable?: boolean; liveVideo?: boolean };
 export type CommandRow = { id: string; deviceId: string; state: string; failureReason: string | null; requestedAt: string };
 
 export type VisitRequest = { id: string; unitId: string; callId: string | null; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null };

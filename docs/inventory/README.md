@@ -8,7 +8,7 @@ Regenerado em 2026-10-22 a partir das próprias ferramentas de build.
 | `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
 | `backend-jars-without-license-files.txt` | 42 jars do backend sem arquivo de licença próprio, com licença e página do projeto |
 | `Apache-2.0.txt`, `EPL-2.0.txt`, `MIT-notices.txt` | textos de licença que acompanham os artefatos |
-| `npm-production-licenses.txt` | dependências npm que entram nos bundles (somente MIT/ISC) |
+| `npm-production-licenses.txt` | dependências npm que entram nos bundles (MIT/ISC e hls.js, Apache-2.0) |
 
 Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPL no relatório são **duplo licenciamento** com opção permissiva
 (logback: EPL-2.0 ou LGPL-2.1 — usamos EPL-2.0; jakarta.annotation/transaction: EPL-2.0 ou GPL-2.0 com Classpath Exception).

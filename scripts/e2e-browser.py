@@ -63,6 +63,18 @@ def api(method, path, subject, body=None):
     return json.loads(raw) if raw else None
 
 
+def take_next(pan):
+    """Atende a próxima chamada; repete o clique enquanto a chamada do morador ainda não chegou à fila (evita corrida)."""
+    for _ in range(15):
+        pan.get_by_role("button", name="Atender próxima").click()
+        try:
+            expect(pan.get_by_role("button", name="Encerrar atendimento")).to_be_visible(timeout=2000)
+            return
+        except AssertionError:
+            continue
+    raise AssertionError("nenhuma chamada chegou à fila")
+
+
 def more(page, name):
     """Itens do app do morador que ficam em "Mais" (a barra inferior só traz o uso diário)."""
     page.get_by_role("button", name="Mais").click()
@@ -150,7 +162,7 @@ try:
         pan.get_by_role("button", name="Entrar").click()
         pan.get_by_role("button", name="Iniciar turno").click()
         expect(pan.get_by_text("Encerrar turno")).to_be_visible()
-        pan.get_by_role("button", name="Atender próxima").click()
+        take_next(pan)
         expect(pan.get_by_role("heading", name="Abrir porta")).to_be_visible()
         check("operador atende a chamada do morador", True)
 
@@ -181,7 +193,7 @@ try:
         res.get_by_role("button", name="Início").click()
         expect(res.get_by_role("button", name="Chamar a central")).to_be_enabled()
         res.get_by_role("button", name="Chamar a central").click()
-        pan.get_by_role("button", name="Atender próxima").click()
+        take_next(pan)
         # espera o atendimento anterior sair da tela (a bancada nova nasce sem comando e sem dispositivo escolhido)
         expect(pan.get_by_text("Porta aberta — confirmado")).to_have_count(0)
         expect(pan.locator("#door-device option", has_text="garagem")).to_have_count(1, timeout=20000)
@@ -203,7 +215,7 @@ try:
         # autorização de visitante pelo celular
         expect(res.get_by_role("button", name="Chamar a central")).to_be_enabled(timeout=15000)
         res.get_by_role("button", name="Chamar a central").click()
-        pan.get_by_role("button", name="Atender próxima").click()
+        take_next(pan)
         pan.get_by_label("Nome do visitante").fill("Tia E2E")
         pan.get_by_role("button", name="Pedir autorização ao morador").click()
         expect(res.get_by_text("Tia E2E").first).to_be_visible(timeout=15000)
@@ -223,7 +235,7 @@ try:
         expect(res.get_by_text("Seu alerta de pânico")).to_be_visible()
         expect(pan.get_by_text(re.compile("PÂNICO na fila"))).to_be_visible(timeout=15000)
         check("pânico aparece em destaque na central", True)
-        pan.get_by_role("button", name="Atender próxima").click()
+        take_next(pan)
         expect(pan.get_by_text("PÂNICO", exact=True).first).to_be_visible()
         expect(res.get_by_text("Em atendimento pela central")).to_be_visible(timeout=15000)
         check("o morador vê que o pânico foi atendido", True)
@@ -249,8 +261,8 @@ try:
         pan.get_by_role("tab", name="Portas").click()
         expect(pan.get_by_text("Portão principal").first).to_be_visible()
         pan.get_by_role("tab", name="Câmeras").click()
-        expect(pan.get_by_text("Vídeo ao vivo não integrado")).to_be_visible()
-        check("mesa do condomínio: portas e câmeras (com aviso honesto de vídeo)", True)
+        expect(pan.get_by_role("heading", name="Cadastrar câmera")).to_be_visible()
+        check("mesa do condomínio: portas e câmeras", True)
 
         # Lote B: comunicados, livro de turno, saída de visitante, relatório/CSV e abertura remota
         condo = api("GET", "/api/v1/me/residencies", "resident-sol")[0]["condominiumId"]
@@ -296,13 +308,28 @@ try:
         check("morador cadastra cônjuge e animal no app e a portaria os vê em Cadastros", True)
         res.get_by_role("button", name="Início").click()
 
-        # câmeras: o síndico cadastra (API de apoio) e a portaria vê a câmera, com o aviso de vídeo não integrado
+        # câmeras: o síndico cadastra (API de apoio); sem RTSP não há botão de vídeo, e nada é simulado
         api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera hall E2E", "kind": "CAMERA", "adapter": "SIMULATOR",
                                                        "entrance": "portaria", "config": {}})
         pan.get_by_role("tab", name="Câmeras").click()
         expect(pan.get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
-        expect(pan.get_by_text("Vídeo ao vivo não integrado")).to_be_visible()
-        check("câmera cadastrada aparece na aba Câmeras com aviso honesto de vídeo", True)
+        expect(pan.get_by_text("sem vídeo configurado").first).to_be_visible()
+        check("câmera sem RTSP aparece na aba Câmeras sem botão de vídeo", True)
+
+        # vídeo ao vivo: com MediaMTX + fonte de teste (E2E_LIVE_VIDEO=1, ver docs/cameras.md) o player precisa chegar a "Ao vivo";
+        # sem eles, o painel precisa mostrar o erro (nunca imagem falsa)
+        api("POST", f"{base}/devices", "manager-sol", {"name": "Câmera RTSP E2E", "kind": "CAMERA", "adapter": "ONVIF",
+                                                       "entrance": "garagem", "config": {"rtspUrl": "rtsp://127.0.0.1:8554/fake-src"}})
+        pan.get_by_role("tab", name="Portas").click()
+        pan.get_by_role("tab", name="Câmeras").click()
+        pan.get_by_role("button", name="Ver ao vivo Câmera RTSP E2E").click()
+        if os.environ.get("E2E_LIVE_VIDEO") == "1":
+            expect(pan.get_by_text("Ao vivo · Câmera RTSP E2E")).to_be_visible(timeout=30000)
+            check("vídeo ao vivo: o player conecta ao HLS do servidor de mídia (token do backend)", True)
+        else:
+            expect(pan.get_by_role("alert").filter(has_text=re.compile("servidor de mídia|Sem imagem|indispon", re.I))).to_be_visible(timeout=30000)
+            check("vídeo ao vivo sem servidor de mídia: erro explícito, sem imagem simulada", True)
+        pan.get_by_role("button", name="Fechar vídeo").click()
 
         pan.get_by_role("tab", name="Livro de turno").click()
         pan.get_by_label("Texto").fill("Ronda das 22h concluída sem ocorrências")

@@ -4,6 +4,7 @@ import br.com.domus.platform.devices.entity.Device;
 import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DeviceAdapter;
 import br.com.domus.platform.devices.adapter.DeviceAdapters;
+import br.com.domus.platform.devices.adapter.HostPolicy;
 import br.com.domus.platform.shared.DeviceHealthLookup;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
@@ -41,14 +42,16 @@ public class DeviceService implements DeviceHealthLookup {
 
     private final DeviceRepository devices;
     private final DeviceAdapters adapters;
+    private final HostPolicy hostPolicy;
     private final AccessService access;
     private final AuditService audit;
     private final Clock clock;
 
-    public DeviceService(DeviceRepository devices, DeviceAdapters adapters, AccessService access,
-                         AuditService audit, Clock clock) {
+    public DeviceService(DeviceRepository devices, DeviceAdapters adapters, HostPolicy hostPolicy,
+                         AccessService access, AuditService audit, Clock clock) {
         this.devices = devices;
         this.adapters = adapters;
+        this.hostPolicy = hostPolicy;
         this.access = access;
         this.audit = audit;
         this.clock = clock;
@@ -62,6 +65,12 @@ public class DeviceService implements DeviceHealthLookup {
                 .orElseThrow(() -> new IllegalArgumentException("Adapter not available"));
         if ("ACCESS_CONTROLLER".equals(kind) && !adapter.capabilities().contains(DeviceAdapter.Capability.OPEN_DOOR)) {
             throw new IllegalArgumentException("Adapter cannot control doors");
+        }
+        if (config != null && config.containsKey("rtspUrl")) {
+            if (!"CAMERA".equals(kind)) {
+                throw new IllegalArgumentException("rtspUrl only applies to cameras");
+            }
+            hostPolicy.requireAllowedRtsp(config.get("rtspUrl"));
         }
         if (devices.existsByCondominiumIdAndName(condominiumId, name)) {
             throw new ConflictException("Device name already in use");

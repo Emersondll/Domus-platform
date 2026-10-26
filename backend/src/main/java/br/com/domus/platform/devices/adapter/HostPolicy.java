@@ -35,4 +35,19 @@ public class HostPolicy {
         }
         return uri;
     }
+
+    /** Valida o endereço RTSP de uma câmera: esquema rtsp/rtsps, sem credenciais embutidas e host permitido. */
+    public URI requireAllowedRtsp(String url) {
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid RTSP URL");
+        }
+        if (!("rtsp".equals(uri.getScheme()) || "rtsps".equals(uri.getScheme())) || uri.getHost() == null
+                || uri.getUserInfo() != null || !allowed.contains(uri.getHost())) {
+            throw new IllegalArgumentException("RTSP URL must be rtsp(s), without credentials, on an allowed host");
+        }
+        return uri;
+    }
 }

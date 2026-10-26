@@ -9,9 +9,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 137 testes (30 unitários + 107 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 141 testes (30 unitários + 111 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas |
-| Web `npm test` + build | 57 testes (35 painel + 22 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
+| Web `npm test` + build | 58 testes (36 painel + 22 app do morador), `npm audit` = 0 vulnerabilidades, Node ≥ 22.12 |
 | `scripts/e2e-contingency.sh` | OK (queda real da central, offline autoriza 1×, reconciliação sem conflitos) |
 | `scripts/e2e-browser.py` | OK (navegador real: morador chama, operador atende, porta só confirma com evento) |
 | `scripts/e2e-agent-update.sh` · `scripts/test-agent-launcher.sh` | OK (atualização assinada com jars reais, rollback do launcher) |
@@ -33,7 +33,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | 2. App do morador: início, visitas, encomendas | **Feito.** Cartões de encomendas a retirar e visitas esperadas, aba Visitas (esperadas, chegaram, histórico de entradas com o nome do convite), encomendas pendentes em destaque |
 | 3. Painel: encomendas e visitantes | **Feito.** "Mesa do condomínio": registrar chegada, entregar com nome de quem retirou, entradas recentes e visitantes |
 | 4. Painel: portas e dispositivos | **Parcial.** Estado das portas, atualização de estado e histórico de comandos (com "aceito ≠ aberto"). **Falta** abrir porta fora de um atendimento (hoje só dentro do atendimento, onde a justificativa e a base de autorização são registradas) |
-| 5. Câmeras | **Parcial.** Lista e estado das câmeras, com aviso explícito de que o vídeo ao vivo não está integrado. **Falta o vídeo**: exige câmeras RTSP e servidor de mídia (decisão externa) |
+| 5. Câmeras | **Parcial.** Cadastro, estado e **vídeo ao vivo (RTSP → HLS pelo MediaMTX, com token curto e auditoria)**, provado com uma fonte RTSP de teste (`docs/cameras.md`). **Falta**: teste com câmera real, câmera atrás de NAT (o agente local ainda não publica o fluxo), ONVIF `GetStreamUri`, gravação (decisão LGPD) |
 | Lote A (escopo de produto) | **Feito:** autorização de visitante pelo celular e alerta de pânico. Ver `docs/product-scope.md` para os lotes B e C |
 | Lote B (escopo de produto) | **Feito (2026-10-24):** saída de visitantes, relatório de acessos com CSV, comunicados, livro de turno, comprovante imprimível, abertura remota pelo morador (opcional por condomínio; desligada por padrão) e mensagens individuais morador ↔ portaria (2026-10-25). Evidência: 134 testes de backend, 52 de tela, E2E em navegador (31 verificações, ainda sem o passo de mensagens), `restore-drill` PASS (12 migrações), teste de carga sem erros |
 | Fora do plano | Notificação push/e-mail/WhatsApp ao morador (D5); aderência a outros produtos de portaria depende de você descrever os fluxos desejados |
@@ -74,7 +74,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 5. Pendências que dependem de equipamento, contrato ou terceiros
 - **Hardware real:** testar o `DAHUA_CGI` com uma controladora; obter a documentação oficial do modelo exato (NDA/revendedor); teste com perda de conectividade no meio do comando.
-- **SIP/telefonia e vídeo ao vivo (RTSP):** exigem servidor SIP/mídia e câmeras.
+- **SIP/telefonia:** exige servidor SIP/mídia. (Vídeo ao vivo das câmeras: feito, ver `docs/cameras.md`.)
 - **Notificações push, e-mail e WhatsApp:** exigem provedor e credenciais (WhatsApp, API oficial).
 - **Infraestrutura de produção:** réplica e PITR do PostgreSQL, WAF/DDoS, criptografia de disco/banco, varredura de imagens, pentest independente, medição de RTO/RPO.
 - **Grafana (AGPL-3.0)** como serviço separado: revisão jurídica se o produto for oferecido a terceiros como serviço.
@@ -133,5 +133,5 @@ Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py
 - **Sem tela, a API existe:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas. É a administração da plataforma/empresa, ainda só pela API.
 - **Sem tela por desenho:** `agent/*` (o agente local usa a API direto).
 - **Telas de cadastro feitas em 2026-10-25** (aba Cadastros, Gestão): blocos e unidades, moradores por unidade (titular, cônjuge, dependentes; desativar, acesso ao app, exportar e anonimizar), animais, equipe. O morador cuida da própria família e dos animais em "Mais > Minha casa". Escrever exige síndico ou administração; o operador consulta.
-- **Câmeras:** a aba cadastra a câmera e mostra online/offline. **Vídeo ao vivo continua não integrado** (exige câmera com RTSP e servidor de mídia); é o próximo e último item desta fase.
+- **Câmeras:** a aba cadastra a câmera, mostra online/offline e toca o **vídeo ao vivo** (MediaMTX + HLS). Provado com fonte RTSP de teste, **não com câmera real**; câmera atrás de NAT exige que o agente local publique o fluxo (não feito). Detalhes e limites: `docs/cameras.md`.
 - Corrigido: o app do morador tinha 9 abas na barra inferior e não cabia no celular (agora 4 + "Mais"); a mesa da portaria agrupa as abas (Rotina, Segurança, Comunicação, Gestão); a validação de convite e o pedido de autorização de visitante no balcão (sem chamada) têm tela.

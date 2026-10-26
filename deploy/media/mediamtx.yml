@@ -1,0 +1,30 @@
+# MediaMTX (MIT): converte o RTSP das câmeras em HLS. Toda leitura/publicação é validada pelo backend do Domus.
+# A API de controle escuta só em loopback e fica fora da autenticação; nunca a exponha.
+logLevel: info
+
+api: yes
+apiAddress: 127.0.0.1:9997
+
+rtsp: yes
+rtspAddress: :8554
+rtmp: no
+webrtc: no
+srt: no
+
+hls: yes
+hlsAddress: :8888
+# Em produção troque "*" pela origem do painel.
+hlsAllowOrigin: '*'
+hlsAlwaysRemux: no
+
+authMethod: http
+authHTTPAddress: http://127.0.0.1:8081/internal/media/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# Os caminhos das câmeras são criados pelo backend (cam-<id>) pela API de controle. Publicar em outro caminho exige
+# o segredo de publicação (validado pelo backend).
+paths:
+  all_others:

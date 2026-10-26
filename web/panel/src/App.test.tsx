@@ -3,6 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
+const hlsInstances: { loaded: string[]; destroyed: boolean }[] = [];
+vi.mock("hls.js", () => {
+  class FakeHls {
+    static Events = { MANIFEST_PARSED: "manifest", ERROR: "error" };
+    static isSupported() { return true; }
+    state = { loaded: [] as string[], destroyed: false };
+    constructor() { hlsInstances.push(this.state); }
+    on() {}
+    loadSource(url: string) { this.state.loaded.push(url); }
+    attachMedia() {}
+    destroy() { this.state.destroyed = true; }
+  }
+  return { default: FakeHls };
+});
+
 const overview = [
   { condominiumId: "c1", name: "Residencial Sol", queuedCalls: 2, assignedCalls: 1, openIncidents: 0, queuedPanics: 1,
     deviceHealth: "NOT_IMPLEMENTED", connectivity: "NOT_IMPLEMENTED" },
@@ -12,6 +27,7 @@ let parcelList: unknown[] = [];
 let posted: { url: string; body: unknown }[] = [];
 let visitStatus = "PENDING";
 let remoteEnabled = false;
+let videoDown = false;
 const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", callerName: "Entregador",
   status: "ASSIGNED", assignedUserId: "u1", createdAt: new Date().toISOString(), outcome: null };
 
@@ -30,6 +46,8 @@ function fakeApi() {
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
     if (url.endsWith("/remote-open")) return json({ enabled: remoteEnabled });
     if (url.endsWith("/resident-openable")) return json({ id: "d1", residentOpenable: true });
+    if (url.endsWith("/devices/d2/stream-session") && videoDown) return new Response(JSON.stringify({ detail: "Media server unavailable" }), { status: 409 });
+    if (url.endsWith("/devices/d2/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/messages/threads")) return json([{ residentUserId: "ru1", residentName: "Maria Teste", lastAt: new Date().toISOString(), unread: 2 }]);
     if (url.endsWith("/messages/threads/ru1") && init?.method === "POST") return json({ id: "m9" });
     if (url.endsWith("/messages/threads/ru1")) return pg([{ id: "m1", fromResident: true, text: "Preciso de ajuda", createdAt: new Date().toISOString(), read: false }]);
@@ -54,7 +72,7 @@ function fakeApi() {
     if (url.includes("/commands?")) return pg([{ id: "cmd0", deviceId: "d1", state: "SENT", failureReason: null, requestedAt: new Date().toISOString() }]);
     if (url.includes("/devices?")) return pg([
       { id: "d1", name: "Portão principal", kind: "ACCESS_CONTROLLER", adapter: "SIMULATOR", entrance: "portaria", status: "ONLINE", lastSeenAt: null },
-      { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null },
+      { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null, liveVideo: true },
     ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
     if (url === "/api/v1/operator/overview") return json(overview);
@@ -83,6 +101,7 @@ describe("operator panel", () => {
     commandState = "SENT";
     posted = [];
     visitStatus = "PENDING";
+    videoDown = false;
     remoteEnabled = false;
     parcelList = [];
     vi.stubGlobal("fetch", fakeApi());
@@ -169,13 +188,29 @@ describe("operator panel", () => {
     expect(await screen.findByText(/aceito pelo equipamento, sem confirmação/)).toBeInTheDocument();
   });
 
-  it("states that live video is not integrated and lists only cameras", async () => {
+  it("lists only cameras and opens live video through a session, then releases the player", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
-    expect(await screen.findByText(/Vídeo ao vivo não integrado/)).toBeInTheDocument();
     expect(await screen.findByText("Câmera garagem")).toBeInTheDocument();
     expect(screen.queryByText("Portão principal")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver ao vivo Câmera garagem" }));
+    expect(await screen.findByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
+    await waitFor(() => expect(hlsInstances.at(-1)?.loaded).toEqual(["http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig"]));
+    expect(posted.some((p) => p.url.endsWith("/devices/d2/stream-session"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Fechar vídeo" }));
+    expect(hlsInstances.at(-1)?.destroyed).toBe(true);
+  });
+
+  it("shows an explicit error, not a picture, when the media server is down", async () => {
+    videoDown = true;
+    const hlsBefore = hlsInstances.length;
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    await user.click(await screen.findByRole("button", { name: "Ver ao vivo Câmera garagem" }));
+    expect(await screen.findByText(/Vídeo indisponível/)).toBeInTheDocument();
+    expect(hlsInstances.length).toBe(hlsBefore);
   });
 
   it("highlights a panic alert waiting in the queue", async () => {
@@ -317,13 +352,14 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     for (const g of ["Rotina", "Segurança", "Comunicação", "Gestão"]) expect(screen.getByRole("group", { name: g })).toBeInTheDocument();
     await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
-    expect(screen.getByText("Vídeo ao vivo não integrado")).toBeInTheDocument();
     const register = screen.getByRole("button", { name: "Cadastrar câmera" });
     expect(register).toBeDisabled();
     await user.type(screen.getByLabelText("Nome"), "Câmera hall");
     await user.type(screen.getByLabelText("Entrada"), "portaria");
+    await user.type(screen.getByLabelText(/Endereço RTSP/), "rtsp://192.168.0.20:554/stream1");
+    await user.type(screen.getByLabelText(/Variável de ambiente/), "CAM_HALL_CRED");
     await user.click(register);
-    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices"))?.body).toEqual({ name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", config: {} }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices"))?.body).toEqual({ name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", config: { rtspUrl: "rtsp://192.168.0.20:554/stream1", rtspCredentialsEnv: "CAM_HALL_CRED" } }));
   });
 
   it("queries the access report by period and offers the CSV export", async () => {

@@ -9,15 +9,15 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **137 testes** (30 unitários + 107 integração com PostgreSQL real), 0 falhas |
+| `mvn -f backend/pom.xml verify` | **141 testes** (30 unitários + 111 integração com PostgreSQL real), 0 falhas |
 | `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
-| `cd web && npm test` / `npm run build` | **30** (painel) + **20** (app do morador); build com checagem de tipos ok |
+| `cd web && npm test` / `npm run build` | **36** (painel) + **22** (app do morador); build com checagem de tipos ok |
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.4 real) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
-| `scripts/e2e-browser.py` (navegador real) | OK (34 verificações, 2026-10-25; inclui cadastro de cônjuge e animal pelo morador visto na portaria, conversa morador ↔ portaria, validação de convite pela tela e câmeras): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
-| `scripts/api-smoke.py` (API em execução) | OK (2026-10-25): 123 endpoints mapeados; 45 GETs de condomínio × 4 papéis sem 5xx, sem vazamento entre empresas e sem acesso sem token. Matriz em `docs/endpoint-coverage.md` |
+| `scripts/e2e-browser.py` (navegador real) | OK (35 verificações, 2026-10-25; inclui cadastro de cônjuge e animal pelo morador visto na portaria, conversa morador ↔ portaria, validação de convite pela tela e câmeras, com o player de vídeo ao vivo chegando a "Ao vivo" via MediaMTX real): chamada do morador → operador atende → porta confirmada só por evento; porta sem evento termina "estado desconhecido"; convite/QR, veículo, perfil; autorização de visitante e pânico; encomendas; comunicado, livro de turno, saída de visitante, relatório/CSV e abertura remota pelo morador; sem token em storage; sem erros de console |
+| `scripts/api-smoke.py` (API em execução) | OK (2026-10-25): 125 endpoints mapeados; 45 GETs de condomínio × 4 papéis sem 5xx, sem vazamento entre empresas e sem acesso sem token. Matriz em `docs/endpoint-coverage.md` |
 | `scripts/restore-drill.sh` | PASS (13 migrações, V1–V13): tabelas, constraints/índices/triggers iguais; `audit_log` segue append-only após restaurar |
 | Stack de produção local (Caddy+TLS, Keycloak, app, Postgres) | OK: HTTPS e cabeçalhos, `/actuator` `/dev` `/swagger-ui` `/v3/api-docs` = 404 no proxy, porta de gestão inacessível de fora, token do Keycloak (issuer HTTPS) aceito, token adulterado 401 |
 | Prometheus + Grafana | alvo `up`, 9 regras de alerta sem erro, dashboard provisionado (12 painéis) |
@@ -68,7 +68,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 1. **Hardware real:** nenhum adaptador testado com equipamento; `DAHUA_CGI` (Dahua/Intelbras, Digest + `eventManager.cgi`) passa em 17 testes contra um equipamento falso, mas a
    **documentação oficial não foi obtida** (NDA) e várias suposições estão não confirmadas (`docs/reference-analysis/DAHUA_SOURCES.md`, com roteiro de campo). Falta teste com perda de
    conectividade durante o comando e eleição de líder entre instâncias.
-2. **SIP/telefonia, vídeo ao vivo (RTSP/`GetStreamUri`), descoberta de dispositivos** — não implementados.
+2. **SIP/telefonia, `GetStreamUri` ONVIF, descoberta de dispositivos** — não implementados. **Vídeo ao vivo (RTSP → HLS, MediaMTX)** existe e foi provado só com fonte RTSP de teste (`docs/cameras.md`): falta câmera real e o agente local publicar o fluxo de câmeras atrás de NAT.
 3. **Notificações push, e-mail e WhatsApp (API oficial)** — hoje só caixa de entrada in-app.
 4. **Navegador:** falta exercitar o login OIDC/PKCE e a renovação do token **num navegador contra o Keycloak real** (o E2E de navegador usa o login de desenvolvimento).
 5. **Segurança restante:** mTLS por agente/dispositivo; WAF/DDoS; pentest independente; varredura de imagens de contêiner; criptografia de armazenamento do banco/disco (a de campos já existe);

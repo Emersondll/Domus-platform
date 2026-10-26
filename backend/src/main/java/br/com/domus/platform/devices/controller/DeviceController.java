@@ -64,12 +64,14 @@ public class DeviceController {
      * @param lastSeenAt última vez em que esteve online
      * @param apiKey     chave de API do dispositivo; presente somente na criação ou rotação
      * @param residentOpenable se o morador pode pedir a abertura deste dispositivo (exige a política do condomínio ligada)
+     * @param liveVideo        se a câmera tem fonte de vídeo (RTSP) configurada para a visualização ao vivo
      */
     public record DeviceResponse(UUID id, String name, String kind, String adapter, String entrance, String status,
-                                 Instant lastSeenAt, String apiKey, boolean residentOpenable) {
+                                 Instant lastSeenAt, String apiKey, boolean residentOpenable, boolean liveVideo) {
         public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
-                    d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable());
+                    d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable(),
+                    "CAMERA".equals(d.getKind()) && d.getConfig().containsKey("rtspUrl"));
         }
     }
 

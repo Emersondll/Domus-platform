@@ -17,5 +17,11 @@ portaria:
     migrate-on-start: true
   devices:
     simulator-enabled: true
+    http-allowed-hosts: localhost,127.0.0.1
   agent:
     policy-master-secret: dev-only-agent-master-secret-do-not-use-in-production-01
+  media:
+    # SOMENTE desenvolvimento: vídeo ao vivo ligado, com segredos públicos. Precisa do MediaMTX (deploy/media).
+    enabled: true
+    token-secret: dev-only-media-token-secret-do-not-use-in-production-01
+    publish-secret: dev-only-media-publish-secret

@@ -1,4 +1,6 @@
 # Dependências npm de PRODUÇÃO (o que entra nos bundles) e suas licenças — gerado de npm ls + package.json
+# Acrescentado depois: hls.js@1.6.13 (Apache-2.0), usado só no painel para tocar o vídeo HLS das câmeras (sem dependências próprias).
+hls.js@1.6.13	Apache-2.0
 ansi-regex@5.0.1	MIT
 ansi-styles@4.3.0	MIT
 camelcase@5.3.1	MIT

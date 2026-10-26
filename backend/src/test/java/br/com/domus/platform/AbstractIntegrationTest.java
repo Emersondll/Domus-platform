@@ -35,6 +35,10 @@ abstract class AbstractIntegrationTest {
         registry.add("portaria.devices.simulator-enabled", () -> "true");
         registry.add("portaria.devices.http-allowed-hosts", () -> "localhost,127.0.0.1");
         registry.add("portaria.devices.confirmation-timeout", () -> "PT2S");
+        registry.add("portaria.media.enabled", () -> "true");
+        registry.add("portaria.media.token-secret", () -> "test-only-media-token-0123456789-abcdefghij");
+        registry.add("portaria.media.publish-secret", () -> "test-only-publish-secret");
+        registry.add("portaria.media.public-hls-url", () -> "http://media.test:8888");
         // O vencimento é disparado manualmente nos testes, para não depender do relógio do agendador.
         registry.add("portaria.devices.expiry-interval-ms", () -> "3600000");
     }

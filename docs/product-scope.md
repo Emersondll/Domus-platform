@@ -39,7 +39,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 |---|---|---|
 | Integração com equipamentos | Parcial | Dahua/Intelbras (não validado em campo), ONVIF (só consulta), simulador, relé do agente |
 | Câmeras: lista e estado | Feito | |
-| Câmeras: vídeo ao vivo (RTSP/ONVIF) | Externo | Câmeras e servidor de mídia |
+| Câmeras: vídeo ao vivo (RTSP → HLS pelo MediaMTX) | Feito (provado só com fonte RTSP de teste) | Câmera real, câmera atrás de NAT (o agente ainda não publica o fluxo) e ONVIF `GetStreamUri` seguem pendentes; ver `docs/cameras.md` |
 | Abertura automatizada de acessos | Parcial | Comando físico com confirmação por evento; automação por regra (lote C) |
 | Alerta de pânico | **Feito** | Botão com confirmação no app; entra na fila com prioridade e abre incidente de severidade alta. Botão físico é externo |
 | Reconhecimento facial, biometria, placas (LPR) | Externo | Equipamento + base legal LGPD (dado sensível); não se implementa por software próprio sem decisão |

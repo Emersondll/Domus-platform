@@ -50,7 +50,7 @@ def main():
         for method in ops:
             key = last_literal(path)
             used = re.search(r'["`/]' + re.escape(key) + r'(["`?/]|\b)', src) is not None
-            who = "agente/dispositivo" if "/agent/" in path or "/device" in path and "events" in path else (
+            who = "agente/dispositivo/mídia" if "/agent/" in path or "/internal/media/" in path or "/device" in path and "events" in path else (
                 "morador" if "/me/" in path else ("portaria/painel" if "/operator/" in path else "condomínio"))
             rows.append((method.upper(), path, who, used))
             if not used:

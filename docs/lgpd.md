@@ -16,8 +16,9 @@
 | Segurança | TLS, MFA para equipe, segregação por papéis, backups com checksum e criptografia opcional |
 
 ## Pendências técnicas
-- **Imagens e áudios**: a plataforma **não** os armazena ainda. Ao integrar vídeo/gravação, é obrigatório definir retenção,
-  controle de acesso às gravações e registro de cada consulta antes de ligar a gravação.
+- **Imagens e áudios**: a plataforma **não** armazena nem grava. O vídeo ao vivo das câmeras (`docs/cameras.md`) é só transmissão para
+  quem opera a portaria, e cada abertura de visualização é auditada (`camera.view`). Antes de ligar **gravação**, é obrigatório definir
+  retenção, controle de acesso às gravações e registro de cada consulta.
 - **`audit_log` não é expurgado automaticamente** (trigger append-only). O descarte exige procedimento de manutenção
   controlado e aprovado (desabilitar o trigger por DBA, em transação auditada) conforme a política de retenção definida pelo controlador.
 - A anonimização não altera `audit_log` nem `access_attempt`/`access_command` (registros de segurança), que não contêm o nome do morador;

@@ -29,6 +29,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/devices/*/events").permitAll()
                         // API do agente local: autenticada por X-Agent-Id/X-Agent-Key, verificada no serviço.
                         .requestMatchers("/api/v1/agent/**").permitAll()
+                        // Chamada do servidor de mídia (MediaMTX): valida o token da sessão; restrita por IP no serviço.
+                        .requestMatchers(HttpMethod.POST, "/internal/media/auth").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
                 .build();

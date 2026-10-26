@@ -18,7 +18,7 @@
 
 (api_proxy) {
 	# Caminhos que não podem sair para a internet, mesmo que existissem na aplicação
-	@blocked path /actuator /actuator/* /dev /dev/* /swagger-ui /swagger-ui/* /swagger-ui.html /v3/api-docs /v3/api-docs/*
+	@blocked path /actuator /actuator/* /dev /dev/* /swagger-ui /swagger-ui/* /swagger-ui.html /v3/api-docs /v3/api-docs/* /internal /internal/*
 	respond @blocked 404
 	request_body {
 		max_size 1MB

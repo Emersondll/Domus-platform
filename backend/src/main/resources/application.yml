@@ -90,6 +90,18 @@ portaria:
     # Hosts que a central pode contatar (proteção contra SSRF). Vazio = nenhum.
     http-allowed-hosts: ${DEVICE_HTTP_ALLOWED_HOSTS:}
     confirmation-timeout: PT15S
+  media:
+    # Vídeo ao vivo (MediaMTX converte RTSP em HLS). Desligado por padrão; ver docs/cameras.md.
+    enabled: ${MEDIA_ENABLED:false}
+    api-url: ${MEDIA_API_URL:http://127.0.0.1:9997}
+    public-hls-url: ${MEDIA_PUBLIC_HLS_URL:http://localhost:8888}
+    # Obrigatório com enabled=true (>= 32 caracteres). Assina os tokens de sessão de visualização.
+    token-secret: ${MEDIA_TOKEN_SECRET:}
+    token-ttl: PT10M
+    # Quem publica no servidor de mídia (fonte de teste, agente local) usa este segredo.
+    publish-secret: ${MEDIA_PUBLISH_SECRET:}
+    # IPs de onde o servidor de mídia chama a validação (nunca publique /internal no proxy reverso).
+    auth-allowed-ips: ${MEDIA_AUTH_ALLOWED_IPS:127.0.0.1,::1,0:0:0:0:0:0:0:1}
   agent:
     # Obrigatório (>= 32 caracteres). Deriva o segredo de assinatura da política de cada agente.
     policy-master-secret: ${AGENT_POLICY_MASTER_SECRET:}

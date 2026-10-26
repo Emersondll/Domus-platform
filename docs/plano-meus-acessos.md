@@ -1,6 +1,6 @@
 # Plano: "Meus acessos" do morador, com a foto do cadastro (preparação para identificação facial)
 
-Status: **plano, nada implementado.** Redigido em 2026-10-26. Base: `pendencias.md` (seção 4-A e perguntas ao jurídico em D16 a D18),
+Status: **fases 1 a 3 implementadas com leitores simulados em 2026-10-26** (ver a seção 7); a fase 4 (identificação facial) **não** foi implementada. Redigido em 2026-10-26. Base: `pendencias.md` (seção 4-A e perguntas ao jurídico em D16 a D18),
 `docs/lgpd.md` e o que já existe de acesso e dispositivos.
 
 ## 1. Objetivo
@@ -118,3 +118,12 @@ Cada passo termina com testes, `mvn verify`, documentos atualizados e commit; pu
 - **Consentimento sozinho não basta** (ver as perguntas ao jurídico em `pendencias.md`): a alternativa sem biometria e a revogação eficaz são parte do desenho.
 - **Captura de tela** da foto ou do histórico pelo morador não tem como ser impedida.
 - **Não declaro conformidade com a LGPD**; o parecer jurídico vem antes de ligar a foto em produção.
+
+## 7. O que foi entregue (2026-10-26)
+- **V17:** `access_identity` (referência cifrada + índice cego, uma referência ativa por condomínio) e `resident_access_event` (`IN`/`OUT`/`UNKNOWN`, meio, resultado). **V18:** `privacy_consent` e `resident_photo`.
+- **Entrada dos eventos:** `POST /devices/{id}/events` aceita `identityRef`, `method` e `direction` opcionais; o sentido configurado no dispositivo (`config.direction` = IN ou OUT) prevalece; só se grava quem tem identidade ativa (referência desconhecida só incrementa um contador). `DahuaEventMapper` extrai `CardNo`/`UserID` (nunca a referência do nosso próprio comando), **suposição não confirmada em campo**.
+- **API:** `GET me/accesses` (período ≤ 31 dias), `GET me/accesses/last`, `POST/GET residents/{id}/access-identities` e `.../revoke` (síndico), `GET me/photo/status`, `POST me/consents`, `POST me/consents/{id}/revoke`, `PUT/GET/DELETE me/photo`, `GET residents/{id}/photo-status`.
+- **Telas:** "Meus acessos" (em Mais) e "Último acesso" no início; foto e consentimento dentro de "Meus acessos"; painel: "Meios de acesso" na ficha do morador.
+- **Retenção e titular:** expurgo em `RetentionService` (padrão 90 dias); exportação e anonimização incluem histórico, consentimentos e foto.
+- **Provas:** `ResidentAccessIT` (8), `ResidentPhotoIT` (5), `DahuaEventMapperTest`, testes de tela e E2E em navegador; restore drill V1–V18; teste de carga com dois cenários novos.
+- **Fase 4:** só reservada no banco (`FACE`, `FACE_REF`). **Pendências e limites:** `pendencias.md`, tabela MA1 a MA13. D19 e D20 seguem em aberto.

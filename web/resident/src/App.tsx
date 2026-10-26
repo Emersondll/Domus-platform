@@ -11,11 +11,12 @@ import { Household } from "./Household";
 import { Messages } from "./Messages";
 import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
+import { MyAccesses } from "./MyAccesses";
 import type { Residency } from "./types";
 
 /** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
 const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
-const MORE = ["Avisos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
+const MORE = ["Avisos", "Meus acessos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
 type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
 const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
@@ -127,6 +128,7 @@ export function App() {
         {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
         {condo && tab === "Mensagens" && <Messages token={token} condo={condo} />}
         {condo && tab === "Visitas" && <Visits token={token} condo={condo} />}
+        {condo && tab === "Meus acessos" && <MyAccesses token={token} condo={condo} />}
         {condo && tab === "Convites" && <Invitations token={token} condo={condo} />}
         {condo && tab === "Encomendas" && <Parcels token={token} condo={condo} />}
         {condo && tab === "Reservas" && <Reservations token={token} condo={condo} />}

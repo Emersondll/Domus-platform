@@ -17,3 +17,5 @@ export type DoorCommand = { id: string; deviceId: string; state: string; failure
 export type DirectMessage = { id: string; fromResident: boolean; text: string; createdAt: string; read: boolean };
 export type HouseholdMember = { id: string; fullName: string; relationship: string; phone: string | null; removable: boolean };
 export type Pet = { id: string; unitId: string; name: string; species: string; breed: string | null; notes: string | null };
+export type MyAccess = { id: string; occurredAt: string; direction: "IN" | "OUT" | "UNKNOWN"; entrance: string; method: string; result: "GRANTED" | "DENIED" };
+export type PhotoStatus = { enabled: boolean; textVersion: string; text: string; consentId: string | null; hasPhoto: boolean; photoCapturedAt: string | null };

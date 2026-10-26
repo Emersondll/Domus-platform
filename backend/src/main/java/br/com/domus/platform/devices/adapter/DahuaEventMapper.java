@@ -20,7 +20,10 @@ import tools.jackson.databind.ObjectMapper;
 public final class DahuaEventMapper {
 
     /** Resultado da tradução. */
-    public record Mapped(String type, UUID commandId) {
+    public record Mapped(String type, UUID commandId, String identityRef, String method) {
+        public Mapped(String type, UUID commandId) {
+            this(type, commandId, null, null);
+        }
     }
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -39,7 +42,13 @@ public final class DahuaEventMapper {
                     yield Optional.empty();
                 }
                 boolean granted = json == null || !json.has("Status") || json.path("Status").asInt(0) == 1;
-                yield Optional.of(new Mapped(granted ? "DOOR_OPENED" : "ACCESS_DENIED", commandRef(data)));
+                UUID command = commandRef(data);
+                // Quem passou: só quando NÃO é a referência do nosso próprio comando. Os nomes CardNo/UserID são suposição
+                // a confirmar em campo (B6): sem eles o evento continua valendo, apenas sem a pessoa.
+                String card = text(json, "CardNo");
+                String user = command == null ? text(json, "UserID") : null;
+                yield Optional.of(new Mapped(granted ? "DOOR_OPENED" : "ACCESS_DENIED", command,
+                        card != null ? card : user, card != null ? "CARD" : user != null ? "TERMINAL_USER" : null));
             }
             case "DoorStatus" -> {
                 String status = json == null ? "" : json.path("Status").asString("");
@@ -51,6 +60,14 @@ public final class DahuaEventMapper {
             }
             default -> Optional.empty();
         };
+    }
+
+    private static String text(JsonNode json, String field) {
+        if (json == null) {
+            return null;
+        }
+        String value = json.path(field).asString("").trim();
+        return value.isEmpty() ? null : value;
     }
 
     private static JsonNode parse(String data) {

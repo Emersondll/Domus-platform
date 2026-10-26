@@ -72,6 +72,7 @@ public class DeviceService implements DeviceHealthLookup {
             }
             hostPolicy.requireAllowedRtsp(config.get("rtspUrl"));
         }
+        requireValidDirection(config);
         if (devices.existsByCondominiumIdAndName(condominiumId, name)) {
             throw new ConflictException("Device name already in use");
         }
@@ -81,6 +82,14 @@ public class DeviceService implements DeviceHealthLookup {
         audit.record(actor.userId(), null, condominiumId, "device.register", "device", device.getId().toString(),
                 AuditOutcome.SUCCESS);
         return new Registered(device, apiKey);
+    }
+
+    /** O sentido do ponto de acesso, quando informado, é IN (entrada) ou OUT (saída). */
+    private static void requireValidDirection(Map<String, String> config) {
+        String direction = config == null ? null : config.get("direction");
+        if (direction != null && !direction.equals("IN") && !direction.equals("OUT")) {
+            throw new IllegalArgumentException("direction must be IN or OUT");
+        }
     }
 
     /** Edita nome, entrada e configuração de um equipamento (síndico ou administração). Tipo e adaptador não mudam. */
@@ -95,6 +104,7 @@ public class DeviceService implements DeviceHealthLookup {
             }
             hostPolicy.requireAllowedRtsp(next.get("rtspUrl"));
         }
+        requireValidDirection(next);
         if (devices.existsByCondominiumIdAndNameAndIdNot(condominiumId, name, deviceId)) {
             throw new ConflictException("Device name already in use");
         }

@@ -25,6 +25,9 @@ portaria:
     enabled: true
     token-secret: dev-only-media-token-secret-do-not-use-in-production-01
     publish-secret: dev-only-media-publish-secret
+  resident-photo:
+    # SOMENTE desenvolvimento: foto de cadastro ligada para testar o fluxo (nunca use foto real nos testes).
+    enabled: true
   snapshots:
     # SOMENTE desenvolvimento: captura ligada (câmeras SIMULATOR geram imagem sintética).
     enabled: true

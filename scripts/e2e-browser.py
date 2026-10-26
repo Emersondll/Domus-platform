@@ -63,6 +63,24 @@ def api(method, path, subject, body=None):
     return json.loads(raw) if raw else None
 
 
+def synthetic_png(w=240, h=240):
+    """PNG sintético (gradiente) sem biblioteca de imagem: nunca se usa foto de pessoa nos testes."""
+    import struct, zlib
+    raw = b"".join(b"\x00" + bytes(v for x in range(w) for v in (x % 256, y % 256, (x + y) % 256)) for y in range(h))
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def device_event(device_id, key, body):
+    """Evento de um equipamento (chave do dispositivo, sem JWT), como o leitor real enviaria."""
+    req = urllib.request.Request(f"http://localhost:8081/api/v1/devices/{device_id}/events", method="POST",
+                                 data=json.dumps(body).encode(),
+                                 headers={"X-Device-Key": key, "Content-Type": "application/json"})
+    return urllib.request.urlopen(req).status
+
+
 def take_next(pan):
     """Atende a próxima chamada; repete o clique enquanto a chamada do morador ainda não chegou à fila (evita corrida)."""
     for _ in range(15):
@@ -403,6 +421,38 @@ try:
         expect(res.get_by_role("img", name="Imagem da entrada: Entrega E2E")).to_be_visible(timeout=15000)
         res.get_by_role("button", name="Autorizar").click()
         check("a imagem da câmera de entrada vai junto do aviso e o morador a vê antes de autorizar", True)
+
+        # "Meus acessos": leitores simulados de entrada e de saída; o morador cadastrado vê só os próprios horários.
+        # O painel deste teste é o do operador (sem gestão): o meio de acesso é cadastrado pelo síndico, via API; a tela
+        # de cadastro é coberta pelos testes de interface.
+        me = api("GET", "/api/v1/me/residencies", "resident-sol")[0]
+        leitor_in = api("POST", f"{base}/devices", "manager-sol", {"name": "Leitor entrada E2E", "kind": "ACCESS_CONTROLLER",
+                        "adapter": "SIMULATOR", "entrance": "portaria", "config": {"direction": "IN"}})
+        leitor_out = api("POST", f"{base}/devices", "manager-sol", {"name": "Leitor saida E2E", "kind": "ACCESS_CONTROLLER",
+                         "adapter": "SIMULATOR", "entrance": "portaria", "config": {"direction": "OUT"}})
+        api("POST", f"{base}/residents/{me['residentId']}/access-identities", "manager-sol",
+            {"kind": "CARD", "ref": "E2E-CARD-0001"})
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        for dev, ref in ((leitor_in, "E2E-CARD-0001"), (leitor_out, "e2e-card-0001"), (leitor_in, "CARTAO-DESCONHECIDO")):
+            device_event(dev["id"], dev["apiKey"], {"type": "DOOR_OPENED", "occurredAt": now, "identityRef": ref})
+        more(res, "Meus acessos")
+        expect(res.get_by_text(re.compile(r"Entrada · portaria · cartão"))).to_be_visible(timeout=15000)
+        expect(res.get_by_text(re.compile(r"Saída · portaria · cartão"))).to_be_visible()
+        check("o morador cadastrado vê a própria entrada e saída (referência desconhecida não aparece)",
+              res.get_by_role("listitem").filter(has_text="cartão").count() == 2)
+        expect(res.get_by_role("region", name="Sua foto de cadastro")).to_be_visible()
+        res.get_by_role("checkbox").check()
+        res.get_by_role("button", name="Autorizar").click()
+        res.locator("#photo-file").set_input_files({"name": "sintetica.png", "mimeType": "image/png", "buffer": synthetic_png()})
+        expect(res.get_by_role("img", name="Sua foto de cadastro")).to_be_visible(timeout=15000)
+        check("morador autoriza o uso da foto, envia uma imagem sintética e a vê", True)
+        res.get_by_role("button", name="Revogar consentimento").click()
+        expect(res.get_by_role("button", name="Autorizar")).to_be_visible(timeout=15000)
+        check("revogar o consentimento apaga a foto", res.get_by_role("img", name="Sua foto de cadastro").count() == 0)
+        res.get_by_role("button", name="← Voltar para Mais opções").click()
+        res.get_by_role("button", name="← Voltar ao início").click()
+        expect(res.get_by_role("button", name="Último acesso")).to_contain_text("portaria", timeout=15000)
+        check("o início mostra o último acesso do morador", True)
 
         pan.get_by_role("tab", name="Relatórios").click()
         pan.get_by_role("button", name="Consultar").click()

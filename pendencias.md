@@ -65,10 +65,10 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | B10 | Em Keycloak já existente, o mapper de audiência precisa ser adicionado, senão os logins recebem 401 | falha no upgrade | passo documentado em `docs/operations.md` |
 
 ## 4. Próximas ações (ordem sugerida)
-**A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — PRÓXIMA AÇÃO (pedido de 2026-10-26).**
+**A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — FEITO com leitores simulados e foto desligada por padrão (2026-10-26); a identificação facial NÃO foi feita.**
 **Plano detalhado: [`docs/plano-meus-acessos.md`](docs/plano-meus-acessos.md)** (fases, modelo de dados, decisões novas D19 prazo de retenção e D20 sentido de entrada/saída).
 O morador vê os **horários de entrada e saída** dele no condomínio e a **foto do cadastro**. A foto existe porque, no futuro, a entrada será por
-**identificação facial**. Escopo, em etapas (cada uma com testes, E2E e documentação; recurso novo vem **desligado**):
+**identificação facial**. **Entregue:** migrações V17/V18; identidade de acesso do morador; registro de passagens só de cadastrados; sentido por ponto de acesso; API e tela "Meus acessos" + "Último acesso"; auditoria; retenção; exportação e anonimização; foto com consentimento revogável (desligada); tela da portaria para cadastrar o meio de acesso (síndico); testes `ResidentAccessIT` (8), `ResidentPhotoIT` (5), testes de tela e E2E em navegador. **Limites e pendências que ficam (tratar depois): lista "Limites do Meus acessos" abaixo.** Escopo original, em etapas (cada uma com testes, E2E e documentação; recurso novo vem **desligado**):
 1. **Lacuna de hoje:** só existe histórico de acesso de **visitantes** (convite validado, visitante autorizado). **Não há registro de entrada e
    saída do próprio morador**. Primeiro é preciso um registro de acessos do morador: identidade de acesso do morador (cartão, QR do morador ou
    a identificação do equipamento, ex.: o `UserID` do evento Dahua/Intelbras, que hoje é uma suposição não confirmada em campo, B6), eventos de porta
@@ -93,6 +93,23 @@ a entrada da pessoa. **Observação honesta:** não verifiquei as decisões judi
 limites informados, e este projeto não declara conformidade com a LGPD. Antes de coletar a foto ou usar reconhecimento facial é preciso **parecer jurídico**
 (decisões abaixo).
 
+**Limites do "Meus acessos" (declarados no plano; tratar depois):**
+| # | Limite | O que fazer |
+|---|---|---|
+| MA1 | **Nada validado com equipamento real:** os campos `CardNo`/`UserID` do evento Dahua/Intelbras são suposição (B6); a identificação da pessoa só foi provada com leitores simulados | roteiro de campo em `docs/reference-analysis/DAHUA_SOURCES.md`; ajustar o mapeador depois |
+| MA2 | **Sentido:** com um leitor só (sem `direction` IN/OUT no dispositivo) o registro é "passagem"; não existe "quem está dentro agora" (exigiria antipassback). Decisão **D20** | decidir como instalar os leitores; a tela de cadastro de controladoras ainda não existe (o `direction` hoje é configurado só pela API) |
+| MA3 | **Contingência:** o agente local não lê o histórico da controladora, então as passagens de moradores durante uma queda da central **não** chegam ao "Meus acessos" | agente passar a enviar passagens (idempotente) |
+| MA4 | **Retenção de 90 dias é recomendação**, não decisão. Decisão **D19** | confirmar com o jurídico; configurável (`RESIDENT_ACCESS_RETENTION_DAYS`) |
+| MA5 | **Só o titular vê o histórico:** moradores da mesma unidade não veem os dos outros, nem síndico, nem portaria; sem fluxo de acesso excepcional (ordem judicial, apuração de incidente) | decidir o fluxo e o registro dele (D17) |
+| MA6 | **Dependentes e menores** ficam fora da foto e do histórico (a foto de dependente é recusada; dependente sem conta de app não vê nada) | D17 |
+| MA7 | **Foto sem detecção de rosto:** só valida formato, tamanho (≤ 2 MB), dimensão mínima (160 px) e proporção (≤ 3:1); a qualidade depende de quem envia; a tela diz isso | decidir e licenciar uma biblioteca de visão computacional, se for necessário (a fase de reconhecimento facial vai exigir) |
+| MA8 | **Foto desligada por padrão** (`RESIDENT_PHOTO_ENABLED=false`); ligar em produção depende de **D16** (base legal e consentimento) e do parecer jurídico | parecer jurídico; revisar o texto do consentimento (versão `2026-10-v1`) |
+| MA9 | **Cadastro do meio de acesso só pelo síndico/administração:** o morador não cadastra o próprio QR/app; a portaria (operador) não cadastra | decidir se o morador pode cadastrar QR/app |
+| MA10 | **Captura de tela** da foto ou do histórico pelo morador não tem como ser impedida; **dispositivo comprometido** pode forjar passagens do próprio ponto de acesso | risco aceito; mTLS por dispositivo (B-seg) |
+| MA11 | **Desempenho:** evento de leitor com identidade = ~280 req/s por dispositivo no teste (contenção na linha do dispositivo; leitores distintos não disputam) | reavaliar com leitores reais e, se preciso, não atualizar o `status` a cada evento |
+| MA12 | **Identificação facial:** só reservada (`method=FACE`, `kind=FACE_REF` no banco); **não existe** `ENROLL_FACE` no contrato de adaptadores, gabarito, nem alternativa de cadastro no terminal | depende de D16 a D18, RIPD e terminal facial |
+| MA13 | Texto "apagados em 90 dias" na tela é fixo; se o prazo mudar, a tela precisa acompanhar | expor o prazo pela API |
+
 **B. Demais pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)**
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
@@ -105,7 +122,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 6. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
 7. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
 8. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.
-9. **Qualidade:** teste de carga (`scripts/load-test.py`) não foi reexecutado depois das últimas rodadas; PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
+9. **Qualidade:** teste de carga reexecutado em 2026-10-26 (com "Meus acessos"); PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
 10. **Retenção de mensagens** individuais (flagrado em `docs/lgpd.md`) e saída automática de visitante esquecido no local (hoje só aviso após 12 h).
 11. **Agente:** pacote `.deb` e suporte além de Linux/systemd.
 12. Testes de integração organizados por domínio (hoje ficam todos em `br.com.domus.platform`).
@@ -123,6 +140,8 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 |---|---|---|
 | D16 | **Base legal e consentimento para a foto de cadastro e para a identificação facial** (dado sensível quando vira gabarito biométrico): texto, versão, registro, revogação, quem é o controlador, RIPD, DPO | em aberto (jurídico); **bloqueia** a coleta em produção e a identificação facial |
 | D17 | **Menores e dependentes; quem enxerga o histórico de acessos** (o titular, os moradores da unidade, o síndico, a portaria) e em que condições | em aberto |
+| D19 | **Prazo de retenção do histórico de entradas e saídas do morador** (recomendado: 90 dias, configurável) | em aberto; hoje 90 dias por padrão |
+| D20 | **Como saber o sentido (entrada ou saída)** em cada ponto de acesso (leitor nos dois sentidos? antipassback?) | em aberto; hoje "passagem" quando o ponto não informa |
 | D18 | **Onde mora o gabarito facial** (no terminal ou na central), fabricante/modelo do terminal e alternativa sem biometria | em aberto; depende de D2 |
 | D1 | **LGPD:** base legal por tratamento, DPO, RIPD, contratos controlador/operador, retenção final, política para dados de visitantes e de gravações | em aberto (jurídico); o lado técnico está em `docs/lgpd.md` |
 | D2 | **Fabricante/modelo da primeira controladora** e ambiente de testes de campo | Dahua/Intelbras adotado como primeiro; falta equipamento |

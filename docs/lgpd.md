@@ -37,9 +37,13 @@
 ## Pedidos de autorização de visitante (visit_request)
 O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_request.visitor_name`), como nas demais tabelas. O pedido expira em 5 minutos sem resposta; o registro permanece para auditoria e deve entrar na política de retenção que o controlador definir (D1).
 
-## Foto de cadastro e identificação facial (PLANEJADO, nada implementado)
-O morador terá a tela "Meus acessos" (entradas e saídas dele) com a **foto do cadastro**, para no futuro a entrada ser por identificação facial
-(`pendencias.md`, seção 4-A). Regras que o desenho deve cumprir antes de qualquer coleta em produção:
+## Foto de cadastro e "Meus acessos" (IMPLEMENTADO desligado; identificação facial NÃO implementada)
+O morador tem a tela "Meus acessos" (entradas e saídas dele) e, **com o recurso ligado**, a **foto do cadastro**, para no futuro a entrada ser por identificação facial
+(`pendencias.md`, seção 4-A; `docs/plano-meus-acessos.md`). **Estado real:** o histórico só registra quem tem meio de acesso cadastrado pela administração (cartão, usuário do
+terminal...), é visto **só pelo titular** (síndico e portaria recebem 404), cada consulta vai para a auditoria e os registros são apagados em **90 dias** (padrão
+`RESIDENT_ACCESS_RETENTION_DAYS`, prazo ainda a confirmar com o jurídico, D19). A foto exige **consentimento específico e versionado** (texto em `ResidentPhotoService`),
+é cifrada, tem no máximo 640 px e 200 KB, a portaria só vê "foto cadastrada: sim ou não", **revogar apaga a foto na hora** e a exportação e a anonimização do titular a incluem.
+O recurso de foto vem **desligado** (`RESIDENT_PHOTO_ENABLED=false`) até D16. **Não há gabarito facial, detecção de rosto nem reconhecimento.** Regras que o desenho cumpre e as que ainda faltam antes de qualquer coleta em produção:
 - **Foto de cadastro** é dado pessoal; o **gabarito facial** (modelo biométrico) é dado **sensível** (art. 5º, II, e art. 11): exige base legal específica,
   consentimento destacado quando for a base, relatório de impacto (RIPD) e DPO. Decisões D16 a D18 em aberto; sem elas **não se coleta nem se cria gabarito**.
 - **Finalidade única** (controle de acesso), sem uso secundário; **minimização** (uma foto, tamanho limitado); **cifragem** e acesso só pelo titular e por

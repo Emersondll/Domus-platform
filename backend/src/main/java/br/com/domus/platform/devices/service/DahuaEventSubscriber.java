@@ -5,6 +5,7 @@ import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DahuaEventMapper;
 import br.com.domus.platform.devices.adapter.DahuaEventStream;
 import br.com.domus.platform.devices.adapter.DeviceAdapter.DeviceDescriptor;
+import br.com.domus.platform.devices.adapter.DeviceEventSink;
 import br.com.domus.platform.devices.adapter.DeviceSecrets;
 import br.com.domus.platform.devices.adapter.HostPolicy;
 import jakarta.annotation.PreDestroy;
@@ -93,13 +94,14 @@ public class DahuaEventSubscriber {
                         long now = System.nanoTime();
                         if (lastReport[0] == 0 || now - lastReport[0] > LIVENESS_REPORT.toNanos()) {
                             lastReport[0] = now;
-                            deliver(device, "HEARTBEAT", null);
+                            deliver(device, "HEARTBEAT", null, null);
                         }
                     }
 
                     @Override
                     public void event(DahuaEventStream.Event event) {
-                        DahuaEventMapper.map(event).ifPresent(m -> deliver(device, m.type(), m.commandId()));
+                        DahuaEventMapper.map(event).ifPresent(m -> deliver(device, m.type(), m.commandId(),
+                                new DeviceEventSink.Person(m.identityRef(), m.method(), null)));
                     }
                 });
             } catch (Exception e) {
@@ -118,9 +120,9 @@ public class DahuaEventSubscriber {
         }
     }
 
-    private void deliver(DeviceDescriptor device, String type, UUID commandId) {
+    private void deliver(DeviceDescriptor device, String type, UUID commandId, DeviceEventSink.Person person) {
         try {
-            events.onTrustedEvent(device.id(), device.condominiumId(), type, commandId);
+            events.onTrustedEvent(device.id(), device.condominiumId(), type, commandId, person);
         } catch (RuntimeException e) {
             log.warn("Could not record {} event of device {}: {}", type, device.id(), e.getMessage());
         }

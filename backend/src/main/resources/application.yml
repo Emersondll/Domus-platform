@@ -111,6 +111,10 @@ portaria:
     temp-ttl: PT10M
     retention-days: ${SNAPSHOTS_RETENTION_DAYS:30}
     ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+  resident-photo:
+    # Foto de cadastro do morador (prepara a identificação facial). DESLIGADO por padrão: depende de decisão jurídica (D16).
+    # Ver docs/plano-meus-acessos.md.
+    enabled: ${RESIDENT_PHOTO_ENABLED:false}
   agent:
     # Obrigatório (>= 32 caracteres). Deriva o segredo de assinatura da política de cada agente.
     policy-master-secret: ${AGENT_POLICY_MASTER_SECRET:}
@@ -133,6 +137,8 @@ portaria:
     agent-events-days: 90
     device-events-days: 90
     resolved-conflicts-days: 365
+    # Histórico pessoal de entradas e saídas do morador: dado de rotina e localização, prazo curto (D19, a confirmar com o jurídico).
+    resident-access-days: ${RESIDENT_ACCESS_RETENTION_DAYS:90}
   bootstrap:
     # Somente para a instalação inicial: sub (e e-mail) da conta criada no Keycloak que será o primeiro administrador.
     platform-admin-subject: ${BOOTSTRAP_PLATFORM_ADMIN_SUBJECT:}

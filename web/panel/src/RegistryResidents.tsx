@@ -2,6 +2,7 @@ import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Block, Resident, Unit } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
+import { RegistryAccessIdentities } from "./RegistryAccessIdentities";
 
 const TYPE_TEXT: Record<string, string> = { OWNER: "proprietário", TENANT: "locatário", SPOUSE: "cônjuge", DEPENDENT: "dependente" };
 
@@ -17,6 +18,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
   const [phone, setPhone] = useState("");
   const [type, setType] = useState("OWNER");
   const [accessFor, setAccessFor] = useState<string | null>(null);
+  const [identitiesFor, setIdentitiesFor] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
     <div aria-label="Moradores">
       <h3>Moradores por unidade</h3>
       <label htmlFor="res-unit">Unidade</label>
-      <select id="res-unit" value={unitId} onChange={(e) => { setUnitId(e.target.value); setAccessFor(null); }}>
+      <select id="res-unit" value={unitId} onChange={(e) => { setUnitId(e.target.value); setAccessFor(null); setIdentitiesFor(null); }}>
         <option value="">Selecione</option>
         {units.items.map((u) => <option key={u.id} value={u.id}>{blockName(u.blockId)} / {u.number}</option>)}
       </select>
@@ -56,6 +58,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
                 {r.active ? <button onClick={() => setActive(r, false)} aria-label={`Desativar ${r.fullName}`}>Desativar</button>
                   : <button onClick={() => setActive(r, true)} aria-label={`Reativar ${r.fullName}`}>Reativar</button>}{" "}
                 {r.active && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
+                {r.active && <button onClick={() => setIdentitiesFor(r.id)} aria-label={`Meios de acesso de ${r.fullName}`}>Meios de acesso</button>}{" "}
                 <button onClick={async () => {
                   const data = await request<unknown>(token, "GET", `${base}/residents/${r.id}/export`);
                   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
@@ -74,6 +77,10 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
             ))}
             {residents.items.length === 0 && <li>Nenhum morador nesta unidade.</li>}
           </ul>
+          {identitiesFor && residents.items.find((x) => x.id === identitiesFor) && (
+            <RegistryAccessIdentities token={token} condominiumId={condominiumId}
+              resident={residents.items.find((x) => x.id === identitiesFor)!} />
+          )}
           {accessFor && (
             <section aria-label="Acesso ao app">
               <h3>Dar acesso ao app</h3>

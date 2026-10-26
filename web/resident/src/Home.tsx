@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import { AuthImage } from "../../shared/src/AuthImage";
-import type { Invitation, MyCall, Notification, Parcel, VisitRequest } from "./types";
+import type { Invitation, MyAccess, MyCall, Notification, Parcel, VisitRequest } from "./types";
 import { NotificationTabs } from "./NotificationTabs";
+import { DIRECTION_LABEL } from "./MyAccesses";
 import { RemoteDoors } from "./RemoteDoors";
 import { errorText, useList } from "./useApi";
 
@@ -27,7 +28,7 @@ export function isExpected(i: Invitation, now = Date.now()): boolean {
   return i.status === "ACTIVE" && i.useCount < i.maxUses && new Date(i.validUntil).getTime() > now;
 }
 
-export function Home({ token, condo, onNavigate }: { token: string; condo: string; onNavigate: (tab: "Encomendas" | "Visitas") => void }) {
+export function Home({ token, condo, onNavigate }: { token: string; condo: string; onNavigate: (tab: "Encomendas" | "Visitas" | "Meus acessos") => void }) {
   const base = `/api/v1/condominiums/${condo}/me`;
   const notes = useList<Notification>(token, `${base}/notifications`, POLL_MS);
   const calls = useList<MyCall>(token, `${base}/calls`, POLL_MS);
@@ -36,6 +37,14 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
   const visitRequests = useList<VisitRequest>(token, `${base}/visit-requests`, POLL_MS);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmingPanic, setConfirmingPanic] = useState(false);
+
+  // Uma só consulta ao abrir a tela (sem polling): cada consulta ao histórico pessoal fica na auditoria.
+  const [lastAccess, setLastAccess] = useState<MyAccess | null | undefined>(undefined);
+  useEffect(() => {
+    request<{ last: MyAccess | null }>(token, "GET", `${base}/accesses/last`)
+      .then((r) => setLastAccess(r?.last ?? null))
+      .catch(() => setLastAccess(null));
+  }, [token, base]);
 
   const latest = calls.items[0];
   const progress = latest ? callProgress(latest) : null;
@@ -113,6 +122,14 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
           <span>{expected === 1 ? "visita esperada" : "visitas esperadas"}</span>
         </button>
       </div>
+
+      <button className="card" onClick={() => onNavigate("Meus acessos")} aria-label="Último acesso">
+        <strong>Último acesso</strong>
+        <span>
+          {lastAccess === undefined ? "Carregando…" : lastAccess === null ? "Ainda sem registros" :
+            `${DIRECTION_LABEL[lastAccess.direction]} · ${new Date(lastAccess.occurredAt).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${lastAccess.entrance}`}
+        </span>
+      </button>
 
       <button onClick={callCentral} disabled={callActive}>Chamar a central</button>
       {confirmingPanic ? (

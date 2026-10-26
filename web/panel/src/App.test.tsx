@@ -71,6 +71,10 @@ function fakeApi() {
     if (url.includes("/visit-requests?callId=")) return pg([{ id: "vr1", unitId: "un1", callId: "k1", visitorName: "Tia Maria", kind: "VISITOR", status: visitStatus, createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null }]);
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr2" });
     if (url.includes("/blocks?")) return pg([{ id: "b1", name: "Bloco A" }]);
+    if (url.endsWith("/residents/r1/access-identities") && init?.method === "POST") return json({ id: "ai1", kind: "CARD", active: true, createdAt: new Date().toISOString(), revokedAt: null }, 201);
+    if (url.endsWith("/residents/r1/access-identities")) return json([{ id: "ai0", kind: "TERMINAL_USER", active: true, createdAt: new Date().toISOString(), revokedAt: null }]);
+    if (url.endsWith("/residents/r1/access-identities/ai0/revoke")) return json({ id: "ai0", kind: "TERMINAL_USER", active: false, createdAt: new Date().toISOString(), revokedAt: new Date().toISOString() });
+    if (url.endsWith("/residents/r1/photo-status")) return json({ hasPhoto: true });
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
     if (url.endsWith("/residents/r1") && init?.method === "PUT") return json({ id: "r1" });
@@ -535,5 +539,23 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
     await user.click(await screen.findByRole("button", { name: "Ver imagem de João Autorizado" }));
     expect(await screen.findByRole("img", { name: /Imagem da entrada de João Autorizado/ })).toBeInTheDocument();
+  });
+
+  it("registers an access means for a resident without ever showing the stored reference or the personal history", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: "Moradores" }));
+    await user.selectOptions(screen.getByLabelText("Unidade"), "un1");
+    await user.click(await screen.findByRole("button", { name: "Meios de acesso de Joana Teste" }));
+    expect(await screen.findByText(/Foto de cadastro: cadastrada/)).toBeInTheDocument();
+    expect(screen.getByText(/vista só pelo próprio morador/)).toBeInTheDocument();
+    const register = screen.getByRole("button", { name: "Cadastrar meio de acesso" });
+    expect(register).toBeDisabled();
+    await user.type(screen.getByLabelText("Número ou referência no equipamento"), "CARD-0001");
+    await user.click(register);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents/r1/access-identities"))?.body).toEqual({ kind: "CARD", ref: "CARD-0001" }));
+    await user.click(await screen.findByRole("button", { name: "Revogar usuário do terminal de Joana Teste" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/access-identities/ai0/revoke"))).toBe(true));
   });
 });

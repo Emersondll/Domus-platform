@@ -3,7 +3,7 @@
 
 Uso: scripts/load-test.py [--base http://localhost:8081] [--seconds 15] [--concurrency 20]
 Requer a API com perfil dev (usa /dev/token) e com os limites de taxa elevados, por exemplo:
-  PORTARIA_RATE_LIMIT_API_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_VALIDATE_PER_MINUTE=1000000
+  PORTARIA_RATE_LIMIT_API_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_VALIDATE_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_DEVICE_PER_MINUTE=1000000
 Limitações: gerador e servidor na mesma máquina; cliente em Python (GIL). Os números são um PISO de capacidade.
 """
 import argparse, http.client, json, statistics, threading, time, urllib.parse, uuid
@@ -83,3 +83,26 @@ scenario("GET moradores paginado", lambda c: call(c, "GET", f"/api/v1/condominiu
 scenario("GET visão geral do operador", lambda c: call(c, "GET", "/api/v1/operator/overview", op)[0] == 200)
 scenario("POST validar credencial (escrita)", lambda c: call(c, "POST", f"/api/v1/condominiums/{condo}/access/validate", op,
                                                              {"token": f"{uuid.uuid4()}.x", "entrance": "portaria"})[0] == 200)
+
+# "Meus acessos": ingestão de eventos de leitor com identidade (escrita no histórico pessoal) e consulta do titular (auditada).
+res = token("resident-sol")
+residency = json.loads(call(c0, "GET", "/api/v1/me/residencies", res)[1])[0]
+reader = json.loads(call(c0, "POST", f"/api/v1/condominiums/{condo}/devices", mgr,
+                         {"name": f"Leitor carga {uuid.uuid4().hex[:6]}", "kind": "ACCESS_CONTROLLER", "adapter": "SIMULATOR",
+                          "entrance": "portaria", "config": {"direction": "IN"}})[1])
+ref = f"CARGA-{uuid.uuid4().hex[:8]}"
+assert call(c0, "POST", f"/api/v1/condominiums/{condo}/residents/{residency['residentId']}/access-identities", mgr,
+            {"kind": "CARD", "ref": ref})[0] == 201
+
+
+def reader_event(c):
+    body = json.dumps({"type": "DOOR_OPENED", "occurredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "identityRef": ref})
+    c.request("POST", f"/api/v1/devices/{reader['id']}/events", body,
+              {"Content-Type": "application/json", "X-Device-Key": reader["apiKey"]})
+    r = c.getresponse()
+    r.read()
+    return r.status == 202
+
+
+scenario("POST evento de leitor c/ identidade", reader_event)
+scenario("GET meus acessos (auditado)", lambda c: call(c, "GET", f"/api/v1/condominiums/{condo}/me/accesses?size=20", res)[0] == 200)

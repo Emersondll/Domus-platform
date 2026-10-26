@@ -64,3 +64,23 @@ export async function requestImageUrl(token: string, path: string): Promise<stri
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return URL.createObjectURL(await res.blob());
 }
+
+/** Envia um arquivo (imagem) como corpo bruto, com o tipo do próprio arquivo. A API recompõe e valida o conteúdo. */
+export async function uploadFile<T>(token: string, path: string, file: Blob): Promise<T | null> {
+  const res = await fetch(path, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (res.status === 401) onUnauthorized?.();
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      detail = (await res.json()).detail ?? detail;
+    } catch {
+      /* corpo sem JSON */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  return res.status === 204 ? null : ((await res.json()) as T);
+}

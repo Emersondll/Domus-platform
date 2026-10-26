@@ -16,6 +16,9 @@ let myInvitations: unknown[] = [];
 let myHistory: unknown[] = [];
 let myVisitRequests: unknown[] = [];
 let myDoors: unknown[] = [];
+let myAccesses: unknown[] = [];
+let lastAccess: unknown = null;
+let photoStatus: Record<string, unknown> = { enabled: false, textVersion: "v1", text: "", consentId: null, hasPhoto: false, photoCapturedAt: null };
 let openStatus = 202;
 let cmdState = "CONFIRMED";
 
@@ -57,6 +60,14 @@ function fakeApi() {
       const wanted = new URL(url, "http://x").searchParams.get("status");
       return json(page((myParcels as { status: string }[]).filter((p) => !wanted || p.status === wanted)));
     }
+    if (url.endsWith("/me/accesses/last")) return json({ last: lastAccess });
+    if (url.includes("/me/accesses?")) return json(page(myAccesses));
+    if (url.endsWith("/me/photo/status")) return json(photoStatus);
+    if (url.endsWith("/me/consents") && method === "POST") return json({ id: "co1", textVersion: "v1", grantedAt: new Date().toISOString() }, 201);
+    if (url.endsWith("/me/consents/co1/revoke")) return new Response(null, { status: 204 });
+    if (url.endsWith("/me/photo") && method === "PUT") return json(photoStatus);
+    if (url.endsWith("/me/photo") && method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/me/photo")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (url.endsWith("/me/profile")) return json({ fullName: "Fulano", email: null, phone: null });
     if (url.endsWith("/me/preferences") && method === "PUT") return json(JSON.parse(init!.body as string));
     if (url.endsWith("/me/preferences")) return json({ parcelsEnabled: true, visitorArrivalEnabled: true });
@@ -70,7 +81,7 @@ async function openTab(name: string) {
   render(<App />);
   await user.click(await screen.findByRole("button", { name: /Entrar/ }));
   await screen.findByText(/Residencial Sol/);
-  if (["Avisos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"].includes(name)) {
+  if (["Avisos", "Meus acessos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"].includes(name)) {
     await user.click(screen.getByRole("button", { name: "Mais" }));
   }
   await user.click(screen.getByRole("button", { name }));
@@ -90,6 +101,9 @@ describe("resident app", () => {
     myHistory = [];
     myVisitRequests = [];
     myDoors = [];
+    myAccesses = [];
+    lastAccess = null;
+    photoStatus = { enabled: false, textVersion: "v1", text: "", consentId: null, hasPhoto: false, photoCapturedAt: null };
     openStatus = 202;
     cmdState = "CONFIRMED";
     vi.stubGlobal("fetch", fakeApi());
@@ -322,5 +336,72 @@ describe("resident app", () => {
     expect(screen.getByText("Sem imagem da entrada.")).toBeInTheDocument();
     expect(calls.some((c) => c.url.endsWith("/me/visit-requests/vr1/snapshot"))).toBe(true);
     expect(calls.some((c) => c.url.endsWith("/me/visit-requests/vr2/snapshot"))).toBe(false);
+  });
+
+  it("lists only my accesses by day, says 'passagem' when the direction is unknown and never polls", async () => {
+    const at = (h: number) => new Date(2030, 0, 2, h, 0).toISOString();
+    myAccesses = [
+      { id: "a1", occurredAt: at(18), direction: "IN", entrance: "Portaria", method: "CARD", result: "GRANTED" },
+      { id: "a2", occurredAt: at(8), direction: "OUT", entrance: "Garagem", method: "TERMINAL_USER", result: "GRANTED" },
+      { id: "a3", occurredAt: at(7), direction: "UNKNOWN", entrance: "Portaria", method: "CARD", result: "DENIED" },
+    ];
+    const user = await openTab("Meus acessos");
+    expect(await screen.findByText(/Só você vê esta lista/)).toBeInTheDocument();
+    expect(await screen.findByText(/Entrada · Portaria · cartão/)).toBeInTheDocument();
+    expect(screen.getByText(/Saída · Garagem · terminal/)).toBeInTheDocument();
+    expect(screen.getByText(/Passagem · Portaria · cartão/)).toBeInTheDocument();
+    expect(screen.getByText("acesso negado")).toBeInTheDocument();
+    const queries = () => calls.filter((c) => c.url.includes("/me/accesses?"));
+    expect(queries()).toHaveLength(1);
+    expect(new URL(queries()[0].url, "http://x").searchParams.get("from")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "30 dias" }));
+    await waitFor(() => expect(queries()).toHaveLength(2));
+  });
+
+  it("explains an empty history honestly", async () => {
+    await openTab("Meus acessos");
+    expect(await screen.findByText(/Nenhum acesso registrado neste período/)).toBeInTheDocument();
+  });
+
+  it("shows the last access on the home screen, or that there is none", async () => {
+    await openTab("Início");
+    expect(await screen.findByText("Ainda sem registros")).toBeInTheDocument();
+  });
+
+  it("shows the last access with its direction", async () => {
+    lastAccess = { id: "a1", occurredAt: new Date().toISOString(), direction: "IN", entrance: "Portaria", method: "CARD", result: "GRANTED" };
+    await openTab("Início");
+    expect(await screen.findByText(/Entrada · .* · Portaria/)).toBeInTheDocument();
+  });
+
+  it("hides the registration photo section when the feature is off", async () => {
+    await openTab("Meus acessos");
+    await screen.findByText(/Nenhum acesso registrado/);
+    expect(screen.queryByRole("region", { name: "Sua foto de cadastro" })).not.toBeInTheDocument();
+  });
+
+  it("asks for a specific consent before anything can be sent, with the transparency text", async () => {
+    photoStatus = { enabled: true, textVersion: "v1", text: "Autorizo o uso da minha foto somente para o controle de acesso.", consentId: null, hasPhoto: false, photoCapturedAt: null };
+    const user = await openTab("Meus acessos");
+    expect(await screen.findByText(/somente para o controle de acesso/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Enviar foto/)).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Autorizar" });
+    expect(button).toBeDisabled();
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(button);
+    await waitFor(() => {
+      const post = calls.find((c) => c.method === "POST" && c.url.endsWith("/me/consents"));
+      expect(JSON.parse(post!.body!)).toEqual({ textVersion: "v1" });
+    });
+  });
+
+  it("shows the photo, lets the resident remove it and revoke the consent", async () => {
+    photoStatus = { enabled: true, textVersion: "v1", text: "t", consentId: "co1", hasPhoto: true, photoCapturedAt: new Date().toISOString() };
+    const user = await openTab("Meus acessos");
+    expect(await screen.findByRole("img", { name: "Sua foto de cadastro" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remover minha foto" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.url.endsWith("/me/photo"))).toBe(true));
+    await user.click(screen.getByRole("button", { name: "Revogar consentimento" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/me/consents/co1/revoke"))).toBe(true));
   });
 });

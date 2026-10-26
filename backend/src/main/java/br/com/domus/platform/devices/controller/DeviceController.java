@@ -46,7 +46,8 @@ public class DeviceController {
      * @param kind     ACCESS_CONTROLLER, CAMERA ou INTERCOM
      * @param adapter  SIMULATOR (apenas desenvolvimento), GENERIC_HTTP, ONVIF, DAHUA_CGI ou AGENT_RELAY (via agente local)
      * @param entrance entrada controlada (ex.: portaria, garagem)
-     * @param config   configuração não secreta do adaptador (segredos ficam em variáveis de ambiente)
+     * @param config   configuração não secreta do adaptador (segredos ficam em variáveis de ambiente); {@code direction} = IN ou OUT
+     *                 define o sentido do ponto de acesso (sem ele, a passagem do morador fica sem sentido)
      */
     public record RegisterDeviceRequest(@NotBlank @Size(max = 80) String name,
                                         @NotNull @Pattern(regexp = "ACCESS_CONTROLLER|CAMERA|INTERCOM") String kind,
@@ -112,8 +113,15 @@ public class DeviceController {
      * @param type       DOOR_OPENED, DOOR_CLOSED, HEARTBEAT, TAMPER ou ACCESS_DENIED
      * @param commandId  comando ao qual o evento responde, opcional
      * @param occurredAt instante em que o dispositivo registrou o evento
+     * @param identityRef referência de quem passou no equipamento (cartão, usuário do terminal), opcional; só vira
+     *                    "meus acessos" se for de um morador cadastrado
+     * @param method      CARD, QR, TERMINAL_USER, APP ou FACE, opcional
+     * @param direction   IN ou OUT, opcional; o sentido configurado no dispositivo prevalece
      */
-    public record EventRequest(@NotBlank String type, UUID commandId, @NotNull Instant occurredAt) {
+    public record EventRequest(@NotBlank String type, UUID commandId, @NotNull Instant occurredAt,
+                               @Size(max = 120) String identityRef,
+                               @Pattern(regexp = "CARD|QR|TERMINAL_USER|APP|FACE") String method,
+                               @Pattern(regexp = "IN|OUT") String direction) {
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices")
@@ -201,6 +209,8 @@ public class DeviceController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void ingest(@PathVariable UUID deviceId, @RequestHeader(value = "X-Device-Key", required = false) String key,
                        @Valid @RequestBody EventRequest r) {
-        events.ingest(deviceId, key, r.type(), r.commandId(), r.occurredAt());
+        events.ingest(deviceId, key, r.type(), r.commandId(), r.occurredAt(),
+                new br.com.domus.platform.devices.adapter.DeviceEventSink.Person(r.identityRef(), r.method(),
+                        r.direction()));
     }
 }

@@ -49,4 +49,20 @@ class DahuaEventMapperTest {
         // dado ilegível não derruba o tradutor nem forja correlação
         assertThat(DahuaEventMapper.map(new Event("AccessControl", "Pulse", "0", "{broken")).orElseThrow().commandId()).isNull();
     }
+
+    @Test
+    void whoPassedIsExtractedOnlyWhenItIsNotOurOwnCommandReference() {
+        var card = DahuaEventMapper.map(new Event("AccessControl", "Pulse", "0",
+                "{\"Status\":1,\"CardNo\":\"AB12\",\"UserID\":\"1001\"}")).orElseThrow();
+        assertThat(card.identityRef()).isEqualTo("AB12");
+        assertThat(card.method()).isEqualTo("CARD");
+        var user = DahuaEventMapper.map(new Event("AccessControl", "Pulse", "0", "{\"Status\":1,\"UserID\":\"1001\"}")).orElseThrow();
+        assertThat(user.identityRef()).isEqualTo("1001");
+        assertThat(user.method()).isEqualTo("TERMINAL_USER");
+        var ours = DahuaEventMapper.map(new Event("AccessControl", "Pulse", "0",
+                "{\"Status\":1,\"UserID\":\"portaria-" + id + "\"}")).orElseThrow();
+        assertThat(ours.identityRef()).isNull(); // a abertura remota nossa nunca vira "acesso do morador"
+        var none = DahuaEventMapper.map(new Event("AccessControl", "Pulse", "0", "{\"Status\":1}")).orElseThrow();
+        assertThat(none.identityRef()).isNull();
+    }
 }

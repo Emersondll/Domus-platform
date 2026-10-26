@@ -7,6 +7,7 @@ import br.com.domus.platform.devices.repository.AccessCommandRepository;
 import br.com.domus.platform.devices.repository.DeviceEventRepository;
 import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DeviceEventSink;
+import br.com.domus.platform.shared.ResidentPassageRecorder;
 import br.com.domus.platform.shared.error.ForbiddenException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import java.nio.charset.StandardCharsets;
@@ -30,33 +31,36 @@ public class DeviceEventService implements DeviceEventSink {
     private final DeviceRepository devices;
     private final DeviceEventRepository events;
     private final AccessCommandRepository commands;
+    private final ResidentPassageRecorder passages;
     private final Clock clock;
 
     public DeviceEventService(DeviceRepository devices, DeviceEventRepository events,
-                              AccessCommandRepository commands, Clock clock) {
+                              AccessCommandRepository commands, ResidentPassageRecorder passages, Clock clock) {
         this.devices = devices;
         this.events = events;
         this.commands = commands;
+        this.passages = passages;
         this.clock = clock;
     }
 
     /** Evento vindo da rede: exige a chave de API do dispositivo. */
     @Transactional
-    public void ingest(UUID deviceId, String apiKey, String type, UUID commandId, Instant occurredAt) {
+    public void ingest(UUID deviceId, String apiKey, String type, UUID commandId, Instant occurredAt,
+                       Person person) {
         Device device = devices.findById(deviceId).orElseThrow(() -> new NotFoundException("Device not found"));
         if (apiKey == null || device.getApiKeyHash() == null || !MessageDigest.isEqual(
                 DeviceService.sha256(apiKey).getBytes(StandardCharsets.UTF_8),
                 device.getApiKeyHash().getBytes(StandardCharsets.UTF_8))) {
             throw new ForbiddenException("Invalid device credentials");
         }
-        record(device, type, commandId, occurredAt);
+        record(device, type, commandId, occurredAt, person);
     }
 
     @Override
     @Transactional
-    public void onTrustedEvent(UUID deviceId, UUID condominiumId, String type, UUID commandId) {
+    public void onTrustedEvent(UUID deviceId, UUID condominiumId, String type, UUID commandId, Person person) {
         Device device = devices.findByIdAndCondominiumId(deviceId, condominiumId).orElseThrow();
-        record(device, type, commandId, Instant.now(clock));
+        record(device, type, commandId, Instant.now(clock), person);
     }
 
     /** O agente informa que não conseguiu executar o comando (controladora indisponível, comando vencido...). */
@@ -66,7 +70,7 @@ public class DeviceEventService implements DeviceEventSink {
                 c -> commands.markFailed(commandId, reason == null ? "AGENT_FAILURE" : reason, Instant.now(clock)));
     }
 
-    private void record(Device device, String type, UUID commandId, Instant occurredAt) {
+    private void record(Device device, String type, UUID commandId, Instant occurredAt, Person person) {
         if (!TYPES.contains(type)) {
             throw new IllegalArgumentException("Unknown event type");
         }
@@ -78,6 +82,13 @@ public class DeviceEventService implements DeviceEventSink {
         device.observe("ONLINE", now);
         if ("DOOR_OPENED".equals(type) && ownCommand != null) {
             commands.markConfirmed(ownCommand, device.getId(), "DEVICE_EVENT:DOOR_OPENED", now);
+        }
+        // Passagem de uma pessoa (cartão, usuário do terminal...): só vira "meus acessos" se a referência for de um morador.
+        boolean granted = "DOOR_OPENED".equals(type);
+        if (person != null && person.identityRef() != null && (granted || "ACCESS_DENIED".equals(type))) {
+            passages.record(new ResidentPassageRecorder.Passage(device.getId(), device.getCondominiumId(),
+                    device.getEntrance(), device.getConfig().get("direction"), person.direction(), person.method(),
+                    person.identityRef(), granted, occurredAt));
         }
     }
 }

@@ -12,6 +12,8 @@ import br.com.domus.platform.notifications.repository.NotificationPreferenceRepo
 import br.com.domus.platform.notifications.repository.NotificationRepository;
 import br.com.domus.platform.parcels.entity.Parcel;
 import br.com.domus.platform.parcels.repository.ParcelRepository;
+import br.com.domus.platform.residentaccess.service.ResidentAccessService;
+import br.com.domus.platform.residentaccess.service.ResidentPhotoService;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.PolicyVersion;
@@ -50,6 +52,8 @@ public class PrivacyService {
     private final VehicleRepository vehicles;
     private final ParcelRepository parcels;
     private final AccessCredentialRepository credentials;
+    private final ResidentAccessService residentAccess;
+    private final ResidentPhotoService residentPhotos;
     private final PolicyVersion policyVersion;
     private final AccessService access;
     private final AuditService audit;
@@ -58,7 +62,7 @@ public class PrivacyService {
     public PrivacyService(ResidentRepository residents, MembershipRepository memberships, AppUserRepository users,
                           NotificationRepository notifications, NotificationPreferenceRepository preferences,
                           VehicleRepository vehicles, ParcelRepository parcels, AccessCredentialRepository credentials,
-                          PolicyVersion policyVersion, AccessService access, AuditService audit, Clock clock) {
+                          ResidentAccessService residentAccess, ResidentPhotoService residentPhotos, PolicyVersion policyVersion, AccessService access, AuditService audit, Clock clock) {
         this.residents = residents;
         this.memberships = memberships;
         this.users = users;
@@ -67,6 +71,8 @@ public class PrivacyService {
         this.vehicles = vehicles;
         this.parcels = parcels;
         this.credentials = credentials;
+        this.residentAccess = residentAccess;
+        this.residentPhotos = residentPhotos;
         this.policyVersion = policyVersion;
         this.access = access;
         this.audit = audit;
@@ -96,6 +102,16 @@ public class PrivacyService {
         out.put("parcelsOfUnit", parcels.findByCondominiumIdAndUnitId(condominiumId, r.getUnitId(), Pageable.unpaged())
                 .map(p -> Map.of("carrier", String.valueOf(p.getCarrier()), "status", p.getStatus(),
                         "receivedAt", p.getReceivedAt().toString())).getContent());
+        out.put("accessHistory", residentAccess.exportOf(condominiumId, residentId).stream()
+                .map(e -> Map.of("occurredAt", e.getOccurredAt().toString(), "direction", e.getDirection(),
+                        "entrance", e.getEntrance(), "method", e.getMethod(), "result", e.getResult())).toList());
+        out.put("consents", residentPhotos.consentsOf(residentId).stream()
+                .map(c -> Map.of("purpose", "ACCESS_PHOTO", "textVersion", c.getTextVersion(),
+                        "grantedAt", c.getGrantedAt().toString(),
+                        "revokedAt", String.valueOf(c.getRevokedAt()))).toList());
+        residentPhotos.photoOf(condominiumId, residentId).ifPresent(p -> out.put("registrationPhoto",
+                Map.of("capturedAt", p.getCapturedAt().toString(), "jpegBase64",
+                        java.util.Base64.getEncoder().encodeToString(p.jpeg()))));
         for (Membership m : linked) {
             AppUser u = users.findById(m.getUserId()).orElse(null);
             if (u == null) {
@@ -143,6 +159,8 @@ public class PrivacyService {
             }
         }
         r.anonymize();
+        residentAccess.eraseOf(condominiumId, residentId);
+        residentPhotos.eraseOf(residentId);
         if (revokedCredential) {
             policyVersion.bump(condominiumId);
         }

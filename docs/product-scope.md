@@ -47,7 +47,9 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 | Câmeras: vídeo ao vivo (RTSP → HLS pelo MediaMTX) | Feito (provado só com fonte RTSP de teste) | Câmera real, câmera atrás de NAT (o agente ainda não publica o fluxo) e ONVIF `GetStreamUri` seguem pendentes; ver `docs/cameras.md` |
 | Abertura automatizada de acessos | Parcial | Comando físico com confirmação por evento; automação por regra (lote C) |
 | Alerta de pânico | **Feito** | Botão com confirmação no app; entra na fila com prioridade e abre incidente de severidade alta. **Na central: janela de alerta em tela cheia com a unidade de origem e sirene (Web Audio), até alguém atender; o operador decide atender (abre o turno se preciso) ou silenciar o som.** O som depende de o navegador permitir áudio (há botão "Ativar som"). Botão físico é externo |
-| Reconhecimento facial, biometria, placas (LPR) | Externo | Equipamento + base legal LGPD (dado sensível); não se implementa por software próprio sem decisão |
+| "Meus acessos" do morador (entradas e saídas dele, com a foto do cadastro) | **Próxima ação** | Hoje só há histórico de visitantes; falta registrar os acessos do próprio morador (identidade de acesso e sentido). Ver `pendencias.md`, seção 4-A |
+| Foto de cadastro do morador | **Próxima ação** | Cifrada, com consentimento registrado; não vira gabarito biométrico sem as decisões D16 a D18 |
+| Reconhecimento facial, biometria, placas (LPR) | Externo | Equipamento + base legal LGPD (dado sensível, art. 11), RIPD e alternativa sem biometria; não se implementa sem decisão (D16 a D18) |
 | Portaria virtual / remota | Feito | Central de operadores multicondomínio, fila, turnos, contingência offline |
 
 ## 5. Gestão administrativa

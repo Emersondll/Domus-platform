@@ -37,6 +37,20 @@
 ## Pedidos de autorização de visitante (visit_request)
 O nome do visitante é dado pessoal: fica cifrado em nível de campo (`visit_request.visitor_name`), como nas demais tabelas. O pedido expira em 5 minutos sem resposta; o registro permanece para auditoria e deve entrar na política de retenção que o controlador definir (D1).
 
+## Foto de cadastro e identificação facial (PLANEJADO, nada implementado)
+O morador terá a tela "Meus acessos" (entradas e saídas dele) com a **foto do cadastro**, para no futuro a entrada ser por identificação facial
+(`pendencias.md`, seção 4-A). Regras que o desenho deve cumprir antes de qualquer coleta em produção:
+- **Foto de cadastro** é dado pessoal; o **gabarito facial** (modelo biométrico) é dado **sensível** (art. 5º, II, e art. 11): exige base legal específica,
+  consentimento destacado quando for a base, relatório de impacto (RIPD) e DPO. Decisões D16 a D18 em aberto; sem elas **não se coleta nem se cria gabarito**.
+- **Finalidade única** (controle de acesso), sem uso secundário; **minimização** (uma foto, tamanho limitado); **cifragem** e acesso só pelo titular e por
+  perfis definidos, com **auditoria de cada visualização**; **retenção** curta e exclusão efetiva (inclusive ao deixar o condomínio).
+- **Transparência:** tela que explica o que é coletado, por quê, por quanto tempo e como revogar; revogar não pode impedir a entrada da pessoa
+  (**alternativa sem biometria**).
+- **Menores e dependentes:** só com consentimento do responsável (art. 14).
+- O histórico de entradas e saídas do morador é dado pessoal de **localização/rotina**: só o titular o vê por padrão (D17).
+- Aplicativos que extrapolaram o que informaram ao usuário são um risco real; o projeto trava os limites em código e deixa a avaliação jurídica das
+  decisões e da jurisprudência para o parecer do jurídico (não foi feita aqui).
+
 ## Imagem da câmera de entrada de visitas (2026-10-26)
 Imagem de uma pessoa (o visitante) é dado sensível por natureza. O recurso fica **desligado por padrão** (`SNAPSHOTS_ENABLED`) até a decisão D13
 (base legal, aviso de videomonitoramento na entrada, quem é o controlador). Como funciona: a portaria captura **um quadro** da câmera de entrada,

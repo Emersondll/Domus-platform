@@ -18,7 +18,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | `scripts/verify_keycloak.py` | OK (MFA, PKCE, audiência do token, API com token real) |
 | `scripts/restore-drill.sh` | PASS (16 migrações, V1–V16) |
 | `scripts/api-smoke.py` | OK: 136 endpoints; 45 GETs de condomínio × 4 papéis sem 5xx nem vazamento entre empresas |
-| CI no GitHub | **verde** nos pushes até `5fdaaea` (2026-10-26); o de `d716a2a` (só documentação) foi disparado e não foi conferido |
+| CI no GitHub | **verde** nos pushes até `76953cc` (2026-10-26); os commits locais mais novos ainda não foram enviados |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -64,7 +64,35 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | B9 | Quota offline é por agente: dois agentes offline podem estourar uma credencial multiuso | vira `QUOTA_EXCEEDED` na volta | risco aceito |
 | B10 | Em Keycloak já existente, o mapper de audiência precisa ser adicionado, senão os logins recebem 401 | falha no upgrade | passo documentado em `docs/operations.md` |
 
-## 4. Pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)
+## 4. Próximas ações (ordem sugerida)
+**A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — PRÓXIMA AÇÃO (pedido de 2026-10-26).**
+O morador vê os **horários de entrada e saída** dele no condomínio e a **foto do cadastro**. A foto existe porque, no futuro, a entrada será por
+**identificação facial**. Escopo, em etapas (cada uma com testes, E2E e documentação; recurso novo vem **desligado**):
+1. **Lacuna de hoje:** só existe histórico de acesso de **visitantes** (convite validado, visitante autorizado). **Não há registro de entrada e
+   saída do próprio morador**. Primeiro é preciso um registro de acessos do morador: identidade de acesso do morador (cartão, QR do morador ou
+   a identificação do equipamento, ex.: o `UserID` do evento Dahua/Intelbras, que hoje é uma suposição não confirmada em campo, B6), eventos de porta
+   ligados ao morador e **sentido** (entrada ou saída: exige leitor nos dois sentidos ou pareamento; sem isso só se sabe "passou").
+2. **Tela "Meus acessos"** no app: lista com data, hora, entrada ou saída e o ponto de acesso, filtro por período; só **os do próprio morador**
+   (a pessoa não vê os de outro morador da unidade, a menos que o titular decida o contrário: decisão D17); o síndico/portaria não vê o histórico
+   pessoal sem motivo registrado. Cada consulta fica na auditoria. Retenção própria.
+3. **Foto do cadastro:** o próprio morador envia (ou a administração, com registro); validação de qualidade (rosto único, tamanho, formato); armazenamento
+   **cifrado**, sem URL pública, baixada com o token (mesmo padrão da imagem da entrada); consentimento **específico e registrado** (quando, versão do
+   texto, quem consentiu); exclusão e troca pelo próprio titular; menores e dependentes só com consentimento do responsável (D17). A foto aparece em "Meus
+   acessos" e na ficha do morador para a portaria.
+4. **Separar foto de biometria:** a foto de cadastro **não** vira modelo facial (gabarito biométrico) nesta etapa. O gabarito é dado **sensível**
+   (LGPD, art. 5º, II, e art. 11) e só se cria depois das decisões D16 a D18. O desenho já deve prever que o gabarito fique **no equipamento** (terminal
+   facial), e não na central, e que exista **alternativa sem biometria** (cartão, QR) para quem não consentir.
+5. **Identificação facial (futuro):** depende de equipamento, de D16 a D18 e do relatório de impacto (RIPD). Não será implementada antes disso.
+
+*Limites que precisam ficar travados em código, não só em texto* (a preocupação é que aplicativos extrapolam o que informaram ao usuário): finalidade
+única e declarada na tela (controle de acesso); nenhum uso secundário da foto (marketing, análise de comportamento, compartilhamento) e nenhuma
+exportação em massa; cada visualização da foto e do histórico na auditoria; prazo de retenção e exclusão efetiva, inclusive ao sair do condomínio;
+tela de transparência explicando o que é coletado, por quê, por quanto tempo e como revogar; revogar o consentimento desliga o uso sem bloquear
+a entrada da pessoa. **Observação honesta:** não verifiquei as decisões judiciais ou administrativas que você citou sobre aplicativos que superaram os
+limites informados, e este projeto não declara conformidade com a LGPD. Antes de coletar a foto ou usar reconhecimento facial é preciso **parecer jurídico**
+(decisões abaixo).
+
+**B. Demais pendências técnicas que podem ser feitas sem definição externa (em ordem sugerida)**
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
 3. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
@@ -92,6 +120,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 ## 6. Decisões em aberto (do titular do produto)
 | # | Decisão | Situação |
 |---|---|---|
+| D16 | **Base legal e consentimento para a foto de cadastro e para a identificação facial** (dado sensível quando vira gabarito biométrico): texto, versão, registro, revogação, quem é o controlador, RIPD, DPO | em aberto (jurídico); **bloqueia** a coleta em produção e a identificação facial |
+| D17 | **Menores e dependentes; quem enxerga o histórico de acessos** (o titular, os moradores da unidade, o síndico, a portaria) e em que condições | em aberto |
+| D18 | **Onde mora o gabarito facial** (no terminal ou na central), fabricante/modelo do terminal e alternativa sem biometria | em aberto; depende de D2 |
 | D1 | **LGPD:** base legal por tratamento, DPO, RIPD, contratos controlador/operador, retenção final, política para dados de visitantes e de gravações | em aberto (jurídico); o lado técnico está em `docs/lgpd.md` |
 | D2 | **Fabricante/modelo da primeira controladora** e ambiente de testes de campo | Dahua/Intelbras adotado como primeiro; falta equipamento |
 | D3 | **Onde guardar as chaves** (`FIELD_ENCRYPTION_KEYS`, `BLIND_INDEX_KEY`, segredos do agente): KMS/cofre e quem tem acesso; cópia das chaves fora do backup do banco | em aberto |

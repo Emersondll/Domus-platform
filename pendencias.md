@@ -66,6 +66,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 4. Próximas ações (ordem sugerida)
 **A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — PRÓXIMA AÇÃO (pedido de 2026-10-26).**
+**Plano detalhado: [`docs/plano-meus-acessos.md`](docs/plano-meus-acessos.md)** (fases, modelo de dados, decisões novas D19 prazo de retenção e D20 sentido de entrada/saída).
 O morador vê os **horários de entrada e saída** dele no condomínio e a **foto do cadastro**. A foto existe porque, no futuro, a entrada será por
 **identificação facial**. Escopo, em etapas (cada uma com testes, E2E e documentação; recurso novo vem **desligado**):
 1. **Lacuna de hoje:** só existe histórico de acesso de **visitantes** (convite validado, visitante autorizado). **Não há registro de entrada e

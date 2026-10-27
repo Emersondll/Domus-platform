@@ -52,10 +52,13 @@ public class ResidentAccessService implements ResidentPassageRecorder {
     private final AuditService audit;
     private final MeterRegistry meters;
     private final Clock clock;
+    private final int retentionDays;
 
     public ResidentAccessService(AccessIdentityRepository identities, ResidentAccessEventRepository events,
                                  ResidentRepository residents, FieldCipher cipher, AccessService access,
-                                 AuditService audit, MeterRegistry meters, Clock clock) {
+                                 AuditService audit, MeterRegistry meters, Clock clock,
+                                 @org.springframework.beans.factory.annotation.Value("${portaria.retention.resident-access-days:90}") int retentionDays) {
+        this.retentionDays = retentionDays;
         this.identities = identities;
         this.events = events;
         this.residents = residents;
@@ -164,6 +167,13 @@ public class ResidentAccessService implements ResidentPassageRecorder {
         audit.record(me.actor().userId(), null, condominiumId, "access.history.view.self", "resident",
                 me.residentId().toString(), AuditOutcome.SUCCESS);
         return last;
+    }
+
+    /** Prazo em que os registros de acesso são apagados; só quem é morador do condomínio consulta (os demais recebem 404). */
+    @Transactional(readOnly = true)
+    public int retentionDays(UUID condominiumId) {
+        access.requireResident(condominiumId, "access.history.policy.self");
+        return retentionDays;
     }
 
     private static int clamp(int size) {

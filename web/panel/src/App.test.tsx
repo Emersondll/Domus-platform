@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { describeHlsFailure } from "../../shared/src/CameraPlayer";
 
 const hlsInstances: { loaded: string[]; destroyed: boolean }[] = [];
 vi.mock("hls.js", () => {
@@ -53,6 +54,10 @@ function fakeApi() {
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr8" });
     if (url.endsWith("/access/validate")) return json({ granted: true, reason: "OK", unitId: "un1", visitorName: "Dona Rosa", attemptId: "e9" });
     if (url.endsWith("/exit") && init?.method === "POST") return json({ attemptId: "e1" });
+    if (url.includes("/reports/activity?")) return json({ from: "2026-10-20T00:00:00Z", to: "2026-10-27T00:00:00Z",
+      parcels: { received: 5, pickedUp: 3, pendingNow: 2, avgHoursToPickup: 6.5 },
+      calls: { total: 9, byOutcome: { RESOLVED: 7, NO_ANSWER: 2 }, avgSecondsToAnswer: 42, avgMinutesHandling: 3.5 },
+      incidents: { opened: 1, resolved: 1, bySeverity: { HIGH: 1 } }, shiftLog: { notes: 4, handovers: 2 } });
     if (url.includes("/access/report?")) return pg([{ attemptId: "e2", occurredAt: new Date().toISOString(), entrance: "garagem", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Seu Jorge", exitedAt: null }]);
     if (url.endsWith("/remote-open") && init?.method === "PUT") { remoteEnabled = JSON.parse(init.body as string).enabled; return json({ enabled: remoteEnabled }); }
     if (url.endsWith("/remote-open")) return json({ enabled: remoteEnabled });
@@ -536,6 +541,19 @@ describe("operator panel", () => {
     expect(screen.getByText(/dado pessoal/)).toBeInTheDocument();
   });
 
+  it("shows the activity summary of the period with parcels, calls, incidents and shift log", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Relatórios" }));
+    await user.click(screen.getByRole("button", { name: "Resumo da atividade" }));
+    const box = await screen.findByRole("region", { name: "Resumo da atividade" });
+    expect(within(box).getByText(/5 recebidas, 3 retiradas, 2 a retirar agora/)).toBeInTheDocument();
+    expect(within(box).getByText(/resolvidos: 7 · sem resposta: 2/)).toBeInTheDocument();
+    expect(within(box).getByText(/1 abertas, 1 resolvidas/)).toBeInTheDocument();
+    expect(within(box).getByText(/4 anotações, 2 passagens de turno/)).toBeInTheDocument();
+    expect(within(box).getByRole("button", { name: "Exportar resumo (CSV)" })).toBeInTheDocument();
+  });
+
   it("prints a parcel receipt through the browser", async () => {
     parcelList = [{ id: "p1abcdef12", unitId: "un1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null, pickedUpByName: null }];
     const print = vi.fn();
@@ -743,5 +761,15 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("tab", { name: "Portas" }));
     expect(await screen.findByText("Portão principal")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Girar chave de Portão principal" })).not.toBeInTheDocument();
+  });
+});
+
+describe("describeHlsFailure", () => {
+  it("tells a camera without source from a media server that did not answer", () => {
+    expect(describeHlsFailure({ response: { code: 404 } })).toMatch(/câmera não está enviando vídeo/);
+    expect(describeHlsFailure({})).toMatch(/servidor de mídia não respondeu/);
+    expect(describeHlsFailure({ response: { code: 0 } })).toMatch(/servidor de mídia não respondeu/);
+    expect(describeHlsFailure({ response: { code: 403 } })).toMatch(/recusado/);
+    expect(describeHlsFailure({ response: { code: 500 } })).toMatch(/respondeu com erro/);
   });
 });

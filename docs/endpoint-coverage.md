@@ -7,7 +7,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/agent/commands` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/events` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/heartbeat` | agente/dispositivo/mídia | **não** |
-| GET | `/api/v1/agent/policy` | agente/dispositivo/mídia | **não** |
+| GET | `/api/v1/agent/policy` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/rotate-key` | agente/dispositivo/mídia | sim |
 | GET | `/api/v1/companies` | condomínio | sim |
 | POST | `/api/v1/companies` | condomínio | sim |
@@ -58,6 +58,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/me/access-history` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/accesses` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/accesses/last` | morador | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/me/accesses/policy` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/announcements` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/calls` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/calls` | morador | sim |
@@ -120,6 +121,8 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/pets/{petId}/remove` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/remote-open` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/remote-open` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/reports/activity` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/reports/activity.csv` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/reservations` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/reservations/{reservationId}/cancel` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/residents` | condomínio | sim |

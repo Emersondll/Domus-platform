@@ -9,6 +9,17 @@ IMAGE=bluenviron/mediamtx:1.15.1
 PUB_SECRET="${MEDIA_PUBLISH_SECRET:-dev-only-media-publish-secret}"
 SOURCES=(fake-src:testsrc src-portaria:testsrc2 src-garagem:smptebars src-social:rgbtestsrc src-hall:mandelbrot)
 
+# Cada fonte roda num laço que reabre o ffmpeg se ele cair (ex.: o servidor de mídia reiniciou); o pid guardado é o do laço.
+start_source() {
+  local path="${1%%:*}" pattern="${1##*:}"
+  nohup bash -c 'while true; do
+      ffmpeg -loglevel error -re -f lavfi -i "$1=size=640x360:rate=15" -c:v libx264 -preset ultrafast \
+        -tune zerolatency -g 15 -pix_fmt yuv420p -f rtsp -rtsp_transport tcp "rtsp://pub:$2@127.0.0.1:8554/$3"
+      sleep 2
+    done' _ "$pattern" "$PUB_SECRET" "$path" > "$RUN/ff-$path.log" 2>&1 &
+  echo $! > "$RUN/ff-$path.pid"
+}
+
 up() {
   mkdir -p "$RUN"
   # config de produção + exceção de leitura (sem token) só para as fontes falsas
@@ -18,18 +29,17 @@ up() {
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   docker run -d --name "$NAME" --network host -v "$RUN/mtx-test.yml:/mediamtx.yml:ro" "$IMAGE" >/dev/null
   for _ in $(seq 1 30); do curl -fs -o /dev/null http://127.0.0.1:9997/v3/config/global/get 2>/dev/null && break; sleep 1; done
-  for s in "${SOURCES[@]}"; do
-    path="${s%%:*}"; pattern="${s##*:}"
-    nohup ffmpeg -loglevel error -re -f lavfi -i "${pattern}=size=640x360:rate=15" -c:v libx264 -preset ultrafast \
-      -tune zerolatency -g 15 -pix_fmt yuv420p -f rtsp -rtsp_transport tcp \
-      "rtsp://pub:${PUB_SECRET}@127.0.0.1:8554/${path}" > "$RUN/ff-$path.log" 2>&1 &
-    echo $! > "$RUN/ff-$path.pid"
-  done
+  for s in "${SOURCES[@]}"; do start_source "$s"; done
   echo "Servidor de mídia no ar. Fontes: $(printf '%s ' "${SOURCES[@]%%:*}")"
 }
 
 down() {
-  for f in "$RUN"/ff-*.pid; do [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true; rm -f "$f"; done
+  for f in "$RUN"/ff-*.pid; do
+    [ -f "$f" ] || continue
+    pkill -TERM -P "$(cat "$f")" 2>/dev/null || true   # o ffmpeg filho
+    kill "$(cat "$f")" 2>/dev/null || true
+    rm -f "$f"
+  done
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   echo "Servidor de mídia parado."
 }
@@ -40,4 +50,12 @@ status() {
   true
 }
 
-case "${1:-}" in up) up ;; down) down ;; status) status ;; *) echo "uso: $0 up|down|status" >&2; exit 2 ;; esac
+# Religa só as fontes cujo laço morreu (o servidor de mídia precisa estar no ar).
+repair() {
+  for s in "${SOURCES[@]}"; do
+    local path="${s%%:*}" pidfile="$RUN/ff-${s%%:*}.pid"
+    if [ ! -f "$pidfile" ] || ! kill -0 "$(cat "$pidfile")" 2>/dev/null; then start_source "$s"; echo "religada: $path"; fi
+  done
+}
+
+case "${1:-}" in up) up ;; down) down ;; status) status ;; repair) repair ;; *) echo "uso: $0 up|down|status|repair" >&2; exit 2 ;; esac

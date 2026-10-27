@@ -71,6 +71,10 @@ public class ResidentAccessController {
         }
     }
 
+    /** @param retentionDays em quantos dias os registros de acesso são apagados (a tela mostra este prazo) */
+    public record AccessPolicyResponse(int retentionDays) {
+    }
+
     /** @param last último acesso, ou {@code null} quando ainda não há registro */
     public record LastAccessResponse(AccessResponse last) {
     }
@@ -103,6 +107,12 @@ public class ResidentAccessController {
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "50") int size) {
         return PageResponse.of(service.myAccesses(condominiumId, from, to, page, size), AccessResponse::from);
+    }
+
+    /** Prazo de retenção vigente, para a tela não repetir um número fixo. Não é dado pessoal e não é auditado. */
+    @GetMapping("/me/accesses/policy")
+    public AccessPolicyResponse policy(@PathVariable UUID condominiumId) {
+        return new AccessPolicyResponse(service.retentionDays(condominiumId));
     }
 
     @GetMapping("/me/accesses/last")

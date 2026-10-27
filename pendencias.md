@@ -1,23 +1,24 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-10-26. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-10-27. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
-## 1. Evidência do estado atual (2026-10-26, commit `080d1c6`)
+## 1. Evidência do estado atual (2026-10-27)
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 177 testes (31 unitários + 146 de integração com PostgreSQL real), 0 falhas (2026-10-27) |
-| Agente `mvn test` | 36 testes, 0 falhas (última execução registrada em 2026-10-22; o agente não foi alterado depois) |
-| Web `npm test` + build | 92 testes (56 painel + 36 app do morador), builds OK |
-| `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK nas últimas execuções registradas (2026-10-22); não reexecutados nesta rodada |
+| Backend `mvn verify` | 180 testes (31 unitários + 149 de integração com PostgreSQL real), 0 falhas (2026-10-27) |
+| Agente `mvn test` | 36 testes, 0 falhas (2026-10-27) |
+| Web `npm test` + build | 95 testes (59 painel + 36 app do morador), builds OK (código de saída conferido) |
+| `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK (reexecutados em 2026-10-27; o `e2e-contingency.sh` apaga o banco de desenvolvimento, e o `e2e-agent-update.sh` e o `e2e-browser.py` tiveram defeitos de teste corrigidos) |
+| `scripts/e2e-oidc-browser.py` (Chromium real + Keycloak) | **novo, OK, 15 verificações** (login do morador, renovação do token, TOTP do operador, sair encerra a sessão, OTP errado recusado) |
 | `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 54 verificações, **sem tolerar nenhum 403** (inclui o painel como síndico e como administrador da empresa no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
 | `scripts/restore-drill.sh` | PASS (21 migrações, V1–V21; 2026-10-27) |
-| `scripts/api-smoke.py` | OK: 152 endpoints; 52 GETs de condomínio × 4 papéis; 11 endpoints sem tela |
-| `scripts/load-test.py` | executado em 2026-10-26 para "Meus acessos" (0 erros); **não** reexecutado depois do vídeo para o morador (não mexeu em auditoria nem em pool) |
-| CI no GitHub | **verde** em `080d1c6` (7 jobs: backend, agente, web, compose, CodeQL Java e JS/TS, dependências e segredos) |
+| `scripts/api-smoke.py` | OK (2026-10-27): 55 GETs de condomínio × 4 papéis; só 3 endpoints sem tela (agente e contador de não lidas); **achou um vazamento real** em `me/accesses/policy`, já corrigido |
+| `scripts/load-test.py` | reexecutado em 2026-10-27 (0 erros nos 6 cenários, antes das mudanças de B3–B7; elas não mexem em auditoria nem em pool) |
+| CI no GitHub | verde em `b3a4b38` (7 jobs); os commits seguintes estão no GitHub, conferir o resultado |
 | Câmera real, controladora real, celular real, Keycloak em navegador | **nunca testados** |
 
 ## 1.1 Plano de ação (ordem recomendada)
@@ -46,7 +47,7 @@ Empresas operadoras, administradores, condomínios, agentes locais, rotação de
 D1, D16, D17, D19, D20, D21 e as 9 perguntas da seção 6. **Enquanto não responderem:** foto de cadastro e vídeo do morador ficam desligados em produção e não há identificação facial.
 
 **Fase 5 — Produção e escala [você + eu]**
-D3 (cofre de chaves/KMS), D4 (chave de lançamento do agente), D5 (e-mail/push/WhatsApp), D6 (infraestrutura). Em seguida: limitador de taxa em Redis, lock distribuído, eleição de líder Dahua (B7), mTLS por agente/dispositivo, réplica e PITR do banco, pentest independente, OIDC em navegador real, PWA em celular real.
+D3 (cofre de chaves/KMS), D4 (chave de lançamento do agente), D5 (e-mail/push/WhatsApp), D6 (infraestrutura). Em seguida: limitador de taxa em Redis, lock distribuído nos agendamentos (a eleição de líder da conexão Dahua, B7, já foi feita), mTLS por agente/dispositivo, réplica e PITR do banco, pentest independente, OIDC em navegador real, PWA em celular real.
 
 **Fase 6 — Lançamento comercial [você]**
 Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta comercial (L3), parecer sobre o Grafana/AGPL (L5), RIPD e DPO.
@@ -64,9 +65,11 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
 | B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | depende de D17/D21 |
 | CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
-| B21 | `BootstrapAdmin` cria o administrador inicial sem `email_hash`; o reindexador preenche na partida seguinte | baixa | tratar quando o bootstrap for refeito (passar o `FieldCipher`) |
-| B22 | `scripts/dev-media.sh` não reinicia uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | `status` oferecer reparo e as fontes reconectarem sozinhas |
-| B23 | O player de vídeo mostra a mesma mensagem para servidor de mídia fora do ar e para câmera sem fonte | baixa (UX) | o backend poderia distinguir (caminho inexistente × servidor inalcançável) e a tela dizer qual |
+| B21 | `BootstrapAdmin` criava o administrador inicial sem `email_hash` | baixa | **corrigido (2026-10-27)** (recebe o `FieldCipher`; teste unitário confere o hash) |
+| B22 | `scripts/dev-media.sh` não reiniciava uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | **corrigido (2026-10-27)**: cada fonte reabre o ffmpeg sozinha (testado matando o processo) e há `dev-media.sh repair` |
+| B23 | O player mostrava a mesma mensagem para servidor de mídia fora do ar e para câmera sem fonte | baixa (UX) | **corrigido (2026-10-27)**: a mensagem vem do código HTTP do hls.js (sem resposta = servidor de mídia; 404 = câmera sem vídeo; 401/403 = recusado). Não validado com câmera real |
+| B24 | **"Sair" não encerrava a sessão no Keycloak:** sem `id_token_hint` ele só mostrava uma tela de confirmação e a pessoa continuava logada. Achado pelo teste OIDC em navegador real | média (segurança em computador compartilhado, como a portaria) | **corrigido (2026-10-27)**: o `id_token` fica só em memória e vai como dica no logout; teste de unidade e e2e |
+| B25 | O `me/accesses/policy` respondia 200 a usuário de outro condomínio. Achado pelo `api-smoke` | baixa (o prazo não é dado pessoal) | **corrigido (2026-10-27)**: só morador do condomínio; os demais recebem 404; teste |
 | B20 | Síndico/administração no painel: a consulta de atendimentos e turno (só de operador) devolvia 403 uma vez por login. Achado pelo e2e como síndico | baixa | **corrigido (2026-10-27):** `GET /me/admin-scope` passou a informar `operator`; o painel só consulta atendimentos e turno de quem é operador. A tolerância ao 403 ficou só como reserva se o escopo falhar; o e2e agora **não aceita nenhum 403** de síndico/administrador |
 
 ## 2. Melhorias já aplicadas (resumo)
@@ -157,7 +160,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | MA10 | **Captura de tela** da foto ou do histórico pelo morador não tem como ser impedida; **dispositivo comprometido** pode forjar passagens do próprio ponto de acesso | risco aceito; mTLS por dispositivo (B-seg) |
 | MA11 | **Desempenho:** evento de leitor com identidade = ~280 req/s por dispositivo no teste (contenção na linha do dispositivo; leitores distintos não disputam) | reavaliar com leitores reais e, se preciso, não atualizar o `status` a cada evento |
 | MA12 | **Identificação facial:** só reservada (`method=FACE`, `kind=FACE_REF` no banco); **não existe** `ENROLL_FACE` no contrato de adaptadores, gabarito, nem alternativa de cadastro no terminal | depende de D16 a D18, RIPD e terminal facial |
-| MA13 | Texto "apagados em 90 dias" na tela é fixo; se o prazo mudar, a tela precisa acompanhar | expor o prazo pela API |
+| ~~MA13~~ | Texto "apagados em 90 dias" era fixo | **corrigido (2026-10-27)**: `GET me/accesses/policy` devolve o prazo e a tela o mostra |
 
 **Limites do vídeo para o morador (2026-10-26):**
 
@@ -174,16 +177,16 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 1. ~~Validar o CI (B1)~~ e ~~medir o desempenho (B2)~~: feitos em 2026-10-22.
 2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
 3. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
-4. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
+4. ~~Login OIDC e renovação do token em navegador contra o Keycloak real~~ — **FEITO (2026-10-27)** em Chromium (`scripts/e2e-oidc-browser.py`). Falta o mesmo em celular real e Safari (B17).
 5. **Telas de administração da plataforma e da empresa operadora — FEITO (2026-10-26), faltam D7 (planos/limites/cobrança) e a confirmação de D8.** Botão "Administração" no painel (aparece só para quem administra algo, via `GET /me/admin-scope`): Empresas e administradores (plataforma), Condomínios (criar/listar), Agentes locais (cadastro com credenciais mostradas uma só vez, revogação, estado online), conflitos de sincronização (resolver) e "Girar chave" de equipamento (com confirmação, na aba Portas, só síndico/administração). Não há ainda: listar/revogar administradores de empresa, editar/suspender empresa ou condomínio. Escopo original:
    - **Administrador da plataforma:** cadastrar e listar empresas operadoras (`/companies`) e os administradores de cada empresa (`/companies/{id}/admins`); criar condomínios; visão de todas as empresas.
    - **Administrador da empresa operadora:** criar e gerenciar os condomínios da empresa, operadores e síndicos (hoje só a equipe de um condomínio, na aba Equipe), agentes locais (`/condominiums/{id}/agents`: cadastro e chave), rotação de chave de dispositivo (`rotate-key`) e conflitos de sincronização (`/sync-conflicts`).
    - **Antes de começar, decidir D8** (o que cada papel pode ver e fazer) e D7 (planos e limites por empresa). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.
-6. **Escala horizontal:** limitador de taxa compartilhado (Redis), lock distribuído nos agendamentos, eleição de líder na assinatura Dahua.
+6. **Escala horizontal:** limitador de taxa compartilhado (Redis) e lock distribuído nos agendamentos (a eleição de líder na assinatura Dahua foi feita em 2026-10-27, B7).
 7. **Mais segurança:** mTLS por agente/dispositivo, rotação da chave de lançamento do agente, chaves de criptografia em gerenciador de segredos (KMS) em vez de variável de ambiente.
-8. ~~Relatórios por condomínio e exportação~~: feitos (relatório de acessos com CSV, Lote B). Faltam relatórios de encomendas, ocorrências e turnos.
+8. ~~Relatórios por condomínio e exportação~~: feitos — acessos com CSV (Lote B) e, em 2026-10-27, o **resumo da atividade** (encomendas, atendimentos por desfecho e tempos médios, ocorrências e livro de turno; só números, sem dado pessoal; JSON e CSV; aba Relatórios). Não há ainda relatório por unidade nem gráficos.
 9. **Qualidade:** teste de carga reexecutado em 2026-10-26 (com "Meus acessos"); PWA do morador sem teste em celular real; sirene do alerta de pânico não foi ouvida em navegador real (só provada por teste que os tons iniciam e param).
-10. **Retenção de mensagens** individuais (flagrado em `docs/lgpd.md`) e saída automática de visitante esquecido no local (hoje só aviso após 12 h).
+10. **Retenção de mensagens** individuais: **expurgo opcional feito (2026-10-27)** (`DIRECT_MESSAGE_RETENTION_DAYS`, padrão 0 = não apaga; o prazo continua sendo decisão sua/jurídica, D1). **Saída automática de visitante esquecido no local** (hoje só aviso após 12 h): depende de decisão de produto, pois muda o registro de presença.
 11. **Agente:** pacote `.deb` e suporte além de Linux/systemd.
 12. Testes de integração organizados por domínio (hoje ficam todos em `br.com.domus.platform`).
 

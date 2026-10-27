@@ -36,6 +36,7 @@ abstract class AbstractIntegrationTest {
         registry.add("portaria.devices.http-allowed-hosts", () -> "localhost,127.0.0.1");
         registry.add("portaria.devices.confirmation-timeout", () -> "PT2S");
         registry.add("portaria.snapshots.enabled", () -> "true");
+        registry.add("portaria.retention.direct-message-days", () -> "30");
         registry.add("portaria.resident-photo.enabled", () -> "true");
         registry.add("portaria.media.enabled", () -> "true");
         registry.add("portaria.media.token-secret", () -> "test-only-media-token-0123456789-abcdefghij");

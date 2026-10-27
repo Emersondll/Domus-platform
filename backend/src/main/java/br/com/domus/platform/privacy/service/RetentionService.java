@@ -35,6 +35,7 @@ public class RetentionService {
     private final int resolvedConflictsDays;
     private final int snapshotsDays;
     private final int residentAccessDays;
+    private final int directMessageDays;
     private final boolean enabled;
 
     public RetentionService(JdbcClient jdbc, Clock clock, MeterRegistry meters,
@@ -45,7 +46,9 @@ public class RetentionService {
             @Value("${portaria.retention.device-events-days:90}") int deviceEventsDays,
             @Value("${portaria.retention.resolved-conflicts-days:365}") int resolvedConflictsDays,
             @Value("${portaria.snapshots.retention-days:30}") int snapshotsDays,
-            @Value("${portaria.retention.resident-access-days:90}") int residentAccessDays) {
+            @Value("${portaria.retention.resident-access-days:90}") int residentAccessDays,
+            @Value("${portaria.retention.direct-message-days:0}") int directMessageDays) {
+        this.directMessageDays = directMessageDays;
         this.jdbc = jdbc;
         this.clock = clock;
         this.meters = meters;
@@ -94,6 +97,11 @@ public class RetentionService {
         // Histórico pessoal de entradas e saídas do morador: prazo curto, por ser dado de rotina e localização.
         deleted.put("resident_access_event", jdbc.sql("DELETE FROM resident_access_event WHERE occurred_at < :cutoff")
                 .param("cutoff", cutoff(now, residentAccessDays)).update());
+        // Mensagens morador <-> portaria: só expurga se o prazo foi decidido (0 = desligado, nada é apagado).
+        if (directMessageDays > 0) {
+            deleted.put("direct_message", jdbc.sql("DELETE FROM direct_message WHERE created_at < :cutoff")
+                    .param("cutoff", cutoff(now, directMessageDays)).update());
+        }
         deleted.forEach((table, n) -> {
             if (n > 0) {
                 meters.counter("portaria.retention.deleted", "table", table).increment(n);

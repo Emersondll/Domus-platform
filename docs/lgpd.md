@@ -86,7 +86,7 @@ A portaria registra a entrada de quem o morador autorizou (`access_attempt.visit
 - Tabela `direct_message` (V12): texto cifrado na aplicação (AES-256-GCM); metadados (condomínio, morador, autor, horário, leitura) em claro.
 - O morador só lê a própria conversa; a portaria (OPERATE) lê as conversas do condomínio. Fora do escopo = 404.
 - A auditoria registra quem enviou/leu e quando, **sem o texto**; a notificação ao morador também não copia o texto.
-- Limite de 10 mensagens por minuto por morador (429). Sem retenção/expurgo automático ainda: depende da política de retenção (pendência L-retenção).
+- Limite de 10 mensagens por minuto por morador (429). Expurgo automático **opcional**: `DIRECT_MESSAGE_RETENTION_DAYS` (padrão 0 = desligado, nada é apagado). O prazo é decisão do titular/jurídico (D1); ao definir, o expurgo diário apaga as mais antigas.
 - Não é canal de emergência; o app orienta usar o botão de pânico. Não declara conformidade com a LGPD.
 
 ## Família e animais (2026-10-25)

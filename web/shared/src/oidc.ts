@@ -10,15 +10,18 @@
 
 export type OidcConfig = { authority: string; clientId: string };
 
-type TokenResponse = { access_token: string; refresh_token?: string; expires_in?: number };
+type TokenResponse = { access_token: string; refresh_token?: string; id_token?: string; expires_in?: number };
 
 // Somente em memória, de propósito: nada de localStorage/sessionStorage para token.
 let refreshToken: string | null = null;
+// O id_token só serve de "id_token_hint" no logout (o Keycloak encerra a sessão sem pedir confirmação).
+let idToken: string | null = null;
 let lifetimeMs = 300_000;
 let inFlight: Promise<string | null> | null = null;
 
 function remember(t: TokenResponse): void {
   refreshToken = t.refresh_token ?? refreshToken;
+  idToken = t.id_token ?? idToken;
   if (t.expires_in) lifetimeMs = t.expires_in * 1000;
 }
 
@@ -161,6 +164,9 @@ export function scheduleRefresh(cfg: OidcConfig, onToken: (token: string) => voi
 export function logout(cfg: OidcConfig): void {
   refreshToken = null;
   const q = new URLSearchParams({ client_id: cfg.clientId, post_logout_redirect_uri: redirectUri() });
+  // sem o id_token_hint o Keycloak mostra uma tela de confirmação e a sessão continua aberta até alguém confirmar
+  if (idToken) q.set("id_token_hint", idToken);
+  idToken = null;
   window.location.assign(`${cfg.authority}/protocol/openid-connect/logout?${q}`);
 }
 

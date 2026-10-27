@@ -38,6 +38,13 @@ export function MyAccesses({ token, condo }: { token: string; condo: string }) {
   const [range, setRange] = useState<Range>("7");
   const [items, setItems] = useState<MyAccess[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retentionDays, setRetentionDays] = useState<number | null>(null);
+
+  useEffect(() => {
+    request<{ retentionDays: number }>(token, "GET", `/api/v1/condominiums/${condo}/me/accesses/policy`)
+      .then((p) => setRetentionDays(p?.retentionDays ?? null))
+      .catch(() => setRetentionDays(null));
+  }, [token, condo]);
 
   // Sem polling: cada consulta fica na auditoria do titular.
   useEffect(() => {
@@ -78,7 +85,7 @@ export function MyAccesses({ token, condo }: { token: string; condo: string }) {
           </ul>
         </div>
       ))}
-      <p className="hint">“Passagem” significa que o ponto de acesso não informa se foi entrada ou saída. Os registros são apagados depois de 90 dias.</p>
+      <p className="hint">“Passagem” significa que o ponto de acesso não informa se foi entrada ou saída. {retentionDays ? `Os registros são apagados depois de ${retentionDays} dias.` : "Os registros são apagados depois de um prazo definido pelo condomínio."}</p>
       <RegistrationPhoto token={token} condo={condo} />
     </section>
   );

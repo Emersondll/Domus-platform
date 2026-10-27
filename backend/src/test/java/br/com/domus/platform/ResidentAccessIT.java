@@ -164,7 +164,10 @@ class ResidentAccessIT extends AbstractIntegrationTest {
         for (String who : new String[] {"ra-manager", "ra-operator", "ra-other-manager", "ra-outsider"}) {
             mvc.perform(get(base() + "/me/accesses").with(as(who))).andExpect(status().isNotFound());
             mvc.perform(get(base() + "/me/accesses/last").with(as(who))).andExpect(status().isNotFound());
+            mvc.perform(get(base() + "/me/accesses/policy").with(as(who))).andExpect(status().isNotFound());
         }
+        mvc.perform(get(base() + "/me/accesses/policy").with(as("ra-bia"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.retentionDays").value(90));
         mvc.perform(get(base() + "/me/accesses")).andExpect(status().isUnauthorized());
     }
 

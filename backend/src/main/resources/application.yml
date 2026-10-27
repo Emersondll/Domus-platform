@@ -139,6 +139,8 @@ portaria:
     resolved-conflicts-days: 365
     # Histórico pessoal de entradas e saídas do morador: dado de rotina e localização, prazo curto (D19, a confirmar com o jurídico).
     resident-access-days: ${RESIDENT_ACCESS_RETENTION_DAYS:90}
+    # Mensagens individuais morador <-> portaria: 0 = não expurga (o prazo é decisão do titular/jurídico, D1).
+    direct-message-days: ${DIRECT_MESSAGE_RETENTION_DAYS:0}
   bootstrap:
     # Somente para a instalação inicial: sub (e e-mail) da conta criada no Keycloak que será o primeiro administrador.
     platform-admin-subject: ${BOOTSTRAP_PLATFORM_ADMIN_SUBJECT:}

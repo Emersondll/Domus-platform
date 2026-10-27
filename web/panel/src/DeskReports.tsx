@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
-import type { AccessRow } from "./types";
+import type { AccessRow, ActivityReport } from "./types";
 import { errorMessage } from "./useCondoList";
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
+const OUTCOME_TEXT: Record<string, string> = { RESOLVED: "resolvidos", ENTRY_GRANTED: "entrada liberada", ENTRY_DENIED: "entrada negada",
+  NO_ANSWER: "sem resposta", FALSE_ALARM: "alarme falso", OPEN: "em aberto" };
 const RESULT_TEXT: Record<string, string> = { GRANTED: "liberada", DENIED: "negada" };
 
 /** Relatório de acessos por período, com exportação CSV. O período máximo é de 31 dias (limite da API). */
@@ -15,6 +17,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
   const [result, setResult] = useState("");
   const [rows, setRows] = useState<AccessRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityReport | null>(null);
 
   // O fim é exclusivo na API: o dia final inteiro entra até 00:00 do dia seguinte.
   const query = () => {
@@ -31,6 +34,31 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
     } catch (e) {
       setRows(null);
       setError(e instanceof ApiError && e.status === 400 ? "Período inválido: use no máximo 31 dias." : errorMessage(e));
+    }
+  }
+
+  async function loadActivity() {
+    setError(null);
+    try {
+      setActivity(await request<ActivityReport>(token, "GET", `/api/v1/condominiums/${condominiumId}/reports/activity?${query()}`));
+    } catch (e) {
+      setActivity(null);
+      setError(e instanceof ApiError && e.status === 400 ? "Período inválido: use no máximo 31 dias." : errorMessage(e));
+    }
+  }
+
+  async function exportActivityCsv() {
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity.csv?${query()}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new ApiError(res.status, res.status === 400 ? "Período inválido: use no máximo 31 dias." : res.statusText);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(await res.blob());
+      link.download = `atividade-${from}-a-${to}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) {
+      setError(errorMessage(e));
     }
   }
 
@@ -63,9 +91,27 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
         <option value="DENIED">Negadas</option>
       </select>
       <button onClick={search}>Consultar</button>
+      <button onClick={loadActivity}>Resumo da atividade</button>
       <button onClick={exportCsv}>Exportar CSV</button>
       <p className="hint">A exportação contém nomes de visitantes (dado pessoal) e fica registrada na auditoria.</p>
       {error && <p role="alert" className="error">{error}</p>}
+      {activity && (
+        <section aria-label="Resumo da atividade">
+          <h4>Resumo da atividade</h4>
+          <ul>
+            <li>Encomendas: {activity.parcels.received} recebidas, {activity.parcels.pickedUp} retiradas, {activity.parcels.pendingNow} a retirar agora
+              {activity.parcels.avgHoursToPickup != null && ` · retirada em média após ${activity.parcels.avgHoursToPickup} h`}</li>
+            <li>Atendimentos: {activity.calls.total}
+              {Object.entries(activity.calls.byOutcome).map(([k, v]) => ` · ${OUTCOME_TEXT[k] ?? k}: ${v}`).join("")}
+              {activity.calls.avgSecondsToAnswer != null && ` · espera média ${activity.calls.avgSecondsToAnswer} s`}
+              {activity.calls.avgMinutesHandling != null && ` · duração média ${activity.calls.avgMinutesHandling} min`}</li>
+            <li>Ocorrências: {activity.incidents.opened} abertas, {activity.incidents.resolved} resolvidas</li>
+            <li>Livro de turno: {activity.shiftLog.notes} anotações, {activity.shiftLog.handovers} passagens de turno</li>
+          </ul>
+          <button onClick={exportActivityCsv}>Exportar resumo (CSV)</button>
+          <p className="hint">O resumo só tem números, sem nomes; o fim do período é exclusivo.</p>
+        </section>
+      )}
       {rows && (
         <ul>
           {rows.map((r) => (

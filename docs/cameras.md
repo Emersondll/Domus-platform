@@ -28,14 +28,14 @@ câmera (RTSP) ──► MediaMTX (RTSP → HLS) ──► navegador do painel (
 <câmera>" ou "Abrir até 4 câmeras"), nunca sozinho, porque cada abertura é auditada e usa banda. Máximo de 4 ao mesmo tempo.
 Cadastro e edição continuam na aba Câmeras.
 
-O player tem tempo limite de 20 s para conectar e, se a câmera ou o servidor de mídia falharem, tenta de novo com espera crescente (5, 10, 20, 30, 30 s) antes de pedir para fechar e abrir; cada tentativa abre uma sessão e é auditada. Erro de permissão (404/403) não é repetido.
+O player tem tempo limite de 20 s para conectar e, se a câmera ou o servidor de mídia falharem, tenta de novo com espera crescente (5, 10, 20, 30, 30 s) antes de pedir para fechar e abrir; cada tentativa abre uma sessão e é auditada. Erro de permissão (404/403) não é repetido. A mensagem diz o que provavelmente falhou: **sem resposta** = servidor de mídia fora do ar; **404** = o servidor está no ar, mas a câmera não envia vídeo; **401/403** = acesso recusado.
 
 Abrir o vídeo **não aciona nenhuma porta**. Se o servidor de mídia estiver desligado ou fora do ar, o painel mostra o erro; nunca
 mostra imagem simulada.
 
 ## Subir o servidor de mídia (desenvolvimento)
 
-Atalho com cinco fontes RTSP falsas (padrões de teste do ffmpeg, lidas sem token **só em desenvolvimento**): `scripts/dev-media.sh up` (`down`, `status`). A config é gerada a partir de `deploy/media/mediamtx.yml`; precisa de Docker e ffmpeg. Manualmente:
+Atalho com cinco fontes RTSP falsas (padrões de teste do ffmpeg, lidas sem token **só em desenvolvimento**): `scripts/dev-media.sh up` (`down`, `status`, `repair`). Cada fonte roda num laço que reabre o ffmpeg se ele cair (o servidor de mídia reiniciando, por exemplo); `repair` religa só as que morreram. A config é gerada a partir de `deploy/media/mediamtx.yml`; precisa de Docker e ffmpeg. Manualmente:
 
 ```bash
 docker run -d --name domus-media --network host \

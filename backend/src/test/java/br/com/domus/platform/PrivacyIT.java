@@ -167,8 +167,14 @@ class PrivacyIT extends AbstractIntegrationTest {
         }
         jdbc.update("insert into sync_conflict (id, event_id, condominium_id, kind, created_at) values (?, ?, ?, 'UNCERTAIN_ENTRY', now() - interval '300 days')", UUID.randomUUID(), withConflict, condo);
 
+        jdbc.update("insert into direct_message (id, condominium_id, resident_user_id, sender_user_id, from_resident, text, created_at) values (?, ?, ?, ?, true, 'old-msg', now() - interval '90 days')", UUID.randomUUID(), condo, oldUser, oldUser);
+        jdbc.update("insert into direct_message (id, condominium_id, resident_user_id, sender_user_id, from_resident, text, created_at) values (?, ?, ?, ?, true, 'new-msg', now() - interval '2 days')", UUID.randomUUID(), condo, oldUser, oldUser);
+
         Map<String, Integer> deleted = retention.purge();
 
+        assertThat(deleted.get("direct_message")).isGreaterThanOrEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from direct_message where text = 'old-msg'", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from direct_message where text = 'new-msg'", Integer.class)).isEqualTo(1);
         assertThat(deleted.get("notification")).isGreaterThanOrEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from notification where title = 'old'", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("select count(*) from notification where title = 'recent'", Integer.class)).isEqualTo(1);

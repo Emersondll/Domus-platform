@@ -8,6 +8,15 @@ const CONNECT_TIMEOUT_MS = 20_000;
 /** Esperas entre tentativas de reconexão; depois da última o player desiste e pede para fechar e abrir de novo. */
 const RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000, 30_000];
 
+/** Diz o que provavelmente falhou a partir do erro do hls.js: sem resposta = servidor de mídia; 404 = câmera sem fonte. */
+export function describeHlsFailure(data: { response?: { code?: number } }): string {
+  const code = data.response?.code;
+  if (code === 404) return "Sem imagem: a câmera não está enviando vídeo (o servidor de mídia está no ar).";
+  if (code === 401 || code === 403) return "Sem imagem: o acesso ao vídeo foi recusado; feche e abra de novo.";
+  if (code === undefined || code === 0) return "Sem imagem: o servidor de mídia não respondeu.";
+  return "Sem imagem: a câmera ou o servidor de mídia respondeu com erro.";
+}
+
 /**
  * Vídeo ao vivo de uma câmera (HLS). O endereço RTSP nunca chega ao navegador: o backend entrega uma URL do servidor
  * de mídia com token curto, renovado antes de vencer. Se o servidor de mídia ou a câmera não responderem, mostra o erro
@@ -72,7 +81,7 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
               void video.current?.play().catch(() => {});
             });
             hls.on(Hls.Events.ERROR, (_e, data) => {
-              if (data.fatal) fail("Sem imagem: a câmera ou o servidor de mídia não respondeu.");
+              if (data.fatal) fail(describeHlsFailure(data));
             });
             connectTimer = setTimeout(() => { if (!live) fail("Sem imagem: a conexão demorou demais."); }, CONNECT_TIMEOUT_MS);
             hls.loadSource(session.hlsUrl);

@@ -27,6 +27,21 @@ describe("renovação silenciosa do token", () => {
     setUnauthorizedHandler(null);
   });
 
+  it("o logout leva o id_token como dica para o Keycloak encerrar a sessão sem pedir confirmação", async () => {
+    sessionStorage.setItem("oidc.state", "s");
+    sessionStorage.setItem("oidc.verifier", "v");
+    vi.stubGlobal("location", { ...window.location, search: "?code=c&state=s", pathname: "/", origin: "https://panel.example.test", assign: vi.fn() });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ access_token: "a1", refresh_token: "r1", id_token: "ID-TOKEN", expires_in: 300 })));
+    await handleCallback(cfg);
+    logout(cfg);
+    const url = new URL((window.location.assign as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string);
+    expect(url.searchParams.get("id_token_hint")).toBe("ID-TOKEN");
+    expect(url.searchParams.get("post_logout_redirect_uri")).toBe("https://panel.example.test/");
+    logout(cfg); // o id_token não fica guardado depois do logout
+    const again = new URL((window.location.assign as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0] as string);
+    expect(again.searchParams.get("id_token_hint")).toBeNull();
+  });
+
   it("sem refresh token não chama o Keycloak", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

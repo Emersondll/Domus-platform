@@ -76,6 +76,7 @@ function fakeApi() {
     }
     if (url.endsWith("/me/cameras")) return json(myCameras);
     if (url.endsWith("/me/cameras/k1/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-k1/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
+    if (url.endsWith("/me/accesses/policy")) return json({ retentionDays: 45 });
     if (url.endsWith("/me/accesses/last")) return json({ last: lastAccess });
     if (url.includes("/me/accesses?")) return json(page(myAccesses));
     if (url.endsWith("/me/photo/status")) return json(photoStatus);
@@ -411,6 +412,7 @@ describe("resident app", () => {
     expect(await screen.findByText(/Entrada · Portaria · cartão/)).toBeInTheDocument();
     expect(screen.getByText(/Saída · Garagem · terminal/)).toBeInTheDocument();
     expect(screen.getByText(/Passagem · Portaria · cartão/)).toBeInTheDocument();
+    expect(await screen.findByText(/apagados depois de 45 dias/)).toBeInTheDocument();
     expect(screen.getByText("acesso negado")).toBeInTheDocument();
     const queries = () => calls.filter((c) => c.url.includes("/me/accesses?"));
     expect(queries()).toHaveLength(1);

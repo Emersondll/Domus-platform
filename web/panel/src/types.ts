@@ -67,3 +67,10 @@ export type CondoRow = { id: string; operatorCompanyId: string; name: string; st
 export type AgentRow = { id: string; name: string; status: string; online: boolean; lastSeenAt: string | null;
   lastPolicyVersion: number | null; backlog: number };
 export type SyncConflict = { id: string; eventId: string; kind: string; detail: string; createdAt: string; resolvedAt: string | null };
+export type ActivityReport = {
+  from: string; to: string;
+  parcels: { received: number; pickedUp: number; pendingNow: number; avgHoursToPickup: number | null };
+  calls: { total: number; byOutcome: Record<string, number>; avgSecondsToAnswer: number | null; avgMinutesHandling: number | null };
+  incidents: { opened: number; resolved: number; bySeverity: Record<string, number> };
+  shiftLog: { notes: number; handovers: number };
+};

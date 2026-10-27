@@ -13,6 +13,7 @@ import br.com.domus.platform.identity.service.BootstrapAdmin;
 import br.com.domus.platform.identity.entity.Membership;
 import br.com.domus.platform.identity.repository.MembershipRepository;
 import br.com.domus.platform.identity.entity.Role;
+import br.com.domus.platform.shared.crypto.FieldCipher;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,9 +27,10 @@ class BootstrapAdminTest {
 
     private final AppUserRepository users = mock(AppUserRepository.class);
     private final MembershipRepository memberships = mock(MembershipRepository.class);
+    private final FieldCipher cipher = mock(FieldCipher.class);
 
     private BootstrapAdmin bootstrap(String subject, String email) {
-        return new BootstrapAdmin(users, memberships, subject, email);
+        return new BootstrapAdmin(users, memberships, cipher, subject, email);
     }
 
     @Test
@@ -36,8 +38,13 @@ class BootstrapAdminTest {
         when(memberships.existsByRoleAndActiveTrue(Role.PLATFORM_ADMIN)).thenReturn(false);
         when(users.findByExternalSubject("sub-1")).thenReturn(Optional.empty());
         when(users.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
+        when(cipher.emailIndex("admin@example.invalid")).thenReturn("hash-do-email");
 
         bootstrap("sub-1", "admin@example.invalid").run(new DefaultApplicationArguments());
+
+        ArgumentCaptor<AppUser> user = ArgumentCaptor.forClass(AppUser.class);
+        verify(users).save(user.capture());
+        assertThat(user.getValue().getEmailHash()).isEqualTo("hash-do-email");
 
         ArgumentCaptor<Membership> saved = ArgumentCaptor.forClass(Membership.class);
         verify(memberships).save(saved.capture());

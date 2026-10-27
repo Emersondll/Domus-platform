@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -53,9 +54,9 @@ public class VehicleController {
     }
 
     @GetMapping("/vehicles")
-    public PageResponse<VehicleResponse> list(@PathVariable UUID condominiumId,
+    public PageResponse<VehicleResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String plate,
                                               @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
-        return PageResponse.of(service.list(condominiumId, pageable), VehicleResponse::from);
+        return PageResponse.of(service.list(condominiumId, plate, pageable), VehicleResponse::from);
     }
 
     @GetMapping("/me/vehicles")

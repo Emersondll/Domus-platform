@@ -9,7 +9,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **166 testes** (31 unitários + 135 integração com PostgreSQL real), 0 falhas |
+| `mvn -f backend/pom.xml verify` | **177 testes** (31 unitários + 146 integração com PostgreSQL real), 0 falhas (2026-10-27) |
 | `mvn -f agent/pom.xml verify` | **36 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` (reexecutados em 2026-10-27; o passo do reinício foi corrigido para parar o agente com TERM como o systemd, sem `timeout` sobre o launcher, e sem deixar java órfão) | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
 | `cd web && npm test` / `npm run build` | **44** (painel) + **32** (app do morador, 2 arquivos de teste); build com checagem de tipos ok |
@@ -79,7 +79,7 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 4. **Navegador:** falta exercitar o login OIDC/PKCE e a renovação do token **num navegador contra o Keycloak real** (o E2E de navegador usa o login de desenvolvimento).
 5. **Segurança restante:** mTLS por agente/dispositivo; WAF/DDoS; pentest independente; varredura de imagens de contêiner; criptografia de armazenamento do banco/disco (a de campos já existe);
    rotação da chave de lançamento do agente; chaves de criptografia em gerenciador de segredos/KMS (hoje variável de ambiente).
-6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos por instância (Redis/lock distribuído); cada instância abre sua conexão de eventos Dahua; PostgreSQL sem réplica/PITR; RTO/RPO não medidos.
+6. **Alta disponibilidade/escala horizontal:** limitador de taxa e agendamentos por instância (Redis/lock distribuído); a conexão de eventos Dahua já tem posse por dispositivo (B7), mas expiração de comandos, retenção, métricas e o limitador de taxa seguem por instância; PostgreSQL sem réplica/PITR; RTO/RPO não medidos.
 7. **LGPD:** decisões jurídicas/operacionais (base legal, DPO, RIPD, contratos, retenção final) — `docs/lgpd.md`; política para dados de visitantes; gravações quando houver vídeo.
 8. **Administração:** as telas do síndico e da portaria existem (aba Cadastros); as da plataforma e da empresa operadora também (botão "Administração": empresas e administradores, condomínios, agentes, conflitos de sincronização; "Girar chave" na aba Portas), com as regras de papel que o servidor já impõe (D8 sem resposta formal); **faltam** listar/revogar administradores, editar/suspender empresa ou condomínio. Relatório de acessos com CSV existe; faltam os de encomendas, ocorrências e turnos. Planos, contratos e limites: decisão D7.
 9. Instalador/pacote (.deb) do agente e suporte a outros sistemas além de Linux/systemd.

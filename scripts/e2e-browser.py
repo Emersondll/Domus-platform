@@ -569,16 +569,7 @@ try:
 
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)
-        # conhecido e aceito: síndico não é operador, então a primeira consulta de atendimentos recebe 403 (a tela não repete);
-        # remove da contagem só esse 403 do síndico, qualquer outro erro continua falhando
-        staff_labels = ("painel-sindico", "painel-admin")
-        f403 = [f for f in failed_requests if f.split(": ")[0] in staff_labels and ": 403 " in f]
-        known = [f for f in f403 if f.endswith("/api/v1/operator/calls/mine")]
-        if known and len(known) == len(f403):  # qualquer outro 403 continua falhando
-            for _ in known:
-                drop = next((e for e in errors if e.split(": ")[0] in staff_labels and "Failed to load resource" in e and "403" in e), None)
-                if drop:
-                    errors.remove(drop)
+        # síndico e administrador não são operadores: o escopo (me/admin-scope) evita a consulta de atendimentos, então nenhum 403 é tolerado
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]) + (" | requisições com erro: " + str(failed_requests[:6]) if errors else ""))
         browser.close()
 finally:

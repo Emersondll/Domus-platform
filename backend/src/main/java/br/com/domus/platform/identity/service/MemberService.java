@@ -10,6 +10,7 @@ import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.crypto.FieldCipher;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
@@ -35,9 +36,11 @@ public class MemberService {
     private final OperatorCompanyRepository companies;
     private final AccessService access;
     private final AuditService audit;
+    private final FieldCipher cipher;
 
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
-                         OperatorCompanyRepository companies, AccessService access, AuditService audit) {
+                         OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher) {
+        this.cipher = cipher;
         this.users = users;
         this.memberships = memberships;
         this.residents = residents;
@@ -97,9 +100,15 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<Membership> list(UUID condominiumId) {
+    public List<Membership> list(UUID condominiumId, String email) {
         access.require(condominiumId, AccessLevel.MANAGE, "member.list");
-        return memberships.findByCondominiumIdAndActiveTrue(condominiumId);
+        List<Membership> all = memberships.findByCondominiumIdAndActiveTrue(condominiumId);
+        if (email == null || email.isBlank()) {
+            return all;
+        }
+        // busca por igualdade pelo índice cego; o e-mail nunca é comparado em texto
+        UUID userId = users.findByEmailHash(cipher.emailIndex(email)).map(AppUser::getId).orElse(null);
+        return all.stream().filter(m -> m.getUserId().equals(userId)).toList();
     }
 
     @Transactional
@@ -120,6 +129,10 @@ public class MemberService {
             }
             return existing;
         }
-        return users.save(new AppUser(subject, email, displayName));
+        String emailHash = cipher.emailIndex(email);
+        if (users.findByEmailHash(emailHash).isPresent()) {
+            throw new ConflictException("E-mail already belongs to another account");
+        }
+        return users.save(new AppUser(subject, email, displayName, emailHash));
     }
 }

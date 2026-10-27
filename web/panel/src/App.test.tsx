@@ -31,7 +31,7 @@ let videoDown = false;
 let devicePerms = "MANAGE";
 let permsGate: Promise<void> | null = null;
 let staffOnly = false;
-let adminScope: unknown = { platformAdmin: false, companies: [] };
+let adminScope: unknown = { platformAdmin: false, operator: true, companies: [] };
 let mineCalls = 0;
 let panics: unknown[] = [];
 let claimed: Record<string, unknown> | null = null;
@@ -142,7 +142,7 @@ describe("operator panel", () => {
     devicePerms = "MANAGE";
     permsGate = null;
     staffOnly = false;
-    adminScope = { platformAdmin: false, companies: [] };
+    adminScope = { platformAdmin: false, operator: true, companies: [] };
     mineCalls = 0;
     panics = [];
     claimed = null;
@@ -295,7 +295,18 @@ describe("operator panel", () => {
     expect(screen.getByRole("button", { name: "Ver ao vivo Câmera garagem" })).toBeInTheDocument();
   });
 
-  it("lets a manager use the panel: the operator-only 403 is not an error and is not asked again", async () => {
+  it("does not ask a manager for operator calls at all: the scope says they are not an operator", async () => {
+    adminScope = { platformAdmin: false, operator: false, companies: [] };
+    staffOnly = true;
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    expect(await screen.findByRole("tab", { name: "Câmeras" })).toBeInTheDocument();
+    expect(document.querySelector(".message")).toBeNull();
+    expect(mineCalls).toBe(0);
+  });
+
+  it("still tolerates the operator-only 403 once if the scope could not be read", async () => {
+    adminScope = null;
     staffOnly = true;
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
@@ -666,7 +677,7 @@ describe("operator panel", () => {
   });
 
   it("lets the platform administrator manage companies and create condominiums", async () => {
-    adminScope = { platformAdmin: true, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    adminScope = { platformAdmin: true, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
     const user = await login();
     await user.click(await screen.findByRole("button", { name: "Administração" }));
     expect(await screen.findByText(/CNPJ 11111111000191/)).toBeInTheDocument();
@@ -690,7 +701,7 @@ describe("operator panel", () => {
   });
 
   it("gives the company administrator the condominiums and agents of their company, with credentials shown once", async () => {
-    adminScope = { platformAdmin: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    adminScope = { platformAdmin: false, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
     const user = await login();
     await user.click(await screen.findByRole("button", { name: "Administração" }));
     expect(screen.queryByRole("tab", { name: "Empresas" })).not.toBeInTheDocument();

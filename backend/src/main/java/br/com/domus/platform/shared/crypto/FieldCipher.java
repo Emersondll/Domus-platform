@@ -124,6 +124,16 @@ public class FieldCipher {
         return stored != null && stored.startsWith(PREFIX + activeId + ":");
     }
 
+    /** Normalização da placa para o índice cego: maiúsculas, só letras e números. */
+    public static String normalizePlate(String plate) {
+        return plate.toUpperCase(java.util.Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+    }
+
+    /** Índice cego do e-mail (minúsculas, sem espaços), separado do contexto da placa por um prefixo. */
+    public String emailIndex(String email) {
+        return blindIndex("email:" + email.trim().toLowerCase(java.util.Locale.ROOT));
+    }
+
     /** Índice cego (HMAC-SHA256, hex) do valor já normalizado, para busca por igualdade sem expor o texto. */
     public String blindIndex(String normalized) {
         try {

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -77,8 +78,8 @@ public class MemberController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/members")
-    public List<MembershipResponse> list(@PathVariable UUID condominiumId) {
-        return service.list(condominiumId).stream().map(MembershipResponse::from).toList();
+    public List<MembershipResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String email) {
+        return service.list(condominiumId, email).stream().map(MembershipResponse::from).toList();
     }
 
     @PostMapping("/condominiums/{condominiumId}/residents/{residentId}/account")

@@ -82,11 +82,15 @@ public class CommercialService {
                 ? companies.findAll(Sort.by("name"))
                 : companies.findAllById(access.companyIdsAdministeredBy(actor)).stream()
                         .sorted(Comparator.comparing(OperatorCompany::getName)).toList();
-        return new AdminScope(platform, mine);
+        return new AdminScope(platform, !access.operatorCondominiumIds(actor).isEmpty(), mine);
     }
 
-    /** @param platformAdmin administra a plataforma; @param companies empresas administradas pelo chamador */
-    public record AdminScope(boolean platformAdmin, List<OperatorCompany> companies) {
+    /**
+     * @param platformAdmin administra a plataforma
+     * @param operator      atua como operador da central em algum condomínio
+     * @param companies     empresas administradas pelo chamador
+     */
+    public record AdminScope(boolean platformAdmin, boolean operator, List<OperatorCompany> companies) {
     }
 
     @Transactional

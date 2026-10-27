@@ -109,11 +109,17 @@ A API em produção exige `aud=portaria-api` (variável `OIDC_AUDIENCE`). O real
 
 ## Criptografia de dados pessoais
 Nome, e-mail, telefone (morador, usuário, visitante, chamador) e placa são cifrados na aplicação com AES-256-GCM (`FieldCipher`); no banco ficam como
-`enc:v1:<chave>:<dados>`. A unicidade da placa usa um índice cego (HMAC com `BLIND_INDEX_KEY`). Não há busca nem ordenação por esses campos.
+`enc:v1:<chave>:<dados>`. A unicidade da placa e a do e-mail da conta usam um índice cego (HMAC com `BLIND_INDEX_KEY`), que também permite busca por
+igualdade: `GET /condominiums/{id}/vehicles?plate=ABC1D23` e `GET /condominiums/{id}/members?email=...`. Não há busca parcial nem por nome. Ordenar
+veículos por placa (`?sort=plate,asc`) é feito em memória sobre o texto decifrado (vale em todas as páginas; recusado acima de 5.000 veículos no condomínio).
 - **Gerar chave:** `openssl rand -base64 32` → `FIELD_ENCRYPTION_KEYS=k1:<resultado>`; `BLIND_INDEX_KEY=$(openssl rand -hex 32)`.
-- **Guarde as chaves fora do backup do banco** (gerenciador de segredos). Sem elas os dados pessoais são irrecuperáveis. Trocar `BLIND_INDEX_KEY` quebra a
-  unicidade das placas já cadastradas: não troque; se precisar, rode a migração (ela refaz o índice só de linhas sem índice).
+- **Guarde as chaves fora do backup do banco** (gerenciador de segredos). Sem elas os dados pessoais são irrecuperáveis. Trocar `BLIND_INDEX_KEY` é possível
+  (ver "Trocar a `BLIND_INDEX_KEY`" abaixo).
 - **Instalação que já tinha dados em texto puro:** os valores antigos continuam legíveis; suba uma vez com `FIELD_ENCRYPTION_MIGRATE=true`, confira o log
   ("PII encryption migration finished") e desligue a variável.
+- **Trocar a `BLIND_INDEX_KEY`:** o índice é recalculado a partir do texto decifrado, então nada se perde. **Pare todas as instâncias**, troque a variável e suba:
+  na partida o `BlindIndexReindexer` confere uma linha de amostra de cada tabela e, se o hash não bate com a chave atual, recalcula todos
+  (log "Blind indexes rebuilt for N row(s)"). Linhas com hash nulo (dados anteriores à coluna `email_hash`) também são preenchidas. Duplicados legados
+  ficam sem índice e geram aviso no log, em vez de impedir a partida. Desligável com `portaria.crypto.reindex-blind-on-start=false`.
 - **Rotação:** `FIELD_ENCRYPTION_KEYS=k1:<antiga>,k2:<nova>` + `FIELD_ENCRYPTION_ACTIVE_KEY_ID=k2` + uma partida com `FIELD_ENCRYPTION_MIGRATE=true`; só depois remova a `k1`.
 - **Fora do escopo desta camada:** o banco em si (disco/backup) deve ter criptografia de armazenamento própria; logs e auditoria não recebem dados pessoais.

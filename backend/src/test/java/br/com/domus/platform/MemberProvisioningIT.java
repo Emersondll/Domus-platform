@@ -159,6 +159,7 @@ class MemberProvisioningIT extends AbstractIntegrationTest {
     void adminScopeTellsEachRoleWhichCompaniesItAdministers() throws Exception {
         mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-platform"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.platformAdmin").value(true))
+                .andExpect(jsonPath("$.operator").value(false))
                 .andExpect(jsonPath("$.companies[?(@.name=='P9 A')]").isNotEmpty())
                 .andExpect(jsonPath("$.companies[?(@.name=='P9 B')]").isNotEmpty());
         mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-admin-a"))).andExpect(status().isOk())
@@ -167,7 +168,27 @@ class MemberProvisioningIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.companies[0].name").value("P9 A"));
         mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-manager-a"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.platformAdmin").value(false))
+                .andExpect(jsonPath("$.operator").value(false))
+                .andExpect(jsonPath("$.companies.length()").value(0));
+        mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-operator-a"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.operator").value(true))
                 .andExpect(jsonPath("$.companies.length()").value(0));
         mvc.perform(get("/api/v1/me/admin-scope")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void anEmailBelongsToOneAccountAndMembersCanBeFoundByEmail() throws Exception {
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members").with(as("p9-admin-a")).contentType(MediaType.APPLICATION_JSON)
+                .content(staff("OPERATOR", "p9-mail-one"))).andExpect(status().isCreated());
+        // outra conta (outro sub) com o mesmo e-mail em outra caixa: conflito
+        String clash = "{\"role\":\"OPERATOR\",\"account\":{\"externalSubject\":\"p9-mail-two\",\"email\":\"P9-MAIL-ONE@example.invalid\","
+                + "\"displayName\":\"dois\"}}";
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members").with(as("p9-admin-a")).contentType(MediaType.APPLICATION_JSON)
+                .content(clash)).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/condominiums/" + condoA + "/members?email=P9-Mail-One@example.invalid").with(as("p9-manager-a")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].role").value("OPERATOR"));
+        mvc.perform(get("/api/v1/condominiums/" + condoA + "/members?email=ninguem@example.invalid").with(as("p9-manager-a")))
+                .andExpect(jsonPath("$.length()").value(0));
     }
 }

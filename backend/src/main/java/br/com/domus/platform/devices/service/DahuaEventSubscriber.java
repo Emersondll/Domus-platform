@@ -1,6 +1,7 @@
 package br.com.domus.platform.devices.service;
 
 import br.com.domus.platform.devices.entity.Device;
+import br.com.domus.platform.devices.repository.DeviceEventLeaseStore;
 import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DahuaEventMapper;
 import br.com.domus.platform.devices.adapter.DahuaEventStream;
@@ -24,8 +25,10 @@ import org.springframework.stereotype.Component;
 /**
  * Mantém uma conexão de eventos por controladora {@code DAHUA_CGI} e entrega os eventos traduzidos a
  * {@link DeviceEventService}. Reconecta com espera crescente (1 s a 60 s). Dispositivo novo, removido ou com
- * configuração alterada é reconciliado a cada 30 s. Com várias instâncias da aplicação cada uma assina o equipamento
- * (confirmação é idempotente); um limite de conexões por equipamento exige eleição de líder (pendência documentada).
+ * configuração alterada é reconciliado a cada 30 s. Com várias instâncias da aplicação só uma mantém a conexão de cada
+ * equipamento: a posse (lease de 90 s no banco, {@link DeviceEventLeaseStore}) é renovada a cada reconciliação; se a dona cai,
+ * a posse vence e outra instância assume em até ~2 min. Sem conseguir falar com o banco a instância larga as conexões (sem
+ * banco ela também não conseguiria gravar os eventos).
  */
 @Component
 public class DahuaEventSubscriber {
@@ -40,11 +43,18 @@ public class DahuaEventSubscriber {
     private final DeviceEventService events;
     private final DahuaEventStream stream;
     private final boolean enabled;
+    private final DeviceEventLeaseStore leases;
+    private final String instanceId = UUID.randomUUID().toString();
+    private final Duration leaseTtl;
     private final Map<UUID, Worker> workers = new ConcurrentHashMap<>();
     private volatile boolean running = true;
 
     public DahuaEventSubscriber(DeviceRepository devices, DeviceEventService events, HostPolicy hosts, DeviceSecrets secrets,
-                                @Value("${portaria.devices.dahua-events.enabled:true}") boolean enabled) {
+                                DeviceEventLeaseStore leases,
+                                @Value("${portaria.devices.dahua-events.enabled:true}") boolean enabled,
+                                @Value("${portaria.devices.dahua-events.lease-seconds:90}") long leaseSeconds) {
+        this.leases = leases;
+        this.leaseTtl = Duration.ofSeconds(leaseSeconds);
         this.devices = devices;
         this.events = events;
         this.stream = new DahuaEventStream(hosts, secrets);
@@ -65,7 +75,20 @@ public class DahuaEventSubscriber {
                 stop(entry.getKey());
             }
         }
-        wanted.values().forEach(d -> workers.computeIfAbsent(d.getId(), id -> start(d)));
+        for (Device d : wanted.values()) {
+            boolean owner;
+            try {
+                owner = leases.acquireOrRenew(d.getId(), instanceId, leaseTtl);
+            } catch (RuntimeException e) {
+                log.warn("Could not renew the event lease of device {}: {}", d.getId(), e.getMessage());
+                owner = false;
+            }
+            if (owner) {
+                workers.computeIfAbsent(d.getId(), id -> start(d));
+            } else {
+                stop(d.getId()); // outra instância é a dona (ou o banco não respondeu): não manter a conexão
+            }
+        }
     }
 
     private Worker start(Device device) {
@@ -132,5 +155,10 @@ public class DahuaEventSubscriber {
     void shutdown() {
         running = false;
         Set.copyOf(workers.keySet()).forEach(this::stop);
+        try {
+            leases.releaseAll(instanceId);
+        } catch (RuntimeException e) {
+            log.warn("Could not release the event leases: {}", e.getMessage());
+        }
     }
 }

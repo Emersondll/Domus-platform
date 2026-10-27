@@ -9,12 +9,12 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 171 testes (31 unitários + 140 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 177 testes (31 unitários + 146 de integração com PostgreSQL real), 0 falhas (2026-10-27) |
 | Agente `mvn test` | 36 testes, 0 falhas (última execução registrada em 2026-10-22; o agente não foi alterado depois) |
-| Web `npm test` + build | 90 testes (54 painel + 36 app do morador), builds OK |
+| Web `npm test` + build | 92 testes (56 painel + 36 app do morador), builds OK |
 | `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK nas últimas execuções registradas (2026-10-22); não reexecutados nesta rodada |
-| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 54 verificações (inclui o painel como síndico e como administrador da empresa no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
-| `scripts/restore-drill.sh` | PASS (19 migrações, V1–V19) |
+| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 54 verificações, **sem tolerar nenhum 403** (inclui o painel como síndico e como administrador da empresa no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
+| `scripts/restore-drill.sh` | PASS (21 migrações, V1–V21; 2026-10-27) |
 | `scripts/api-smoke.py` | OK: 152 endpoints; 52 GETs de condomínio × 4 papéis; 11 endpoints sem tela |
 | `scripts/load-test.py` | executado em 2026-10-26 para "Meus acessos" (0 erros); **não** reexecutado depois do vídeo para o morador (não mexeu em auditoria nem em pool) |
 | CI no GitHub | **verde** em `080d1c6` (7 jobs: backend, agente, web, compose, CodeQL Java e JS/TS, dependências e segredos) |
@@ -64,7 +64,10 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
 | B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | depende de D17/D21 |
 | CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
-| B20 | Síndico/administração no painel: a consulta de atendimentos e turno (só de operador) devolve 403 uma vez por login. A tela deixou de tratar como erro e de repetir; o 403 único ainda aparece no console. Achado pelo e2e como síndico | baixa | aceito; ideal: endpoint que diga o papel global do usuário |
+| B21 | `BootstrapAdmin` cria o administrador inicial sem `email_hash`; o reindexador preenche na partida seguinte | baixa | tratar quando o bootstrap for refeito (passar o `FieldCipher`) |
+| B22 | `scripts/dev-media.sh` não reinicia uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | `status` oferecer reparo e as fontes reconectarem sozinhas |
+| B23 | O player de vídeo mostra a mesma mensagem para servidor de mídia fora do ar e para câmera sem fonte | baixa (UX) | o backend poderia distinguir (caminho inexistente × servidor inalcançável) e a tela dizer qual |
+| B20 | Síndico/administração no painel: a consulta de atendimentos e turno (só de operador) devolvia 403 uma vez por login. Achado pelo e2e como síndico | baixa | **corrigido (2026-10-27):** `GET /me/admin-scope` passou a informar `operator`; o painel só consulta atendimentos e turno de quem é operador. A tolerância ao 403 ficou só como reserva se o escopo falhar; o e2e agora **não aceita nenhum 403** de síndico/administrador |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -101,11 +104,11 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 |---|---|---|---|
 | ~~B1~~ | CI | **RESOLVIDO (2026-10-22):** 7 jobs verdes (backend, agente, web, compose, CodeQL Java e JS/TS, OSV+gitleaks). Corrigido: CodeQL por linguagem, vulnerabilidades reais (Boot 4.0.9, Jackson, OpenTelemetry 1.62, assertj) e o OSV, que não resolvia o POM do backend e agora usa SBOM CycloneDX |
 | ~~B2~~ | Desempenho após a criptografia | **RESOLVIDO (2026-10-22):** A/B/A/B/A/B na mesma máquina (jar anterior à cifra × atual): sem diferença além do ruído (±40% entre rodadas, mesmo com o mesmo jar); a cifra custa ~2 µs/op (≈0,1 ms por página de 20 moradores, ~1% da requisição). A queda de 3.000 req/s vinha do ambiente (k3s, navegador). Medição em hardware dedicado continua desejável para dimensionar produção |
-| B3 | **Placas passaram a ser listadas por data de cadastro** (a ordenação por placa cifrada seria aleatória) | mudança de comportamento da API | ordenar no cliente ou criar coluna de ordenação não sensível, se for necessário |
-| B4 | **E-mail do usuário deixou de ser único** e não há busca nem ordenação por nome/e-mail | provisionamento depende só do `sub` do provedor | aceitável; documentado |
-| B5 | **Trocar `BLIND_INDEX_KEY` quebra a unicidade das placas** já cadastradas | duplicidade silenciosa | não trocar; se precisar, procedimento de reindexação |
+| ~~B3~~ | Placas eram listadas por data de cadastro (a ordenação pela placa cifrada seria aleatória) | — | **RESOLVIDO (2026-10-27):** `?sort=plate,asc` ordena em memória sobre o texto decifrado, valendo em todas as páginas (teste com páginas de 2); recusa acima de 5.000 veículos por condomínio; `?plate=` busca por igualdade pelo índice cego |
+| ~~B4~~ | E-mail do usuário deixou de ser único e não havia busca | — | **RESOLVIDO (2026-10-27) para o e-mail:** migração V20 (`app_user.email_hash`, único); mesmo e-mail em outra conta = 409 (caixa e espaços ignorados); `GET /condominiums/{id}/members?email=` busca por igualdade. **Continua sem busca parcial nem por nome** (dado cifrado): se a portaria precisar, decidir entre índice de prefixos/tokens cegos (vaza padrão de frequência) ou filtro no cliente sobre a página |
+| ~~B5~~ | Trocar `BLIND_INDEX_KEY` quebrava a unicidade das placas | — | **RESOLVIDO (2026-10-27):** `BlindIndexReindexer` confere uma amostra na partida e recalcula placa e e-mail se a chave mudou (nada se perde: o hash vem do texto decifrado); duplicados legados ficam sem índice com aviso. Procedimento em `docs/operations.md` (parar todas as instâncias antes de trocar). Não testado em banco de produção real |
 | B6 | Suposições **não confirmadas** do Dahua/Intelbras: campos `Status`/`UserID` do evento, parâmetro `heartbeat`, `openDoor` em controladoras (só visto em VTO) | a confirmação de abertura pode nunca chegar (o comando termina `UNKNOWN`, falha segura) | roteiro de campo em `docs/reference-analysis/DAHUA_SOURCES.md` |
-| B7 | Cada instância da API abre a própria conexão de eventos Dahua | conexões duplicadas com mais de uma instância | eleição de líder |
+| ~~B7~~ | Cada instância da API abria a própria conexão de eventos Dahua | — | **RESOLVIDO (2026-10-27) para a conexão de eventos:** posse por dispositivo (V21 `device_event_lease`, 90 s, relógio do banco, renovada a cada 30 s; testes de disputa com 12 instâncias e de takeover; dono cai = outra assume em até ~2 min). **Sem teste com duas JVMs reais.** Os agendamentos (expiração de comandos, retenção, métricas) e o limitador de taxa ainda rodam em cada instância: ver Fase 5 |
 | B8 | Revogação de credencial durante a queda só chega ao agente quando a política renova (TTL 6 h) | janela limitada e auditável | risco aceito |
 | B9 | Quota offline é por agente: dois agentes offline podem estourar uma credencial multiuso | vira `QUOTA_EXCEEDED` na volta | risco aceito |
 | B10 | Em Keycloak já existente, o mapper de audiência precisa ser adicionado, senão os logins recebem 401 | falha no upgrade | passo documentado em `docs/operations.md` |

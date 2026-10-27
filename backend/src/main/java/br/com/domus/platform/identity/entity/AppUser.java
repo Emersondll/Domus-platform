@@ -28,6 +28,10 @@ public class AppUser {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
+    /** Índice cego do e-mail (unicidade e busca por igualdade; o e-mail cifrado muda a cada gravação). */
+    @Column(name = "email_hash")
+    private String emailHash;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -42,6 +46,11 @@ public class AppUser {
         this.externalSubject = externalSubject;
         this.email = email;
         this.displayName = displayName;
+    }
+
+    public AppUser(String externalSubject, String email, String displayName, String emailHash) {
+        this(externalSubject, email, displayName);
+        this.emailHash = emailHash;
     }
 
     public UUID getId() {
@@ -68,8 +77,17 @@ public class AppUser {
     public void anonymize() {
         this.externalSubject = "anonymized-" + id;
         this.email = "anonymized-" + id + "@anonymized.invalid";
+        this.emailHash = null;
         this.displayName = "ANONIMIZADO";
         this.active = false;
+    }
+
+    public String getEmailHash() {
+        return emailHash;
+    }
+
+    public void setEmailHash(String emailHash) {
+        this.emailHash = emailHash;
     }
 
     public void deactivate() {

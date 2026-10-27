@@ -53,6 +53,7 @@ class DahuaEventsIT extends AbstractIntegrationTest {
     @Autowired MembershipRepository memberships;
     @Autowired AccessCommandService commandService;
     @Autowired DahuaEventSubscriber subscriber;
+    @Autowired org.springframework.jdbc.core.simple.JdbcClient jdbc;
     @MockitoBean DeviceSecrets secrets;
 
     UUID condo;
@@ -165,5 +166,28 @@ class DahuaEventsIT extends AbstractIntegrationTest {
 
         String id = openDoor(deviceId, "dh-reconnect");
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> "CONFIRMED".equals(state(id)));
+    }
+
+    @Test
+    void onlyTheInstanceHoldingTheLeaseKeepsTheEventConnection() throws Exception {
+        String config = "{\"baseUrl\":\"" + fake.baseUrl() + "\",\"userEnv\":\"DH_USER\",\"passwordEnv\":\"DH_PASS\"}";
+        MvcResult r = mvc.perform(post(url("/devices")).with(as("dh-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Controladora com posse\",\"kind\":\"ACCESS_CONTROLLER\",\"adapter\":\"DAHUA_CGI\","
+                        + "\"entrance\":\"lease\",\"config\":" + config + "}")).andExpect(status().isCreated()).andReturn();
+        UUID device = UUID.fromString(body(r).get("id").asString());
+        // outra instância já é a dona: esta não abre a conexão
+        jdbc.sql("INSERT INTO device_event_lease (device_id, owner, expires_at) VALUES (?, 'outra-instancia', now() + interval '1 hour')")
+                .param(device).update();
+        int before = fake.streamCount();
+        subscriber.reconcile();
+        Thread.sleep(1500);
+        assertThat(fake.streamCount()).isEqualTo(before);
+
+        // a posse da outra instância venceu (ela caiu): esta assume e conecta
+        jdbc.sql("UPDATE device_event_lease SET expires_at = now() - interval '1 second' WHERE device_id = ?").param(device).update();
+        subscriber.reconcile();
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> fake.streamCount() > before);
+        assertThat(jdbc.sql("SELECT owner FROM device_event_lease WHERE device_id = ?").param(device)
+                .query(String.class).single()).isNotEqualTo("outra-instancia");
     }
 }

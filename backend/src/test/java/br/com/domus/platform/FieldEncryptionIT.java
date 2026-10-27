@@ -19,6 +19,8 @@ import br.com.domus.platform.identity.entity.AppUser;
 import br.com.domus.platform.identity.repository.AppUserRepository;
 import br.com.domus.platform.identity.entity.Membership;
 import br.com.domus.platform.identity.repository.MembershipRepository;
+import br.com.domus.platform.identity.entity.Role;
+import br.com.domus.platform.privacy.service.BlindIndexReindexer;
 import br.com.domus.platform.privacy.service.PiiEncryptionMigration;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.repository.ResidentRepository;
@@ -42,6 +44,7 @@ class FieldEncryptionIT extends AbstractIntegrationTest {
     @Autowired JdbcClient jdbc;
     @Autowired FieldCipher cipher;
     @Autowired PiiEncryptionMigration migration;
+    @Autowired BlindIndexReindexer reindexer;
     @Autowired OperatorCompanyRepository companies;
     @Autowired CondominiumRepository condominiums;
     @Autowired BlockRepository blocks;
@@ -64,6 +67,8 @@ class FieldEncryptionIT extends AbstractIntegrationTest {
         residentId = r.getId();
         AppUser u = users.save(new AppUser("enc-res", "enc-res@example.invalid", "Joana Exemplo Conta"));
         memberships.save(Membership.forResident(u.getId(), condo, r.getId()));
+        AppUser m = users.save(new AppUser("enc-mgr", "enc-mgr@example.invalid", "Gestor Exemplo"));
+        memberships.save(new Membership(m.getId(), Role.CONDO_MANAGER, null, condo));
     }
 
     private static RequestPostProcessor as(String s) {
@@ -137,5 +142,51 @@ class FieldEncryptionIT extends AbstractIntegrationTest {
         assertThat(raw("SELECT plate_hash FROM vehicle WHERE id = ?", legacyVehicle)).isEqualTo(cipher.blindIndex("LEG1A23"));
         assertThat(residents.findById(legacy).orElseThrow().getFullName()).isEqualTo("Legado Exemplo");
         assertThat(migration.migrate()).isZero(); // idempotente: nada mais a fazer
+    }
+
+    private void register(String plate) throws Exception {
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/me/vehicles").with(as("enc-res"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"plate\":\"" + plate + "\"}")).andExpect(status().isCreated());
+    }
+
+    @Test
+    void vehiclesAreSortedByPlateAcrossPagesAndFoundByExactPlate() throws Exception {
+        register("zzz9z99");
+        register("aaa1a11");
+        register("mmm5m55");
+        java.util.List<String> all = new java.util.ArrayList<>();
+        for (int page = 0; page < 20; page++) {
+            String body = mvc.perform(get("/api/v1/condominiums/" + condo + "/vehicles?sort=plate,asc&size=2&page=" + page)
+                            .with(as("enc-mgr"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            var items = com.jayway.jsonpath.JsonPath.<java.util.List<String>>read(body, "$.items[*].plate");
+            if (items.isEmpty()) {
+                break;
+            }
+            all.addAll(items);
+        }
+        assertThat(all).contains("AAA1A11", "MMM5M55", "ZZZ9Z99").isSorted();
+        mvc.perform(get("/api/v1/condominiums/" + condo + "/vehicles?plate=mmm-5m55").with(as("enc-mgr")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].plate").value("MMM5M55"));
+        mvc.perform(get("/api/v1/condominiums/" + condo + "/vehicles?plate=NAO0000").with(as("enc-mgr")))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void changingTheBlindIndexKeyIsRepairedByReindexingWithoutLosingTheData() throws Exception {
+        register("rot1a23");
+        jdbc.sql("UPDATE vehicle SET plate_hash = md5(id::text) || md5(id::text)").update(); // chave antiga: troca vale para todas as linhas
+        jdbc.sql("UPDATE app_user SET email_hash = md5(id::text) || md5(id::text)").update();
+
+        assertThat(reindexer.reindexIfNeeded()).isGreaterThanOrEqualTo(2);
+
+        assertThat(raw("SELECT plate_hash FROM vehicle WHERE condominium_id = ? AND plate_hash = ?", condo, cipher.blindIndex("ROT1A23")))
+                .isEqualTo(cipher.blindIndex("ROT1A23"));
+        assertThat(raw("SELECT email_hash FROM app_user WHERE external_subject = ?", "enc-res"))
+                .isEqualTo(cipher.emailIndex("enc-res@example.invalid"));
+        // a unicidade volta a valer com a chave atual, e uma segunda passada não tem mais nada a fazer
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/me/vehicles").with(as("enc-res"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"plate\":\"ROT-1A23\"}")).andExpect(status().isConflict());
+        assertThat(reindexer.reindexIfNeeded()).isZero();
     }
 }

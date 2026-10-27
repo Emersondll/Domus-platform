@@ -23,6 +23,7 @@ export function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [oidc, setOidc] = useState<OidcConfig | null | undefined>(undefined); // undefined = carregando
   const [adminScope, setAdminScope] = useState<AdminScope | null>(null);
+  const [isOperator, setIsOperator] = useState<boolean | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -53,10 +54,14 @@ export function App() {
   const token = session?.token;
 
   useEffect(() => {
-    if (!token) { setAdminScope(null); setAdminOpen(false); return; }
-    request<AdminScope>(token, "GET", "/api/v1/me/admin-scope").then((a) => setAdminScope(a)).catch(() => setAdminScope(null));
+    if (!token) { setAdminScope(null); setAdminOpen(false); setIsOperator(null); return; }
+    request<AdminScope>(token, "GET", "/api/v1/me/admin-scope")
+      .then((a) => { setAdminScope(a); setIsOperator(a?.operator ?? true); })
+      // sem o escopo, volta a tentar como operador (a recusa 403 abaixo continua sendo tolerada)
+      .catch(() => { setAdminScope(null); setIsOperator(true); });
   }, [token]);
 
+  // null = ainda não se sabe; atendimentos e turno só são consultados por quem é operador (evita um 403 por login)
   const staffOnly = useRef(false);
   useEffect(() => { if (!session) staffOnly.current = false; }, [session]);
   const refresh = useCallback(async () => {
@@ -65,7 +70,10 @@ export function App() {
       setOverview((await request<Overview[]>(token, "GET", "/api/v1/operator/overview")) ?? []);
       // síndico e administração usam o painel sem ser operadores: atendimentos e turno são só de operador (403), e isso
       // não é erro. Depois da primeira recusa a tela deixa de pedir.
-      if (!staffOnly.current) {
+      if (isOperator === false) {
+        setCalls([]);
+        setShift(null);
+      } else if (isOperator && !staffOnly.current) {
         try {
           setCalls((await request<Page<Call>>(token, "GET", "/api/v1/operator/calls/mine"))?.items ?? []);
           setShift(await request<Shift>(token, "GET", "/api/v1/operator/shifts/current"));
@@ -79,7 +87,7 @@ export function App() {
     } catch (e) {
       setMessage(e instanceof ApiError ? e.detail : "Unexpected error");
     }
-  }, [token]);
+  }, [token, isOperator]);
 
   useEffect(() => {
     refresh();

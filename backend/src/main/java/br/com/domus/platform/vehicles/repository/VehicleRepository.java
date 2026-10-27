@@ -13,5 +13,9 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
 
     Page<Vehicle> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
 
+    Page<Vehicle> findByCondominiumIdAndPlateHash(UUID condominiumId, String plateHash, Pageable pageable);
+
+    long countByCondominiumId(UUID condominiumId);
+
     boolean existsByCondominiumIdAndPlateHash(UUID condominiumId, String plateHash);
 }

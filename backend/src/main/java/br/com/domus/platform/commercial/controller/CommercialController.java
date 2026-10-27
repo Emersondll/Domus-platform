@@ -109,16 +109,17 @@ public class CommercialController {
 
     /**
      * @param platformAdmin administra a plataforma toda
+     * @param operator      atua como operador da central em algum condomínio (a tela só consulta atendimentos e turno se for)
      * @param companies     empresas operadoras que o usuário administra (todas, para o administrador da plataforma)
      */
-    public record AdminScopeResponse(boolean platformAdmin, List<CompanyResponse> companies) {
+    public record AdminScopeResponse(boolean platformAdmin, boolean operator, List<CompanyResponse> companies) {
     }
 
     /** O que o usuário pode administrar; a tela usa para mostrar ou esconder a área de administração. */
     @GetMapping("/me/admin-scope")
     public AdminScopeResponse adminScope() {
         CommercialService.AdminScope scope = service.adminScope();
-        return new AdminScopeResponse(scope.platformAdmin(), scope.companies().stream().map(CompanyResponse::from).toList());
+        return new AdminScopeResponse(scope.platformAdmin(), scope.operator(), scope.companies().stream().map(CompanyResponse::from).toList());
     }
 
     @PostMapping("/companies")

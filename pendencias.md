@@ -42,6 +42,7 @@ Empresas operadoras, administradores, condomínios, agentes locais, rotação de
 3. Depois disso: agente local publicar o vídeo de câmeras atrás de NAT, ONVIF `GetStreamUri`, passagens do morador durante a queda da central (MA3), cadastro guiado de câmera (CR5, decisão D4).
 
 **Fase 4 — Bloqueio jurídico (em paralelo, é você com o jurídico)**
+**Atualização 2026-10-26 (informada pelo responsável, não verificável por mim):** o jurídico respondeu; o contrato e a conformidade com a LGPD foram aprovados e assinados e serão implementados no projeto. **Os documentos não estão no repositório**; sem o texto (bases legais, prazos de retenção, texto de consentimento, termos de uso, decisão sobre foto e vídeo do morador) não implemento nem declaro conformidade. Ao receber, registrar em `docs/juridico/` (sem dados pessoais) e transformar em: textos e versões de consentimento, prazos de retenção por dado, aceite de termos no app, e a decisão de ligar ou não foto de cadastro e vídeo do morador.
 D1, D16, D17, D19, D20, D21 e as 9 perguntas da seção 6. **Enquanto não responderem:** foto de cadastro e vídeo do morador ficam desligados em produção e não há identificação facial.
 
 **Fase 5 — Produção e escala [você + eu]**

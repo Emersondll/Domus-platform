@@ -9,11 +9,11 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 169 testes (31 unitários + 138 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 170 testes (31 unitários + 139 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas (última execução registrada em 2026-10-22; o agente não foi alterado depois) |
-| Web `npm test` + build | 83 testes (47 painel + 36 app do morador), builds OK |
+| Web `npm test` + build | 85 testes (49 painel + 36 app do morador), builds OK |
 | `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK nas últimas execuções registradas (2026-10-22); não reexecutados nesta rodada |
-| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 47 verificações (inclui "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
+| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 51 verificações (inclui o painel como síndico no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
 | `scripts/restore-drill.sh` | PASS (19 migrações, V1–V19) |
 | `scripts/api-smoke.py` | OK: 152 endpoints; 52 GETs de condomínio × 4 papéis; 11 endpoints sem tela |
 | `scripts/load-test.py` | executado em 2026-10-26 para "Meus acessos" (0 erros); **não** reexecutado depois do vídeo para o morador (não mexeu em auditoria nem em pool) |
@@ -24,7 +24,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 Legenda: **[eu]** posso fazer agora, sem decisão sua; **[você]** depende de decisão, contrato, equipamento ou jurídico.
 
-**Fase 1 — Endurecer o que já existe (pequeno, sem dependência) [eu]**
+**Fase 1 — Endurecer o que já existe (pequeno, sem dependência) [eu] — CONCLUÍDA em 2026-10-26** (evidência na tabela; B12 reduzido a 3 min com renovação do player, a URL repassada ainda funciona até vencer)
 1. **CR1:** travar o teto de 4 câmeras liberadas (trava por condomínio no serviço ou restrição no banco) e teste de concorrência.
 2. **B12:** token do vídeo preso só ao caminho, sem ligação com a pessoa: quem receber a URL assiste até o token vencer (10 min). Reduzir o prazo para o morador (2–3 min, com renovação) e registrar a renovação.
 3. **B14:** versionar a configuração local do servidor de mídia e um `scripts/dev-media.sh` que sobe as fontes de teste (hoje vive em `/tmp`, fora do Git, e quebra sem aviso para qualquer outra máquina).
@@ -54,15 +54,16 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | # | Achado | Gravidade | Estado |
 |---|---|---|---|
 | B11 | Teste do painel com erro de tipo quebrava o `npm run build` e passou despercebido por eu ler só o fim da saída | média (o CI teria falhado) | **corrigido**; processo na Fase 1, item 7 |
-| B12 | **Token do vídeo preso só ao caminho da câmera:** a URL HLS pode ser repassada e funciona até vencer (10 min) | média | aberto (Fase 1, item 2) |
-| B13 | Limitador de taxa devolve 429 ao `api-smoke` logo depois do e2e/carga (falso negativo da prova) | baixa | aberto |
-| B14 | A configuração do servidor de mídia usada nos testes (`/tmp/domus-run/mtx-test.yml`) e as fontes de vídeo não estão no repositório; outra máquina não reproduz o e2e de vídeo | média (reprodutibilidade) | aberto |
-| B15 | Painel: os botões de administração aparecem só depois da consulta de permissões (piscada) | baixa | aberto |
-| B16 | App do morador: 4 vídeos empilhados formam uma página muito longa no celular | baixa (estética) | aberto |
+| B12 | **Token do vídeo preso só ao caminho da câmera:** a URL HLS pode ser repassada e funciona até vencer (10 min) | média | parcial: 3 min (era 10); o token continua sem ligação com a pessoa |
+| B13 | Limitador de taxa devolve 429 ao `api-smoke` logo depois do e2e/carga (falso negativo da prova) | baixa | **corrigido** (smoke repete em 429; load-test avisa e aborta) |
+| B14 | A configuração do servidor de mídia usada nos testes (`/tmp/domus-run/mtx-test.yml`) e as fontes de vídeo não estão no repositório; outra máquina não reproduz o e2e de vídeo | média (reprodutibilidade) | **corrigido** (`scripts/dev-media.sh up|down|status`, config gerada de `deploy/media/mediamtx.yml`) |
+| B15 | Painel: os botões de administração aparecem só depois da consulta de permissões (piscada) | baixa | **corrigido** ("Carregando permissões…") |
+| B16 | App do morador: 4 vídeos empilhados formam uma página muito longa no celular | baixa (estética) | **corrigido** (grade 2×2 no celular, não testado em aparelho real) |
 | B17 | HLS no iPhone/Safari (reprodução nativa) e reprodução automática **não foram testados**; só Chromium | média | aberto |
-| B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | aberto |
+| B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
 | B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | depende de D17/D21 |
-| CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | aberto |
+| CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
+| B20 | Síndico/administração no painel: a consulta de atendimentos e turno (só de operador) devolve 403 uma vez por login. A tela deixou de tratar como erro e de repetir; o 403 único ainda aparece no console. Achado pelo e2e como síndico | baixa | aceito; ideal: endpoint que diga o papel global do usuário |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
@@ -158,7 +159,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 
 | # | Limite | O que falta |
 |---|---|---|
-| CR1 | O teto de 4 câmeras liberadas é verificado no serviço, sem trava: duas liberações simultâneas poderiam passar de 4 | restrição no banco ou trava por condomínio |
+| CR1 | ~~O teto de 4 câmeras liberadas era verificado sem trava~~ — resolvido em 2026-10-26 (trava por condomínio e teste de concorrência) | — |
 | CR2 | Qualquer morador vinculado ao condomínio (inclusive dependente) vê as câmeras liberadas; não há horário nem restrição por unidade | decisão D21 |
 | CR3 | Mesmos limites do vídeo da portaria: nenhuma câmera real testada, H.264 apenas, câmera atrás de NAT depende do agente publicar o fluxo | `docs/cameras.md` |
 | CR4 | O app não impede captura de tela nem gravação do celular | só aviso na tela |

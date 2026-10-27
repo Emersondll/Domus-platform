@@ -39,6 +39,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/common-areas` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/devices` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/devices/permissions` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/active` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/open` | condomínio | sim |

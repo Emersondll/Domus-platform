@@ -9,6 +9,7 @@
 
 Uso: scripts/api-smoke.py [--write docs/endpoint-coverage.md]. Não faz push nem altera dados (somente GET).
 """
+import time
 import glob
 import json
 import re
@@ -25,11 +26,15 @@ def get(path, subject=None):
     if subject:
         tok = json.load(urllib.request.urlopen(f"{API}/dev/token?subject={subject}"))["access_token"]
         headers["Authorization"] = f"Bearer {tok}"
-    try:
-        with urllib.request.urlopen(urllib.request.Request(API + path, headers=headers)) as r:
-            return r.status, r.read()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read()
+    # 429 do limitador (por exemplo logo depois do e2e ou do teste de carga) não é resultado do endpoint: espera e repete
+    for attempt in range(8):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(API + path, headers=headers)) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 7:
+                return e.code, e.read()
+            time.sleep(min(int(e.headers.get("Retry-After") or 15), 30))
 
 
 def front_source():

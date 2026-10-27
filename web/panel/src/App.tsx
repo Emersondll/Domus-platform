@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shared/src/api";
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
@@ -49,12 +49,25 @@ export function App() {
 
   const token = session?.token;
 
+  const staffOnly = useRef(false);
+  useEffect(() => { if (!session) staffOnly.current = false; }, [session]);
   const refresh = useCallback(async () => {
     if (!token) return;
     try {
       setOverview((await request<Overview[]>(token, "GET", "/api/v1/operator/overview")) ?? []);
-      setCalls((await request<Page<Call>>(token, "GET", "/api/v1/operator/calls/mine"))?.items ?? []);
-      setShift(await request<Shift>(token, "GET", "/api/v1/operator/shifts/current"));
+      // síndico e administração usam o painel sem ser operadores: atendimentos e turno são só de operador (403), e isso
+      // não é erro. Depois da primeira recusa a tela deixa de pedir.
+      if (!staffOnly.current) {
+        try {
+          setCalls((await request<Page<Call>>(token, "GET", "/api/v1/operator/calls/mine"))?.items ?? []);
+          setShift(await request<Shift>(token, "GET", "/api/v1/operator/shifts/current"));
+        } catch (e) {
+          if (!(e instanceof ApiError && e.status === 403)) throw e;
+          staffOnly.current = true;
+          setCalls([]);
+          setShift(null);
+        }
+      }
     } catch (e) {
       setMessage(e instanceof ApiError ? e.detail : "Unexpected error");
     }

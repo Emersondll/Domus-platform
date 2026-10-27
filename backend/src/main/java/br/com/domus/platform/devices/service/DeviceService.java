@@ -171,6 +171,7 @@ public class DeviceService implements DeviceHealthLookup {
             if (!device.isActive()) {
                 throw new ConflictException("Activate the camera first");
             }
+            devices.lockCondominium(condominiumId);
             if (devices.countByCondominiumIdAndResidentViewableTrue(condominiumId) >= MAX_RESIDENT_CAMERAS) {
                 throw new ConflictException("At most " + MAX_RESIDENT_CAMERAS + " cameras can be shown to residents");
             }

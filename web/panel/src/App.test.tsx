@@ -29,6 +29,9 @@ let visitStatus = "PENDING";
 let remoteEnabled = false;
 let videoDown = false;
 let devicePerms = "MANAGE";
+let permsGate: Promise<void> | null = null;
+let staffOnly = false;
+let mineCalls = 0;
 let panics: unknown[] = [];
 let claimed: Record<string, unknown> | null = null;
 const sirenStarts: number[] = [];
@@ -57,7 +60,7 @@ function fakeApi() {
     if (url.endsWith("/entrance-snapshots") && init?.method === "POST") return json({ id: "s1", expiresAt: new Date().toISOString(), cameraName: "Câmera hall" });
     if (url.includes("/entrance-snapshots/") && url.endsWith("/image")) return new Response(new Blob(["jpeg"]), { status: 200 });
     if (url.endsWith("/visit-requests/vr10/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
-    if (url.endsWith("/devices/permissions")) return json({ level: devicePerms, canManage: devicePerms === "MANAGE" });
+    if (url.endsWith("/devices/permissions")) { if (permsGate) await permsGate; return json({ level: devicePerms, canManage: devicePerms === "MANAGE" }); }
     if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
     if (url.endsWith("/active") || url.endsWith("/visitor-entrance") || url.endsWith("/resident-viewable")) return json({ id: "d2" });
     if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
@@ -100,6 +103,7 @@ function fakeApi() {
     if (url === "/api/v1/operator/calls/next") { panics = []; claimed = { ...call, id: "k9", source: "PANIC", callerName: null, unitLabel: "A / 101" }; return json(claimed); }
     if (url.endsWith("/remind")) return json({ id: "p1" });
     if (url === "/api/v1/operator/overview") return json(overview);
+    if (url === "/api/v1/operator/calls/mine") { mineCalls++; if (staffOnly) return json({ detail: "Forbidden" }, 403); }
     if (url === "/api/v1/operator/calls/mine") return json({ items: claimed ? [call, claimed] : [call], page: 0, size: 50, totalElements: 1 });
     if (url === "/api/v1/operator/shifts/current")
       return json({ id: "s1", startedAt: new Date().toISOString(), endedAt: null });
@@ -127,6 +131,9 @@ describe("operator panel", () => {
     visitStatus = "PENDING";
     videoDown = false;
     devicePerms = "MANAGE";
+    permsGate = null;
+    staffOnly = false;
+    mineCalls = 0;
     panics = [];
     claimed = null;
     sirenStarts.length = 0;
@@ -276,6 +283,29 @@ describe("operator panel", () => {
     expect(screen.queryByRole("button", { name: "Liberar Câmera garagem para o morador" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Editar Câmera garagem" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver ao vivo Câmera garagem" })).toBeInTheDocument();
+  });
+
+  it("lets a manager use the panel: the operator-only 403 is not an error and is not asked again", async () => {
+    staffOnly = true;
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    expect(await screen.findByRole("tab", { name: "Câmeras" })).toBeInTheDocument();
+    expect(document.querySelector(".message")).toBeNull();
+    expect(mineCalls).toBe(1);
+  });
+
+  it("shows a loading note instead of the manager-only message while permissions load", async () => {
+    let release!: () => void;
+    permsGate = new Promise<void>((r) => { release = r; });
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(await screen.findByText("Carregando permissões…")).toBeInTheDocument();
+    expect(screen.queryByText(/Só o síndico ou a administração libera/)).not.toBeInTheDocument();
+    release();
+    expect(await screen.findByText(/Só o síndico ou a administração libera/)).toBeInTheDocument();
+    expect(screen.queryByText("Carregando permissões…")).not.toBeInTheDocument();
   });
 
   it("shows how many cameras are released to residents and blocks the fifth", async () => {

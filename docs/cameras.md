@@ -17,7 +17,7 @@ câmera (RTSP) ──► MediaMTX (RTSP → HLS) ──► navegador do painel (
 2. O host do RTSP precisa estar em `DEVICE_HTTP_ALLOWED_HOSTS` (a mesma lista que protege contra SSRF os outros adaptadores).
    Esquema diferente de `rtsp`/`rtsps`, credenciais embutidas ou host fora da lista = 400 no cadastro.
 3. O operador (nível OPERATE ou mais) clica em **Ver ao vivo**. O backend registra o caminho `cam-<id>` no MediaMTX
-   (`sourceOnDemand`: o RTSP só é aberto enquanto há espectador) e devolve uma URL HLS com um **token HMAC de 10 minutos preso
+   (`sourceOnDemand`: o RTSP só é aberto enquanto há espectador) e devolve uma URL HLS com um **token HMAC de 3 minutos preso
    àquele caminho**. O endereço RTSP e a senha da câmera **nunca chegam ao navegador**.
 4. O painel renova o token antes de vencer. Cada requisição de lista e de trecho passa pelo MediaMTX, que pergunta ao backend
    (`/internal/media/auth`) se o token vale para aquele caminho.
@@ -32,6 +32,8 @@ Abrir o vídeo **não aciona nenhuma porta**. Se o servidor de mídia estiver de
 mostra imagem simulada.
 
 ## Subir o servidor de mídia (desenvolvimento)
+
+Atalho com cinco fontes RTSP falsas (padrões de teste do ffmpeg, lidas sem token **só em desenvolvimento**): `scripts/dev-media.sh up` (`down`, `status`). A config é gerada a partir de `deploy/media/mediamtx.yml`; precisa de Docker e ffmpeg. Manualmente:
 
 ```bash
 docker run -d --name domus-media --network host \

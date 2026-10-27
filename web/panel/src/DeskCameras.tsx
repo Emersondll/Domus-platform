@@ -19,8 +19,9 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   const released = cameras.filter((c) => c.residentViewable && c.active !== false);
   // O servidor é quem decide; a tela só esconde o que ele recusaria (síndico ou administração).
   const [canManage, setCanManage] = useState(false);
+  const [permsLoaded, setPermsLoaded] = useState(false);
   useEffect(() => {
-    request<{ canManage: boolean }>(token, "GET", `${base}/permissions`).then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+    request<{ canManage: boolean }>(token, "GET", `${base}/permissions`).then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false)).finally(() => setPermsLoaded(true));
   }, [token, base]);
   const [name, setName] = useState("");
   const [entrance, setEntrance] = useState("");
@@ -122,7 +123,8 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
           {released.map((c) => <li key={c.id}>{c.name} ({c.entrance}){canManage && <>{" "}<button onClick={() => act(c.id, "resident-viewable", { enabled: false })}
             aria-label={`Retirar ${c.name} dos moradores`}>Retirar</button></>}</li>)}
         </ul>
-        {!canManage && <p className="hint">Só o síndico ou a administração libera câmeras aos moradores.</p>}
+        {!permsLoaded && <p className="hint" role="status">Carregando permissões…</p>}
+        {permsLoaded && !canManage && <p className="hint">Só o síndico ou a administração libera câmeras aos moradores.</p>}
         {canManage && released.length >= MAX_RESIDENT && <p className="hint">Limite de {MAX_RESIDENT} câmeras atingido. Retire uma para liberar outra.</p>}
       </section>
       {watching.length > 0 && (

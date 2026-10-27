@@ -37,6 +37,8 @@ header .home-shortcut { flex: none; margin: 0 8px 0 0; padding: 8px 12px; font-s
 header { position: sticky; top: 0; z-index: 20; }
 header .home-shortcut[aria-current="true"] { border-color: var(--accent); }
 .camera-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 8px 0; }
+/* celular: até 4 câmeras em 2×2 para caber sem rolar uma pilha de vídeos; toque em "Tela cheia" para ampliar */
+@media (max-width: 600px) { .camera-grid { grid-template-columns: 1fr 1fr; gap: 8px; } .camera-tile { padding: 4px; } }
 .camera-tile { padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
 .camera-tile:fullscreen { background: #000; display: flex; flex-direction: column; justify-content: center; }
 .camera-tile:fullscreen video { max-width: none; height: 80vh; }

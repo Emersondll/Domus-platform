@@ -27,7 +27,14 @@ import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -212,5 +219,43 @@ class CameraStreamIT extends AbstractIntegrationTest {
         // desativar a câmera retira a liberação
         mvc.perform(post(devices() + "/" + ids[0] + "/active").with(as("cs-manager")).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"active\":false}")).andExpect(status().isOk()).andExpect(jsonPath("$.residentViewable").value(false));
+    }
+
+    @Test
+    void simultaneousReleasesNeverExceedTheCap() throws Exception {
+        OperatorCompany c = companies.save(new OperatorCompany("CS Race Company", "cs-race-0000"));
+        UUID raceCondo = condominiums.save(new Condominium(c.getId(), "CS Race", null)).getId();
+        member("cs-race-manager", Role.CONDO_MANAGER, raceCondo);
+        String base = "/api/v1/condominiums/" + raceCondo + "/devices";
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            String res = mvc.perform(post(base).with(as("cs-race-manager")).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Race " + i + "\",\"kind\":\"CAMERA\",\"adapter\":\"ONVIF\",\"entrance\":\"P\","
+                                    + "\"config\":{\"rtspUrl\":\"rtsp://localhost:8554/r" + i + "\"}}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            ids.add(res.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1"));
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        CountDownLatch go = new CountDownLatch(1);
+        List<Future<Integer>> results = new ArrayList<>();
+        for (String id : ids) {
+            Callable<Integer> call = () -> {
+                go.await();
+                return mvc.perform(post(base + "/" + id + "/resident-viewable").with(as("cs-race-manager"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+                        .andReturn().getResponse().getStatus();
+            };
+            results.add(pool.submit(call));
+        }
+        go.countDown();
+        int ok = 0, conflict = 0;
+        for (Future<Integer> f : results) {
+            int code = f.get();
+            if (code == 200) ok++;
+            else if (code == 409) conflict++;
+        }
+        pool.shutdown();
+        org.assertj.core.api.Assertions.assertThat(ok).isEqualTo(4);
+        org.assertj.core.api.Assertions.assertThat(conflict).isEqualTo(4);
     }
 }

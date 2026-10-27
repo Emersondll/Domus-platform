@@ -6,7 +6,7 @@ Requer a API com perfil dev (usa /dev/token) e com os limites de taxa elevados, 
   PORTARIA_RATE_LIMIT_API_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_VALIDATE_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_DEVICE_PER_MINUTE=1000000
 Limitações: gerador e servidor na mesma máquina; cliente em Python (GIL). Os números são um PISO de capacidade.
 """
-import argparse, http.client, json, statistics, threading, time, urllib.parse, uuid
+import argparse, sys, http.client, json, statistics, threading, time, urllib.parse, uuid
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--base", default="http://localhost:8081")
@@ -41,6 +41,13 @@ op = token("operator-sol")
 mgr = token("manager-sol")
 c0 = conn()
 condo = json.loads(call(c0, "GET", "/api/v1/condominiums", mgr)[1])["items"][0]["id"]
+
+
+# o limitador padrão distorceria tudo: 429 aparece como "erro" do sistema. Confere antes de medir.
+for _ in range(400):
+    if call(c0, "GET", "/api/v1/condominiums", mgr)[0] == 429:
+        sys.exit("limitador de taxa ativo (429): reinicie a API com PORTARIA_RATE_LIMIT_*_PER_MINUTE=1000000 (ver cabeçalho) "
+                 "e espere ~75 s se o limitador já estava quente")
 
 
 def scenario(name, fn):

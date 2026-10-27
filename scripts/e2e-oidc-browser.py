@@ -21,8 +21,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 KC = "http://localhost:8180"
 API = "http://localhost:8081"
-PASSWORD = "Senha-Longa-De-Teste-123"
 SUFFIX = secrets.token_hex(3)
+PASSWORD = "Aa1-" + secrets.token_urlsafe(18)  # usuários descartáveis do teste; nunca uma senha fixa no Git
 DB = f"e2e_oidc_{SUFFIX}"
 LOGDIR = os.environ.get("TMPDIR", "/tmp")
 procs: list[subprocess.Popen] = []

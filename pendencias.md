@@ -19,8 +19,8 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | `scripts/api-smoke.py` | OK (2026-10-27): 55 GETs de condomínio × 4 papéis; só 3 endpoints sem tela (agente e contador de não lidas); **achou um vazamento real** em `me/accesses/policy`, já corrigido |
 | `scripts/load-test.py` | reexecutado em 2026-10-27 depois da trava de reservas: 0 erros nos 6 cenários (leitura 1.200–2.500 req/s, validar credencial ~1.200 req/s, leitor com identidade ~300 req/s). **"Meus acessos" auditado deu 400–650 req/s contra 1.550 em 26/10:** a máquina estava carregada (load ~15 com navegador) e o banco de desenvolvimento acumulou ~15 mil eventos de leitor das execuções repetidas; **não comparei com o jar anterior**, então não afirmo que não houve regressão. Reavaliar em banco limpo. O script agora reconecta a conexão de preparação ociosa |
 | `scripts/e2e-two-instances.py` | **novo, OK (2 execuções, 2026-10-27):** duas JVMs reais no mesmo banco, equipamento Dahua falso; nunca mais de 1 conexão de eventos; SIGKILL; instância nova assume |
-| CI no GitHub | verde em `b3a4b38` (7 jobs); os commits seguintes estão no GitHub, conferir o resultado |
-| Câmera real, controladora real, celular real, Keycloak em navegador | **nunca testados** |
+| CI no GitHub | verde em `5f18010` (7 jobs). **`66f4fca` falhou só no job de segredos (gitleaks):** o `e2e-oidc-browser.py` tinha uma senha de teste fixa (linha 24); trocada por uma senha aleatória por execução e o teste foi reexecutado (15 OK). `78d10a8` ainda não foi enviado; conferir o CI depois do próximo push (a senha antiga continua no histórico de `66f4fca`: é sintética, de usuário descartável do Keycloak de desenvolvimento) |
+| Câmera real, controladora real, celular real, Safari/iPhone | **nunca testados** (o Keycloak em Chromium real foi provado em 2026-10-27) |
 
 ## 1.1 Plano de ação (ordem recomendada)
 
@@ -274,8 +274,8 @@ python3 scripts/e2e-browser.py        # precisa de Playwright e do jar do backen
 Detalhes e limites de cada prova: [`docs/STATUS.md`](docs/STATUS.md), [`docs/operations.md`](docs/operations.md), [`docs/security.md`](docs/security.md), [`docs/agent.md`](docs/agent.md).
 
 ## Auditoria de telas × API (2026-10-25)
-Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). A API tem 136 endpoints; **11 não têm tela**:
-- **Sem tela, a API existe:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas. É a administração da plataforma/empresa, ainda só pela API.
+Matriz completa em `docs/endpoint-coverage.md` (gerada por `scripts/api-smoke.py --write`; "tem tela" é aproximação por nome de endpoint). Em 2026-10-27 a matriz marca só **2 endpoints sem tela**: `agent/heartbeat` (por desenho) e o contador de não lidas (usado pelo selo, não por uma tela própria). As telas de administração da plataforma e da empresa foram feitas em 2026-10-26 (texto original abaixo, de 2026-10-25).
+- **Sem tela na época, a API existia:** empresas operadoras e seus administradores (`companies`), agentes locais (`agents`), rotação de chave de dispositivo, conflitos de sincronização, contador de não lidas.
 - **Sem tela por desenho:** `agent/*` (o agente local usa a API direto).
 - **Telas de cadastro feitas em 2026-10-25** (aba Cadastros, Gestão): blocos e unidades, moradores por unidade (titular, cônjuge, dependentes; desativar, acesso ao app, exportar e anonimizar), animais, equipe. O morador cuida da própria família e dos animais em "Mais > Minha casa". Escrever exige síndico ou administração; o operador consulta.
 - **Câmeras:** a aba cadastra a câmera, mostra online/offline e toca o **vídeo ao vivo** (MediaMTX + HLS). Provado com fonte RTSP de teste, **não com câmera real**; câmera atrás de NAT exige que o agente local publique o fluxo (não feito). Detalhes e limites: `docs/cameras.md`.

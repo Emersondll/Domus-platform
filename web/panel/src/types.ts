@@ -60,3 +60,10 @@ export type Block = { id: string; name: string };
 export type Resident = { id: string; unitId: string; fullName: string; email: string | null; phone: string | null; residentType: string; active: boolean };
 export type Pet = { id: string; unitId: string; name: string; species: string; breed: string | null; notes: string | null };
 export type Member = { id: string; userId: string; role: string; condominiumId: string | null; companyId: string | null; residentId: string | null };
+
+export type Company = { id: string; name: string; taxId: string };
+export type AdminScope = { platformAdmin: boolean; companies: Company[] };
+export type CondoRow = { id: string; operatorCompanyId: string; name: string; status: string };
+export type AgentRow = { id: string; name: string; status: string; online: boolean; lastSeenAt: string | null;
+  lastPolicyVersion: number | null; backlog: number };
+export type SyncConflict = { id: string; eventId: string; kind: string; detail: string; createdAt: string; resolvedAt: string | null };

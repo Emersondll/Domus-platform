@@ -31,6 +31,7 @@ let videoDown = false;
 let devicePerms = "MANAGE";
 let permsGate: Promise<void> | null = null;
 let staffOnly = false;
+let adminScope: unknown = { platformAdmin: false, companies: [] };
 let mineCalls = 0;
 let panics: unknown[] = [];
 let claimed: Record<string, unknown> | null = null;
@@ -102,6 +103,14 @@ function fakeApi() {
     if (url === "/api/v1/operator/panics") return json(panics);
     if (url === "/api/v1/operator/calls/next") { panics = []; claimed = { ...call, id: "k9", source: "PANIC", callerName: null, unitLabel: "A / 101" }; return json(claimed); }
     if (url.endsWith("/remind")) return json({ id: "p1" });
+    if (url.endsWith("/rotate-key")) return json({ apiKey: "ROTATED-KEY" });
+    if (url === "/api/v1/me/admin-scope") return json(adminScope);
+    if (url.startsWith("/api/v1/companies?")) return pg([{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }]);
+    if (url.startsWith("/api/v1/condominiums?")) return pg([{ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" }]);
+    if (url.endsWith("/agents") && (!init?.method || init.method === "GET")) return json([{ id: "ag1", name: "Servidor portaria", status: "ACTIVE", online: true, lastSeenAt: new Date().toISOString(), lastPolicyVersion: 7, backlog: 2 }]);
+    if (url.endsWith("/agents") && init?.method === "POST") return json({ id: "ag2", name: "Novo", apiKey: "KEY-ONCE", policySecret: "SECRET-ONCE" }, 201);
+    if (url.includes("/sync-conflicts?")) return pg([{ id: "cf123456-aaaa", eventId: "e1", kind: "QUOTA_EXCEEDED", detail: "Convite estourou", createdAt: new Date().toISOString(), resolvedAt: null }]);
+    if (url.endsWith("/api/v1/operator/overview")) return json(overview);
     if (url === "/api/v1/operator/overview") return json(overview);
     if (url === "/api/v1/operator/calls/mine") { mineCalls++; if (staffOnly) return json({ detail: "Forbidden" }, 403); }
     if (url === "/api/v1/operator/calls/mine") return json({ items: claimed ? [call, claimed] : [call], page: 0, size: 50, totalElements: 1 });
@@ -133,6 +142,7 @@ describe("operator panel", () => {
     devicePerms = "MANAGE";
     permsGate = null;
     staffOnly = false;
+    adminScope = { platformAdmin: false, companies: [] };
     mineCalls = 0;
     panics = [];
     claimed = null;
@@ -634,5 +644,80 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents/r1/access-identities"))?.body).toEqual({ kind: "CARD", ref: "CARD-0001" }));
     await user.click(await screen.findByRole("button", { name: "Revogar usuário do terminal de Joana Teste" }));
     await waitFor(() => expect(posted.some((p) => p.url.endsWith("/access-identities/ai0/revoke"))).toBe(true));
+  });
+
+  it("hides the administration area from staff that administer nothing", async () => {
+    await login();
+    await screen.findByText("Meus atendimentos");
+    expect(screen.queryByRole("button", { name: "Administração" })).not.toBeInTheDocument();
+  });
+
+  it("lets the platform administrator manage companies and create condominiums", async () => {
+    adminScope = { platformAdmin: true, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    expect(await screen.findByText(/CNPJ 11111111000191/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome da empresa"), "Beta Operadora");
+    await user.type(screen.getByLabelText("CNPJ (só dígitos)"), "22222222000191");
+    await user.click(screen.getByRole("button", { name: "Cadastrar empresa" }));
+    await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/companies")?.body).toEqual({ name: "Beta Operadora", taxId: "22222222000191" }));
+    await user.selectOptions(screen.getByLabelText("Empresa"), "co1");
+    await user.type(screen.getByLabelText("Identificador do usuário"), "novo-admin");
+    await user.type(screen.getByLabelText("E-mail"), "novo@example.invalid");
+    await user.type(screen.getByLabelText("Nome", { selector: "#ad-name" }), "Novo Admin");
+    await user.click(screen.getByRole("button", { name: "Adicionar administrador" }));
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/companies/co1/admins")).toBe(true));
+
+    await user.click(screen.getByRole("tab", { name: "Condomínios" }));
+    expect(await screen.findByText(/Residencial Sol · Alfa Portaria · ACTIVE/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome do condomínio"), "Residencial Lua");
+    await user.click(screen.getByRole("button", { name: "Criar condomínio" }));
+    await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/condominiums")?.body)
+      .toEqual({ operatorCompanyId: "co1", name: "Residencial Lua", taxId: null }));
+  });
+
+  it("gives the company administrator the condominiums and agents of their company, with credentials shown once", async () => {
+    adminScope = { platformAdmin: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    expect(screen.queryByRole("tab", { name: "Empresas" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Agentes e sincronização" }));
+    expect(await screen.findByText(/Servidor portaria · online/)).toBeInTheDocument();
+    expect(screen.getByText(/pendentes 2/)).toBeInTheDocument();
+    expect(await screen.findByText(/limite de uso excedido/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resolver conflito cf123456" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/sync-conflicts/cf123456-aaaa/resolve"))).toBe(true));
+    await user.type(screen.getByLabelText("Nome do novo agente"), "Novo");
+    await user.click(screen.getByRole("button", { name: "Cadastrar agente" }));
+    expect(await screen.findByText("KEY-ONCE")).toBeInTheDocument();
+    expect(screen.getByText("SECRET-ONCE")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Já guardei" }));
+    expect(screen.queryByText("KEY-ONCE")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Revogar agente Servidor portaria" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/agents/ag1/revoke"))).toBe(true));
+  });
+
+  it("rotates a device key only after confirmation and shows the new key once; the operator does not see it", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Portas" }));
+    await user.click(await screen.findByRole("button", { name: "Girar chave de Portão principal" }));
+    expect(posted.some((p) => p.url.endsWith("/rotate-key"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(posted.some((p) => p.url.endsWith("/rotate-key"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Girar chave de Portão principal" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar troca" }));
+    expect(await screen.findByText("ROTATED-KEY")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Já guardei" }));
+    expect(screen.queryByText("ROTATED-KEY")).not.toBeInTheDocument();
+  });
+
+  it("does not offer key rotation to the operator", async () => {
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Portas" }));
+    expect(await screen.findByText("Portão principal")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Girar chave de Portão principal" })).not.toBeInTheDocument();
   });
 });

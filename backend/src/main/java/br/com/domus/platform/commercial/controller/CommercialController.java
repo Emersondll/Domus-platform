@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -104,6 +105,20 @@ public class CommercialController {
         static UnitResponse from(Unit u) {
             return new UnitResponse(u.getId(), u.getBlockId(), u.getNumber());
         }
+    }
+
+    /**
+     * @param platformAdmin administra a plataforma toda
+     * @param companies     empresas operadoras que o usuário administra (todas, para o administrador da plataforma)
+     */
+    public record AdminScopeResponse(boolean platformAdmin, List<CompanyResponse> companies) {
+    }
+
+    /** O que o usuário pode administrar; a tela usa para mostrar ou esconder a área de administração. */
+    @GetMapping("/me/admin-scope")
+    public AdminScopeResponse adminScope() {
+        CommercialService.AdminScope scope = service.adminScope();
+        return new AdminScopeResponse(scope.platformAdmin(), scope.companies().stream().map(CompanyResponse::from).toList());
     }
 
     @PostMapping("/companies")

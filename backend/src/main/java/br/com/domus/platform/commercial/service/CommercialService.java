@@ -16,11 +16,14 @@ import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +67,26 @@ public class CommercialService {
     public Page<OperatorCompany> listCompanies(Pageable pageable) {
         access.requirePlatformAdmin("company.list");
         return companies.findAll(pageable);
+    }
+
+    /**
+     * Empresas que o chamador administra (todas, para o administrador da plataforma). Não audita e não lança exceção:
+     * quem não administra nada recebe lista vazia; a tela usa isso só para decidir o que mostrar, o servidor continua
+     * recusando cada ação.
+     */
+    @Transactional(readOnly = true)
+    public AdminScope adminScope() {
+        Actor actor = access.currentActor();
+        boolean platform = access.isPlatformAdmin(actor);
+        List<OperatorCompany> mine = platform
+                ? companies.findAll(Sort.by("name"))
+                : companies.findAllById(access.companyIdsAdministeredBy(actor)).stream()
+                        .sorted(Comparator.comparing(OperatorCompany::getName)).toList();
+        return new AdminScope(platform, mine);
+    }
+
+    /** @param platformAdmin administra a plataforma; @param companies empresas administradas pelo chamador */
+    public record AdminScope(boolean platformAdmin, List<OperatorCompany> companies) {
     }
 
     @Transactional

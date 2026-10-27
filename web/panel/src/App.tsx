@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shared/src/api";
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
+import { AdminArea } from "./AdminArea";
 import { CallWorkbench } from "./CallWorkbench";
 import { CameraMonitor } from "./CameraMonitor";
 import { CondoDesk } from "./CondoDesk";
 import { Login } from "./Login";
 import { OverviewPanel } from "./OverviewPanel";
 import { PanicAlerts } from "./PanicAlerts";
-import type { Call, Overview, Shift } from "./types";
+import type { AdminScope, Call, Overview, Shift } from "./types";
 
 const POLL_MS = 5000;
 
@@ -21,6 +22,8 @@ export function App() {
   const [selectedCall, setSelectedCall] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [oidc, setOidc] = useState<OidcConfig | null | undefined>(undefined); // undefined = carregando
+  const [adminScope, setAdminScope] = useState<AdminScope | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Descobre se há OIDC e, se a URL for um retorno do Keycloak, conclui o login.
@@ -48,6 +51,11 @@ export function App() {
   useTokenRefresh(oidc, session !== null, (t) => setSession((s) => (s ? { ...s, token: t } : s)));
 
   const token = session?.token;
+
+  useEffect(() => {
+    if (!token) { setAdminScope(null); setAdminOpen(false); return; }
+    request<AdminScope>(token, "GET", "/api/v1/me/admin-scope").then((a) => setAdminScope(a)).catch(() => setAdminScope(null));
+  }, [token]);
 
   const staffOnly = useRef(false);
   useEffect(() => { if (!session) staffOnly.current = false; }, [session]);
@@ -116,6 +124,9 @@ export function App() {
       <header>
         <strong>Domus Central</strong>
         <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); }}>Início</button>
+        {adminScope && (adminScope.platformAdmin || adminScope.companies.length > 0) && (
+          <button aria-pressed={adminOpen} onClick={() => setAdminOpen((v) => !v)}>Administração</button>
+        )}
         <span>{session.subject}</span>
         <span>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
         {shift ? (
@@ -144,6 +155,7 @@ export function App() {
 
       {message && <p role="status" className="message">{message}</p>}
 
+      {adminOpen && adminScope ? <AdminArea token={session.token} scope={adminScope} /> : (<>
       <OverviewPanel items={overview} selected={selectedCondo} onSelect={setSelectedCondo} />
 
       <div className="col-main">
@@ -174,6 +186,7 @@ export function App() {
           <CameraMonitor key={monitoredCondo} token={session.token} condominiumId={monitoredCondo} />
         </aside>
       )}
+      </>)}
     </div>
   );
 }

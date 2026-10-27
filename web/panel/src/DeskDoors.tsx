@@ -20,6 +20,27 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
   const doors = devices.items.filter((d) => d.kind !== "CAMERA");
   const name = (id: string) => devices.items.find((d) => d.id === id)?.name ?? "dispositivo";
 
+  // só síndico ou administração gira a chave de um equipamento (o servidor é quem decide)
+  const [canManage, setCanManage] = useState(false);
+  const [rotating, setRotating] = useState<string | null>(null);
+  const [newKey, setNewKey] = useState<{ name: string; apiKey: string } | null>(null);
+  useEffect(() => {
+    request<{ canManage: boolean }>(token, "GET", `${base}/devices/permissions`)
+      .then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+  }, [token, base]);
+
+  async function rotateKey(d: DeviceFull) {
+    setError(null);
+    try {
+      const r = await request<{ apiKey: string }>(token, "POST", `${base}/devices/${d.id}/rotate-key`);
+      if (r) setNewKey({ name: d.name, apiKey: r.apiKey });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setRotating(null);
+    }
+  }
+
   const [remoteOpen, setRemoteOpen] = useState<boolean | null>(null);
   useEffect(() => {
     request<{ enabled: boolean }>(token, "GET", `${base}/remote-open`)
@@ -61,6 +82,12 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
     <div aria-label="Portas">
       <h3>Portas e controladoras</h3>
       {error && <p role="alert" className="error">{error}</p>}
+      {newKey && (
+        <p role="status" className="hint">
+          Nova chave de "{newKey.name}" (aparece só agora, guarde): <code>{newKey.apiKey}</code>{" "}
+          <button onClick={() => setNewKey(null)}>Já guardei</button>
+        </p>
+      )}
       <ul>
         {doors.map((d) => (
           <li key={d.id}>
@@ -68,6 +95,15 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
             <span className={d.status === "ONLINE" ? "badge ok" : "badge warn"}>{d.status === "ONLINE" ? "online" : d.status === "OFFLINE" ? "offline" : "desconhecido"}</span>
             {d.lastSeenAt && <small> visto {new Date(d.lastSeenAt).toLocaleString()}</small>}{" "}
             <button onClick={() => refreshStatus(d.id)}>Atualizar estado</button>
+            {canManage && (rotating === d.id ? (
+              <span role="group" aria-label={`Confirmar troca de chave de ${d.name}`}>
+                <small>A chave atual deixa de valer; o equipamento ou agente para até receber a nova.</small>{" "}
+                <button onClick={() => rotateKey(d)}>Confirmar troca</button>{" "}
+                <button onClick={() => setRotating(null)}>Cancelar</button>
+              </span>
+            ) : (
+              <button aria-label={`Girar chave de ${d.name}`} onClick={() => setRotating(d.id)}>Girar chave</button>
+            ))}
             {remoteOpen && d.kind === "ACCESS_CONTROLLER" && (
               <button onClick={() => toggleDevice(d)} aria-pressed={!!d.residentOpenable}>
                 {d.residentOpenable ? "Bloquear abertura pelo morador" : "Liberar abertura pelo morador"}

@@ -154,4 +154,20 @@ class MemberProvisioningIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-operator-a"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-admin-b"))).andExpect(status().isNotFound());
     }
+
+    @Test
+    void adminScopeTellsEachRoleWhichCompaniesItAdministers() throws Exception {
+        mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-platform"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.platformAdmin").value(true))
+                .andExpect(jsonPath("$.companies[?(@.name=='P9 A')]").isNotEmpty())
+                .andExpect(jsonPath("$.companies[?(@.name=='P9 B')]").isNotEmpty());
+        mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-admin-a"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.platformAdmin").value(false))
+                .andExpect(jsonPath("$.companies.length()").value(1))
+                .andExpect(jsonPath("$.companies[0].name").value("P9 A"));
+        mvc.perform(get("/api/v1/me/admin-scope").with(as("p9-manager-a"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.platformAdmin").value(false))
+                .andExpect(jsonPath("$.companies.length()").value(0));
+        mvc.perform(get("/api/v1/me/admin-scope")).andExpect(status().isUnauthorized());
+    }
 }

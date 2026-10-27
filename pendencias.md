@@ -9,11 +9,11 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 170 testes (31 unitários + 139 de integração com PostgreSQL real), 0 falhas |
+| Backend `mvn verify` | 171 testes (31 unitários + 140 de integração com PostgreSQL real), 0 falhas |
 | Agente `mvn test` | 36 testes, 0 falhas (última execução registrada em 2026-10-22; o agente não foi alterado depois) |
-| Web `npm test` + build | 85 testes (49 painel + 36 app do morador), builds OK |
+| Web `npm test` + build | 90 testes (54 painel + 36 app do morador), builds OK |
 | `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK nas últimas execuções registradas (2026-10-22); não reexecutados nesta rodada |
-| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 51 verificações (inclui o painel como síndico no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
+| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 54 verificações (inclui o painel como síndico e como administrador da empresa no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
 | `scripts/restore-drill.sh` | PASS (19 migrações, V1–V19) |
 | `scripts/api-smoke.py` | OK: 152 endpoints; 52 GETs de condomínio × 4 papéis; 11 endpoints sem tela |
 | `scripts/load-test.py` | executado em 2026-10-26 para "Meus acessos" (0 erros); **não** reexecutado depois do vídeo para o morador (não mexeu em auditoria nem em pool) |
@@ -33,7 +33,7 @@ Legenda: **[eu]** posso fazer agora, sem decisão sua; **[você]** depende de de
 6. **B13:** `api-smoke` e `load-test` esperam o limitador de taxa esvaziar (hoje dão 429 falso logo depois de outra prova).
 7. **Processo:** o `npm run build` do painel falhou por erro de tipo num teste e só apareceu porque conferi a saída; passar a rodar `npm test && npm run build` com código de saída verificado antes de cada commit.
 
-**Fase 2 — Telas de administração da plataforma e da empresa (depende de D7 e D8) [você decide, eu implemento]**
+**Fase 2 — Telas de administração da plataforma e da empresa — IMPLEMENTADA em 2026-10-26, com as regras de papel que o servidor já aplicava (D8 não foi respondido: usei o que a API já impõe) e SEM planos, cobrança ou limites por empresa (D7 continua aberto)**
 Empresas operadoras, administradores, condomínios, agentes locais, rotação de chave de dispositivo e conflitos de sincronização. Hoje só existem na API (11 endpoints sem tela). **Primeiro:** você responde D8 (o que cada papel vê e faz) e D7 (planos e limites).
 
 **Fase 3 — Equipamento real [você fornece, eu ajusto]**
@@ -171,7 +171,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 2. **Telas de câmeras e imagem da entrada junto do pedido de visita — FEITO com câmera simulada (2026-10-26):** grade, tela cheia, editar/desativar, câmera de entrada, captura com prévia, imagem cifrada, retenção e visão no app. Ver [`docs/plano-cameras-visitas.md`](docs/plano-cameras-visitas.md). **Falta:** câmera real (captura HTTP/ONVIF e compatibilidade de codec), D12–D15 formalizadas (o recurso vem **desligado** por padrão) e o parecer jurídico D13.
 3. **Agente local publicar o vídeo das câmeras** no MediaMTX (câmera atrás de NAT) e ONVIF `GetStreamUri`; hoje o vídeo só funciona com RTSP alcançável pela central (`docs/cameras.md`).
 4. **Login OIDC e renovação do token em navegador contra o Keycloak real** (hoje o E2E de navegador usa o login de desenvolvimento; PKCE e API já são provados por `verify_keycloak.py`).
-5. **Telas de administração da plataforma e da empresa operadora — PENDENTE (só existe API).** Escopo:
+5. **Telas de administração da plataforma e da empresa operadora — FEITO (2026-10-26), faltam D7 (planos/limites/cobrança) e a confirmação de D8.** Botão "Administração" no painel (aparece só para quem administra algo, via `GET /me/admin-scope`): Empresas e administradores (plataforma), Condomínios (criar/listar), Agentes locais (cadastro com credenciais mostradas uma só vez, revogação, estado online), conflitos de sincronização (resolver) e "Girar chave" de equipamento (com confirmação, na aba Portas, só síndico/administração). Não há ainda: listar/revogar administradores de empresa, editar/suspender empresa ou condomínio. Escopo original:
    - **Administrador da plataforma:** cadastrar e listar empresas operadoras (`/companies`) e os administradores de cada empresa (`/companies/{id}/admins`); criar condomínios; visão de todas as empresas.
    - **Administrador da empresa operadora:** criar e gerenciar os condomínios da empresa, operadores e síndicos (hoje só a equipe de um condomínio, na aba Equipe), agentes locais (`/condominiums/{id}/agents`: cadastro e chave), rotação de chave de dispositivo (`rotate-key`) e conflitos de sincronização (`/sync-conflicts`).
    - **Antes de começar, decidir D8** (o que cada papel pode ver e fazer) e D7 (planos e limites por empresa). As telas do síndico/portaria (cadastros) foram feitas em 2026-10-25.

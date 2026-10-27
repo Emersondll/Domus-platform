@@ -539,15 +539,45 @@ try:
         mtokens = mgr.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (síndico)", "eyJ" not in mtokens)
 
+        print("== painel como administrador da empresa")
+        adm = browser.new_context(viewport={"width": 1280, "height": 900}, locale="pt-BR").new_page()
+        watch(adm, "painel-admin")
+        adm.goto("http://localhost:5173")
+        adm.locator("#subject").select_option("alpha-admin")
+        adm.get_by_role("button", name="Entrar").click()
+        adm.get_by_role("button", name="Administração").click()
+        expect(adm.get_by_role("tab", name="Empresas")).to_have_count(0)  # só o administrador da plataforma vê Empresas
+        adm.get_by_role("tab", name="Condomínios").click()
+        novo = f"Condomínio E2E {secrets.token_hex(3)}"
+        adm.get_by_label("Nome do condomínio").fill(novo)
+        adm.get_by_role("button", name="Criar condomínio").click()
+        expect(adm.get_by_text("Condomínio criado.")).to_be_visible()
+        expect(adm.get_by_text(novo).first).to_be_visible()
+        check("administrador da empresa cria um condomínio pela tela", True)
+        adm.get_by_role("tab", name="Agentes e sincronização").click()
+        adm.get_by_label("Condomínio", exact=True).select_option(label=novo)
+        adm.get_by_label("Nome do novo agente").fill("Agente E2E")
+        adm.get_by_role("button", name="Cadastrar agente").click()
+        expect(adm.get_by_text("aparecem só agora")).to_be_visible()
+        adm.get_by_role("button", name="Já guardei").click()
+        expect(adm.get_by_text("aparecem só agora")).to_have_count(0)
+        expect(adm.get_by_text(re.compile("Agente E2E · "))).to_be_visible()
+        check("administrador cadastra um agente; as credenciais aparecem uma só vez", True)
+        atokens = adm.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
+        check("nenhum token guardado em localStorage/sessionStorage (administrador)", "eyJ" not in atokens)
+
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)
         # conhecido e aceito: síndico não é operador, então a primeira consulta de atendimentos recebe 403 (a tela não repete);
         # remove da contagem só esse 403 do síndico, qualquer outro erro continua falhando
-        known = [f for f in failed_requests if f.startswith("painel-sindico: 403 GET") and f.endswith("/api/v1/operator/calls/mine")]
-        if known:
-            drop = next((e for e in errors if e.startswith("painel-sindico: Failed to load resource") and "403" in e), None)
-            if drop:
-                errors.remove(drop)
+        staff_labels = ("painel-sindico", "painel-admin")
+        f403 = [f for f in failed_requests if f.split(": ")[0] in staff_labels and ": 403 " in f]
+        known = [f for f in f403 if f.endswith("/api/v1/operator/calls/mine")]
+        if known and len(known) == len(f403):  # qualquer outro 403 continua falhando
+            for _ in known:
+                drop = next((e for e in errors if e.split(": ")[0] in staff_labels and "Failed to load resource" in e and "403" in e), None)
+                if drop:
+                    errors.remove(drop)
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]) + (" | requisições com erro: " + str(failed_requests[:6]) if errors else ""))
         browser.close()
 finally:

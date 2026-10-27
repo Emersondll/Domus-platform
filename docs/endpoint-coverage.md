@@ -8,10 +8,10 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/agent/events` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/heartbeat` | agente/dispositivo/mídia | **não** |
 | GET | `/api/v1/agent/policy` | agente/dispositivo/mídia | **não** |
-| POST | `/api/v1/agent/rotate-key` | agente/dispositivo/mídia | **não** |
-| GET | `/api/v1/companies` | condomínio | **não** |
-| POST | `/api/v1/companies` | condomínio | **não** |
-| POST | `/api/v1/companies/{companyId}/admins` | condomínio | **não** |
+| POST | `/api/v1/agent/rotate-key` | agente/dispositivo/mídia | sim |
+| GET | `/api/v1/companies` | condomínio | sim |
+| POST | `/api/v1/companies` | condomínio | sim |
+| POST | `/api/v1/companies/{companyId}/admins` | condomínio | sim |
 | GET | `/api/v1/condominiums` | condomínio | sim |
 | POST | `/api/v1/condominiums` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}` | condomínio | sim |
@@ -21,8 +21,8 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/access/report` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/access/report.csv` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/access/validate` | condomínio | sim |
-| GET | `/api/v1/condominiums/{condominiumId}/agents` | condomínio | **não** |
-| POST | `/api/v1/condominiums/{condominiumId}/agents` | condomínio | **não** |
+| GET | `/api/v1/condominiums/{condominiumId}/agents` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/agents` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/agents/{agentId}/revoke` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/announcements` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/announcements` | condomínio | sim |
@@ -46,7 +46,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/refresh-status` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/resident-openable` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/resident-viewable` | condomínio | sim |
-| POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/rotate-key` | condomínio | **não** |
+| POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/rotate-key` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/visitor-entrance` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/entrance-snapshots` | condomínio | sim |
@@ -135,7 +135,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/residents/{residentId}/photo-status` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/shift-log` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/shift-log` | condomínio | sim |
-| GET | `/api/v1/condominiums/{condominiumId}/sync-conflicts` | condomínio | **não** |
+| GET | `/api/v1/condominiums/{condominiumId}/sync-conflicts` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/sync-conflicts/{conflictId}/resolve` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/units` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/units` | condomínio | sim |
@@ -146,6 +146,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/visit-requests/{requestId}/snapshot` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/visitors` | condomínio | sim |
 | POST | `/api/v1/devices/{deviceId}/events` | agente/dispositivo/mídia | sim |
+| GET | `/api/v1/me/admin-scope` | morador | sim |
 | GET | `/api/v1/me/residencies` | morador | sim |
 | GET | `/api/v1/operator/calls/mine` | portaria/painel | sim |
 | POST | `/api/v1/operator/calls/next` | portaria/painel | sim |

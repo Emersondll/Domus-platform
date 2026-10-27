@@ -28,6 +28,8 @@ câmera (RTSP) ──► MediaMTX (RTSP → HLS) ──► navegador do painel (
 <câmera>" ou "Abrir até 4 câmeras"), nunca sozinho, porque cada abertura é auditada e usa banda. Máximo de 4 ao mesmo tempo.
 Cadastro e edição continuam na aba Câmeras.
 
+O player tem tempo limite de 20 s para conectar e, se a câmera ou o servidor de mídia falharem, tenta de novo com espera crescente (5, 10, 20, 30, 30 s) antes de pedir para fechar e abrir; cada tentativa abre uma sessão e é auditada. Erro de permissão (404/403) não é repetido.
+
 Abrir o vídeo **não aciona nenhuma porta**. Se o servidor de mídia estiver desligado ou fora do ar, o painel mostra o erro; nunca
 mostra imagem simulada.
 

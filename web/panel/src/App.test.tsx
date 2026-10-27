@@ -338,6 +338,19 @@ describe("operator panel", () => {
     expect(hlsInstances.length).toBe(hlsBefore);
   });
 
+  it("keeps trying while the media server is down and connects when it comes back", async () => {
+    videoDown = true;
+    const hlsBefore = hlsInstances.length;
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    await user.click(await screen.findByRole("button", { name: "Ver ao vivo Câmera garagem" }));
+    expect(await screen.findByText(/Tentando de novo/)).toBeInTheDocument();
+    videoDown = false;
+    await waitFor(() => expect(hlsInstances.length).toBe(hlsBefore + 1), { timeout: 9000 });
+    expect(screen.queryByText(/Tentando de novo/)).not.toBeInTheDocument();
+  }, 20000);
+
   it("highlights a panic alert waiting in the queue", async () => {
     await login();
     expect(await screen.findByText(/PÂNICO na fila: 1/)).toBeInTheDocument();

@@ -4,6 +4,10 @@ import { ApiError, request } from "../../shared/src/api";
 
 type Session = { hlsUrl: string; expiresAt: string };
 
+const CONNECT_TIMEOUT_MS = 20_000;
+/** Esperas entre tentativas de reconexão; depois da última o player desiste e pede para fechar e abrir de novo. */
+const RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000, 30_000];
+
 /**
  * Vídeo ao vivo de uma câmera (HLS). O endereço RTSP nunca chega ao navegador: o backend entrega uma URL do servidor
  * de mídia com token curto, renovado antes de vencer. Se o servidor de mídia ou a câmera não responderem, mostra o erro
@@ -19,8 +23,30 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
   useEffect(() => {
     let hls: Hls | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let connectTimer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let live = false;
+    let attempts = 0;
     let currentToken = "";
+
+    /**
+     * Falha de conexão (câmera fora do ar, servidor de mídia reiniciando): mostra o erro e tenta de novo com espera
+     * crescente, no máximo {@link RETRY_DELAYS_MS} vezes. Cada tentativa abre uma sessão nova (e a registra na auditoria).
+     */
+    function fail(message: string) {
+      if (stopped) return;
+      live = false;
+      if (connectTimer) clearTimeout(connectTimer);
+      if (timer) clearTimeout(timer);
+      hls?.destroy();
+      hls = null;
+      if (attempts >= RETRY_DELAYS_MS.length) {
+        setError(`${message} Feche o vídeo e abra de novo.`);
+        return;
+      }
+      setError(`${message} Tentando de novo…`);
+      timer = setTimeout(() => { setError(null); setStatus("Reconectando…"); void open(true); }, RETRY_DELAYS_MS[attempts++]);
+    }
 
     async function open(first: boolean) {
       try {
@@ -38,26 +64,38 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
                 xhr.open("GET", u.toString(), true);
               },
             });
-            hls.on(Hls.Events.MANIFEST_PARSED, () => { setStatus("Ao vivo"); void video.current?.play().catch(() => {}); });
-            hls.on(Hls.Events.ERROR, (_e, data) => {
-              if (data.fatal) setError("Sem imagem: a câmera ou o servidor de mídia não respondeu.");
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              live = true;
+              attempts = 0;
+              if (connectTimer) clearTimeout(connectTimer);
+              setStatus("Ao vivo");
+              void video.current?.play().catch(() => {});
             });
+            hls.on(Hls.Events.ERROR, (_e, data) => {
+              if (data.fatal) fail("Sem imagem: a câmera ou o servidor de mídia não respondeu.");
+            });
+            connectTimer = setTimeout(() => { if (!live) fail("Sem imagem: a conexão demorou demais."); }, CONNECT_TIMEOUT_MS);
             hls.loadSource(session.hlsUrl);
             hls.attachMedia(video.current);
           } else if (video.current.canPlayType("application/vnd.apple.mpegurl")) {
             video.current.src = session.hlsUrl;
+            live = true;
             setStatus("Ao vivo");
           } else {
             setError("Este navegador não reproduz HLS.");
           }
         }
+        if (!first && !live) return;
         const wait = Math.max(30_000, new Date(session.expiresAt).getTime() - Date.now() - 60_000);
         timer = setTimeout(() => void open(false), wait);
       } catch (e) {
         if (stopped) return;
-        setError(e instanceof ApiError && e.status === 409
+        const msg = e instanceof ApiError && e.status === 409
           ? "Vídeo indisponível: o servidor de mídia está desligado ou fora do ar, ou a câmera não tem fonte de vídeo."
-          : e instanceof ApiError ? e.detail : "Unexpected error");
+          : e instanceof ApiError ? e.detail : "Unexpected error";
+        // 404 (câmera não liberada/retirada) e 403 não se resolvem sozinhos: não insiste
+        if (e instanceof ApiError && e.status !== 409 && e.status < 500) setError(msg);
+        else fail(msg);
       }
     }
 
@@ -65,6 +103,7 @@ export function CameraPlayer({ token, sessionUrl, name, onClose }:
     return () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      if (connectTimer) clearTimeout(connectTimer);
       hls?.destroy();
     };
   }, [token, sessionUrl]);

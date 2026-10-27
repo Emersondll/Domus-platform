@@ -186,6 +186,7 @@ try:
         expect(pan.get_by_role("heading", name="Abrir porta")).to_be_visible()
         check("operador atende a chamada do morador", True)
 
+        pan.locator("#door-device option", has_text="Portão principal").first.wait_for(state="attached", timeout=20000)  # a lista de portas carrega depois
         options = pan.locator("#door-device option").all_text_contents()
         main = next(o for o in options if "Portão principal" in o)
         pan.locator("#door-device").select_option(label=main)

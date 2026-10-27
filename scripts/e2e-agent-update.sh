@@ -7,6 +7,8 @@ ROOT=$PWD
 WORK=$(mktemp -d)
 cleanup() { [ -n "${HTTP_PID:-}" ] && kill "$HTTP_PID" 2>/dev/null || true; rm -rf "$WORK"; }
 trap cleanup EXIT
+# roda o launcher por N segundos e para o agente com TERM (como o systemd), sem deixar java órfão
+run_launcher_for() { agent/install/portaria-agent-run.sh > "$2" 2>&1 & local l=$!; sleep "$1"; pkill -TERM -P "$l" || true; wait "$l" || true; }
 ok() { echo "  ok   $1"; }
 die() { echo "  FAIL $1"; exit 1; }
 
@@ -45,19 +47,21 @@ cmp -s "$WORK/data/bin/agent.jar.previous" "$WORK/agent-1.0.0.jar" && ok "1.0.0 
 [ -f "$WORK/data/update-pending" ] && ok "marcador update-pending criado"
 
 echo "== reinício (como o systemd faria): sobe a 1.1.0 e a atualização é confirmada"
-set +e; timeout 9 agent/install/portaria-agent-run.sh > "$WORK/run2.log" 2>&1; set -e
+# o systemd para o serviço enviando TERM ao processo do agente (não ao launcher): o launcher então avalia a estabilidade.
+# (Com `timeout` sobre o launcher o próprio script morria antes de avaliar e deixava o java órfão.)
+run_launcher_for 8 "$WORK/run2.log"
 grep -q "running 1.1.0" "$WORK/run2.log" && ok "agora executando 1.1.0" || { cat "$WORK/run2.log"; die "não subiu a 1.1.0"; }
 [ ! -f "$WORK/data/update-pending" ] && ok "atualização confirmada (marcador removido)" || die "marcador continua"
 
 echo "== manifesto adulterado e manifesto de outra chave: recusados, versão não muda"
 before=$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)
 sed -i 's/"version":"1.1.0"/"version":"9.9.9"/' "$WORK/release/manifest.json"
-set +e; timeout 15 agent/install/portaria-agent-run.sh > "$WORK/run3.log" 2>&1; set -e
+run_launcher_for 12 "$WORK/run3.log"
 grep -q "update manifest rejected: invalid signature" "$WORK/run3.log" && ok "manifesto adulterado recusado (assinatura inválida)" || { cat "$WORK/run3.log"; die "adulterado não foi recusado"; }
 java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/evil" >/dev/null
 cp "$WORK/agent-1.1.0.jar" "$WORK/evil-9.9.9.jar"
 java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/evil-9.9.9.jar" 9.9.9 stable "$WORK/evil/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" >/dev/null
-set +e; timeout 15 agent/install/portaria-agent-run.sh > "$WORK/run4.log" 2>&1; set -e
+run_launcher_for 12 "$WORK/run4.log"
 grep -q "update manifest rejected: invalid signature" "$WORK/run4.log" && ok "manifesto assinado por outra chave recusado" || { cat "$WORK/run4.log"; die "outra chave não foi recusada"; }
 [ "$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)" = "$before" ] && ok "o jar em disco não mudou"
 echo "== OK"

@@ -24,8 +24,15 @@ def call(c, method, path, token=None, body=None):
     h = {"Content-Type": "application/json"}
     if token:
         h["Authorization"] = f"Bearer {token}"
-    c.request(method, path, json.dumps(body) if body is not None else None, h)
-    r = c.getresponse()
+    payload = json.dumps(body) if body is not None else None
+    try:
+        c.request(method, path, payload, h)
+        r = c.getresponse()
+    except (http.client.RemoteDisconnected, ConnectionResetError, BrokenPipeError):
+        # o servidor fecha conexões ociosas (keep-alive de ~20 s); a de preparação fica parada durante os cenários
+        c.close()
+        c.request(method, path, payload, h)
+        r = c.getresponse()
     data = r.read()
     return r.status, data
 

@@ -99,6 +99,7 @@ final class FakeDahuaDevice {
         if (uri.contains("eventManager.cgi")) {
             ex.getResponseHeaders().add("Content-Type", "multipart/x-mixed-replace; boundary=myboundary");
             ex.sendResponseHeaders(200, 0);
+            ex.getResponseBody().flush(); // os cabeçalhos saem já: o equipamento real não espera o primeiro evento para responder
             Stream s = new Stream(ex.getResponseBody(), new CountDownLatch(1));
             streams.add(s);
             try {

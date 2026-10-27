@@ -190,4 +190,22 @@ class DahuaEventsIT extends AbstractIntegrationTest {
         assertThat(jdbc.sql("SELECT owner FROM device_event_lease WHERE device_id = ?").param(device)
                 .query(String.class).single()).isNotEqualTo("outra-instancia");
     }
+
+    @Test
+    void theEventStreamStaysOpenInsteadOfReconnectingEveryFewSeconds() throws Exception {
+        // equipamento falso só deste teste: a contagem de conexões não se mistura com a dos outros dispositivos da classe
+        FakeDahuaDevice own = new FakeDahuaDevice("secret-pass");
+        try {
+            String config = "{\"baseUrl\":\"" + own.baseUrl() + "\",\"userEnv\":\"DH_USER\",\"passwordEnv\":\"DH_PASS\"}";
+            mvc.perform(post(url("/devices")).with(as("dh-manager")).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Controladora estável\",\"kind\":\"ACCESS_CONTROLLER\",\"adapter\":\"DAHUA_CGI\","
+                            + "\"entrance\":\"estavel\",\"config\":" + config + "}")).andExpect(status().isCreated());
+            subscriber.reconcile();
+            Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> own.streamCount() == 1);
+            Thread.sleep(8_000); // antes o timeout de 5 s do pedido HTTP derrubava o fluxo e ele reconectava a cada ~6 s
+            assertThat(own.streamCount()).isEqualTo(1);
+        } finally {
+            own.stop();
+        }
+    }
 }

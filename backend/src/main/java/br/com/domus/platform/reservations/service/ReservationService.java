@@ -77,7 +77,9 @@ public class ReservationService {
     public Reservation reserve(UUID condominiumId, UUID areaId, Instant startAt, Instant endAt) {
         ResidentContext me = access.requireResident(condominiumId, "reservation.create");
         validateWindow(startAt, endAt);
-        areas.findByIdAndCondominiumId(areaId, condominiumId)
+        // Trava a área: duas reservas concorrentes do mesmo espaço entravam em deadlock na verificação da exclusion constraint
+        // (o Postgres abortava uma com 500). Serializadas, a segunda recebe a violação limpa e vira 409.
+        areas.findWithLockByIdAndCondominiumId(areaId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Common area not found"));
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
         // saveAndFlush: a violação da exclusion constraint precisa surgir aqui, dentro do caso de uso.

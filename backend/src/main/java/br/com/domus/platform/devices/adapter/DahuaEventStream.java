@@ -38,6 +38,7 @@ public class DahuaEventStream {
     }
 
     static final int HEARTBEAT_SECONDS = 5;
+    private static final Duration HEADERS_TIMEOUT = Duration.ofSeconds(5);
 
     private final HostPolicy hosts;
     private final DeviceSecrets secrets;
@@ -85,7 +86,7 @@ public class DahuaEventStream {
 
     private HttpResponse<InputStream> open(URI uri, String user, String password)
             throws IOException, InterruptedException, DeviceCommunicationException {
-        HttpResponse<InputStream> first = client.send(request(uri).build(), HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> first = send(request(uri).build());
         if (first.statusCode() != 401) {
             return first;
         }
@@ -97,22 +98,40 @@ public class DahuaEventStream {
         if (auth.isEmpty()) {
             throw new DeviceCommunicationException("Device did not offer Digest authentication");
         }
-        return client.send(request(uri).header("Authorization", auth.get()).build(),
-                HttpResponse.BodyHandlers.ofInputStream());
+        return send(request(uri).header("Authorization", auth.get()).build());
+    }
+
+    /**
+     * Espera só os cabeçalhos da resposta (até {@link #HEADERS_TIMEOUT}). Não se usa {@code HttpRequest.timeout}: ele
+     * continua valendo durante a leitura do corpo e derrubava o fluxo de eventos, que nunca termina, a cada ~5 s.
+     * Depois dos cabeçalhos quem vigia a conexão é o watchdog de {@link #read}.
+     */
+    private HttpResponse<InputStream> send(HttpRequest request) throws IOException, InterruptedException {
+        var future = client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
+        try {
+            return future.get(HEADERS_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            future.cancel(true);
+            throw new IOException("Device did not answer in " + HEADERS_TIMEOUT.toSeconds() + " s", e);
+        } catch (java.util.concurrent.ExecutionException e) {
+            throw new IOException(e.getCause() == null ? e : e.getCause());
+        }
     }
 
     private static HttpRequest.Builder request(URI uri) {
-        return HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(5)).GET();
+        return HttpRequest.newBuilder(uri).GET();
     }
 
     private void read(InputStream in, Listener listener) throws IOException {
         long staleAfterNanos = Duration.ofSeconds(3L * heartbeatSeconds).toNanos();
         long[] last = {System.nanoTime()};
+        Thread readerThread = Thread.currentThread();
         Thread watchdog = Thread.ofVirtual().start(() -> {
             try {
                 while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
-                    if (System.nanoTime() - last[0] > staleAfterNanos) {
+                    // interromper quem lê não solta um read bloqueado: quem parou a assinatura (posse perdida, config nova) fecha o socket
+                    if (readerThread.isInterrupted() || System.nanoTime() - last[0] > staleAfterNanos) {
                         in.close();
                         return;
                     }

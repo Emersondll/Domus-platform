@@ -192,6 +192,25 @@ class CondominialOperationsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void concurrentOverlappingReservationsNeverDeadlockOverManyRounds() throws Exception {
+        String url = "/api/v1/condominiums/" + condoA + "/me/reservations";
+        for (int round = 0; round < 25; round++) {
+            String areaId = body(mvc.perform(post("/api/v1/condominiums/" + condoA + "/common-areas").with(as("p3-manager"))
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Rodada " + round + "\",\"capacity\":10}"))
+                    .andExpect(status().isCreated()).andReturn()).get("id").asString();
+            Instant start = Instant.now().plus(10 + round, ChronoUnit.DAYS);
+            String payload = "{\"areaId\":\"" + areaId + "\",\"startAt\":\"" + start + "\",\"endAt\":\""
+                    + start.plus(2, ChronoUnit.HOURS) + "\"}";
+            List<Callable<Integer>> tasks = new ArrayList<>();
+            for (String who : List.of("p3-res-101", "p3-res-102")) {
+                tasks.add(() -> mvc.perform(post(url).with(as(who)).contentType(MediaType.APPLICATION_JSON)
+                        .content(payload)).andReturn().getResponse().getStatus());
+            }
+            assertThat(runConcurrently(tasks)).as("round " + round).containsExactlyInAnyOrder(201, 409);
+        }
+    }
+
+    @Test
     void singleUseCredentialIsGrantedExactlyOnceUnderConcurrency() throws Exception {
         String token = invite("p3-res-101", condoA, 1).get("token").asString();
         String url = "/api/v1/condominiums/" + condoA + "/access/validate";

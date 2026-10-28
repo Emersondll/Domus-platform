@@ -15,7 +15,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         "portaria.rate-limit.agent-per-minute=100000", "portaria.rate-limit.device-per-minute=100000",
         "portaria.rate-limit.max-auth-failures=100000"})
 @AutoConfigureMockMvc
-abstract class AbstractIntegrationTest {
+public abstract class AbstractIntegrationTest {
 
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17");
 
@@ -47,5 +47,5 @@ abstract class AbstractIntegrationTest {
     }
 
     @MockitoBean
-    JwtDecoder jwtDecoder;
+    protected JwtDecoder jwtDecoder;
 }

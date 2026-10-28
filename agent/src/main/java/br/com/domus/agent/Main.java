@@ -3,6 +3,8 @@ package br.com.domus.agent;
 import br.com.domus.agent.update.AgentUpdater;
 import br.com.domus.agent.update.UpdateConfig;
 import br.com.domus.agent.update.UpdateVerifier;
+import br.com.domus.agent.video.VideoRelay;
+import br.com.domus.agent.video.VideoRelayConfig;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.concurrent.Executors;
@@ -68,7 +70,15 @@ public final class Main {
             log.info("Automatic updates enabled (channel {}, every {} h, running {})", u.channel(), u.interval().toHours(),
                     AgentUpdater.runningVersion());
         });
+        // Vídeo de câmeras atrás de NAT: só liga se PORTARIA_VIDEO_CAMERAS estiver configurado (desligado por padrão).
+        VideoRelay relay = VideoRelayConfig.fromEnv(System.getenv()).map(VideoRelay::new).orElse(null);
+        if (relay != null) {
+            relay.start();
+        }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (relay != null) {
+                relay.close();
+            }
             scheduler.shutdown();
             api.close();
             store.close();

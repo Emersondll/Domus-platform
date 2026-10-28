@@ -534,6 +534,19 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices"))?.body).toEqual({ name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", config: { rtspUrl: "rtsp://192.168.0.20:554/stream1", rtspCredentialsEnv: "CAM_HALL_CRED" } }));
   });
 
+  it("registers a camera whose video the local agent publishes, without any RTSP address on the central", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    await user.type(screen.getByLabelText("Nome"), "Câmera NAT");
+    await user.type(screen.getByLabelText("Entrada"), "garagem");
+    await user.click(screen.getByLabelText(/Vídeo publicado pelo agente local/));
+    expect(screen.queryByLabelText(/Endereço RTSP/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cadastrar câmera" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices") && (p.body as { name: string }).name === "Câmera NAT")?.body)
+      .toEqual({ name: "Câmera NAT", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", config: { videoSource: "AGENT" } }));
+  });
+
   it("queries the access report by period and offers the CSV export", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));

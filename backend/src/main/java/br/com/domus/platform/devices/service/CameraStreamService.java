@@ -124,7 +124,7 @@ public class CameraStreamService implements ViewSessionRevoker {
             return List.of();
         }
         return devices.residentViewable(condominiumId).stream()
-                .filter(d -> d.isActive() && d.getConfig().containsKey("rtspUrl")).toList();
+                .filter(d -> d.isActive() && d.hasVideoSource()).toList();
     }
 
     /** Sessão de visualização para o morador: só câmeras liberadas pelo síndico; cada abertura é auditada. */
@@ -141,7 +141,7 @@ public class CameraStreamService implements ViewSessionRevoker {
     private Session start(UUID userId, UUID condominiumId, Device device, String auditAction, String kind) {
         UUID deviceId = device.getId();
         String rtspUrl = device.getConfig().get("rtspUrl");
-        if (!"CAMERA".equals(device.getKind()) || rtspUrl == null) {
+        if (!device.hasVideoSource()) {
             throw new ConflictException("Camera has no video source configured");
         }
         if (!device.isActive()) {
@@ -152,7 +152,9 @@ public class CameraStreamService implements ViewSessionRevoker {
         }
         String path = pathOf(device.getId());
         try {
-            media.ensurePath(path, sourceUrl(device, rtspUrl));
+            if (!device.isAgentPublished()) { // com agente local o caminho nasce quando ele publica; a central não puxa nada
+                media.ensurePath(path, sourceUrl(device, rtspUrl));
+            }
         } catch (DeviceAdapter.DeviceCommunicationException e) {
             throw new ConflictException("Media server unavailable");
         }
@@ -170,7 +172,7 @@ public class CameraStreamService implements ViewSessionRevoker {
 
     /** A câmera tem fonte RTSP, está ativa e o servidor de mídia está ligado (o backend pode ler o fluxo dela). */
     public boolean canReadInternally(Device device) {
-        return enabled && device.isActive() && "CAMERA".equals(device.getKind()) && device.getConfig().containsKey("rtspUrl");
+        return enabled && device.isActive() && device.hasVideoSource();
     }
 
     /**
@@ -180,7 +182,9 @@ public class CameraStreamService implements ViewSessionRevoker {
      */
     public String internalReadUrl(Device device) throws DeviceAdapter.DeviceCommunicationException {
         String path = pathOf(device.getId());
-        media.ensurePath(path, sourceUrl(device, device.getConfig().get("rtspUrl")));
+        if (!device.isAgentPublished()) {
+            media.ensurePath(path, sourceUrl(device, device.getConfig().get("rtspUrl")));
+        }
         return internalRtspUrl + "/" + path + "?token=" + sign(path, INTERNAL_SESSION, clock.instant().plusSeconds(60));
     }
 

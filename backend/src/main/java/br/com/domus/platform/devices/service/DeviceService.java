@@ -94,6 +94,7 @@ public class DeviceService implements DeviceHealthLookup {
         }
         requireValidDirection(config);
         requireNoSecretValues(config);
+        requireValidVideoSource(kind, config);
         if (devices.existsByCondominiumIdAndName(condominiumId, name)) {
             throw new ConflictException("Device name already in use");
         }
@@ -103,6 +104,26 @@ public class DeviceService implements DeviceHealthLookup {
         audit.record(actor.userId(), null, condominiumId, "device.register", "device", device.getId().toString(),
                 AuditOutcome.SUCCESS);
         return new Registered(device, apiKey);
+    }
+
+    /**
+     * {@code videoSource=AGENT} marca a câmera cujo vídeo o agente local publica (atrás de NAT). Só vale para câmeras e não
+     * convive com {@code rtspUrl}: o endereço da câmera fica na rede do condomínio, nunca na central.
+     */
+    private static void requireValidVideoSource(String kind, Map<String, String> config) {
+        String source = config == null ? null : config.get("videoSource");
+        if (source == null) {
+            return;
+        }
+        if (!"AGENT".equals(source)) {
+            throw new IllegalArgumentException("videoSource must be AGENT");
+        }
+        if (!"CAMERA".equals(kind)) {
+            throw new IllegalArgumentException("videoSource only applies to cameras");
+        }
+        if (config.containsKey("rtspUrl")) {
+            throw new IllegalArgumentException("A camera published by the agent has no rtspUrl on the central");
+        }
     }
 
     /**
@@ -143,6 +164,7 @@ public class DeviceService implements DeviceHealthLookup {
         }
         requireValidDirection(next);
         requireNoSecretValues(next);
+        requireValidVideoSource(device.getKind(), next);
         if (devices.existsByCondominiumIdAndNameAndIdNot(condominiumId, name, deviceId)) {
             throw new ConflictException("Device name already in use");
         }

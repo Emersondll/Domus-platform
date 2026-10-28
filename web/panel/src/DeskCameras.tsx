@@ -29,6 +29,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   const [adapter, setAdapter] = useState("ONVIF");
   const [rtspUrl, setRtspUrl] = useState("");
   const [rtspEnv, setRtspEnv] = useState("");
+  const [viaAgent, setViaAgent] = useState(false);
   const [watching, setWatching] = useState<DeviceFull[]>([]);
   const [editing, setEditing] = useState<DeviceFull | null>(null);
   const [editName, setEditName] = useState("");
@@ -39,6 +40,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
   const [error, setError] = useState<string | null>(null);
 
   function cameraConfig(): Record<string, string> {
+    if (viaAgent) return { videoSource: "AGENT" }; // o endereço da câmera fica no agente local, nunca na central
     const config: Record<string, string> = {};
     if (rtspUrl.trim()) config.rtspUrl = rtspUrl.trim();
     if (rtspUrl.trim() && rtspEnv.trim()) config.rtspCredentialsEnv = rtspEnv.trim();
@@ -56,6 +58,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
       setEntrance("");
       setRtspUrl("");
       setRtspEnv("");
+      setViaAgent(false);
       await devices.reload();
     } catch (e) {
       setError(errorMessage(e));
@@ -202,12 +205,20 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         <option value="AGENT_RELAY">Via agente local</option>
         <option value="SIMULATOR">Simulador (só desenvolvimento)</option>
       </select>
+      <label htmlFor="cam-via-agent">
+        <input id="cam-via-agent" type="checkbox" checked={viaAgent} onChange={(e) => setViaAgent(e.target.checked)} />{" "}
+        Vídeo publicado pelo agente local (câmera atrás de NAT; o endereço fica só no agente)
+      </label>
+      {!viaAgent && (
+        <>
       <label htmlFor="cam-rtsp">Endereço RTSP (opcional, sem usuário e senha)</label>
       <input id="cam-rtsp" maxLength={200} placeholder="rtsp://192.168.0.20:554/stream1" value={rtspUrl}
         onChange={(e) => setRtspUrl(e.target.value)} />
       <label htmlFor="cam-rtsp-env">Variável de ambiente com usuário:senha da câmera (opcional)</label>
       <input id="cam-rtsp-env" maxLength={80} placeholder="CAM_PORTARIA_CRED" value={rtspEnv}
         onChange={(e) => setRtspEnv(e.target.value)} />
+        </>
+      )}
       <button disabled={!name.trim() || !entrance.trim()} onClick={register}>Cadastrar câmera</button>
         </>
       )}

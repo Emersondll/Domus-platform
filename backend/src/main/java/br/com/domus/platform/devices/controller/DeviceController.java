@@ -81,7 +81,7 @@ public class DeviceController {
         public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
                     d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable(),
-                    "CAMERA".equals(d.getKind()) && d.getConfig().containsKey("rtspUrl"), d.isActive(),
+                    d.hasVideoSource(), d.isActive(),
                     d.isVisitorEntrance(), d.isResidentViewable(), "CAMERA".equals(d.getKind()) ? d.getConfig() : Map.of());
         }
     }

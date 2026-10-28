@@ -93,6 +93,16 @@ public class Device {
         this.config = config;
     }
 
+    /** A câmera publica o próprio vídeo no servidor de mídia pelo agente local (câmera atrás de NAT). */
+    public boolean isAgentPublished() {
+        return "CAMERA".equals(kind) && "AGENT".equals(config.get("videoSource"));
+    }
+
+    /** A câmera tem de onde tirar vídeo: um RTSP alcançável pela central ou um agente local que o publica. */
+    public boolean hasVideoSource() {
+        return "CAMERA".equals(kind) && (config.containsKey("rtspUrl") || isAgentPublished());
+    }
+
     /** Define se o registro está ativo. */
     public void setActive(boolean active) {
         this.active = active;

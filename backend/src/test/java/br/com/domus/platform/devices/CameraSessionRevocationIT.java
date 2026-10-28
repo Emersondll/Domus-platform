@@ -51,6 +51,7 @@ class CameraSessionRevocationIT extends AbstractIntegrationTest {
     @Autowired ResidentRepository residents;
     @Autowired AppUserRepository users;
     @Autowired MembershipRepository memberships;
+    @Autowired org.springframework.jdbc.core.simple.JdbcClient jdbc;
     @MockitoBean MediaServer media;
 
     UUID condo;
@@ -192,5 +193,29 @@ class CameraSessionRevocationIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[?(@.type=='CAMERA_RELEASED')]").isNotEmpty());
         mvc.perform(get(notes).with(as("sr-dependent"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='CAMERA_RELEASED')]").isEmpty());
+    }
+
+    @Test
+    void simultaneousOpeningsByTheSameUserNeverFailAndStayUnderTheCap() throws Exception {
+        String id = camera("Cam Concorrente");
+        UUID userId = users.findByExternalSubject("sr-operator").orElseThrow().getId();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(16);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<Integer>> results = new java.util.ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            results.add(pool.submit(() -> {
+                go.await();
+                return mvc.perform(post(devices() + "/" + id + "/stream-session").with(as("sr-operator")))
+                        .andReturn().getResponse().getStatus();
+            }));
+        }
+        go.countDown();
+        for (java.util.concurrent.Future<Integer> f : results) {
+            assertEquals(200, f.get(), "abrir sessões ao mesmo tempo não pode dar deadlock nem erro");
+        }
+        pool.shutdown();
+        Integer active = jdbc.sql("SELECT count(*) FROM camera_view_session WHERE user_id = :u AND revoked_at IS NULL AND expires_at > now()")
+                .param("u", userId).query(Integer.class).single();
+        org.junit.jupiter.api.Assertions.assertTrue(active <= 12, "o teto de 12 sessões ativas vale também sob concorrência (ativas: " + active + ")");
     }
 }

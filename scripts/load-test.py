@@ -120,3 +120,23 @@ def reader_event(c):
 
 scenario("POST evento de leitor c/ identidade", reader_event)
 scenario("GET meus acessos (auditado)", lambda c: call(c, "GET", f"/api/v1/condominiums/{condo}/me/accesses?size=20", res)[0] == 200)
+
+# Vídeo ao vivo: abrir a sessão (grava a sessão, aplica o teto por usuário e audita) e a validação que o servidor de mídia faz a
+# CADA requisição de playlist/trecho (consulta à sessão no banco). Câmera publicada por agente: não precisa de MediaMTX.
+cam = json.loads(call(c0, "POST", f"/api/v1/condominiums/{condo}/devices", mgr,
+                      {"name": f"Camera carga {uuid.uuid4().hex[:6]}", "kind": "CAMERA", "adapter": "ONVIF", "entrance": "portaria",
+                       "config": {"videoSource": "AGENT"}})[1])
+scenario("POST abrir sessão de vídeo", lambda c: call(c, "POST", f"/api/v1/condominiums/{condo}/devices/{cam['id']}/stream-session", mgr)[0] == 200)
+hls = json.loads(call(c0, "POST", f"/api/v1/condominiums/{condo}/devices/{cam['id']}/stream-session", mgr)[1])["hlsUrl"]
+media_query = hls.split("?", 1)[1]
+
+
+def media_auth(c):
+    c.request("POST", "/internal/media/auth", json.dumps({"action": "read", "path": f"cam-{cam['id']}", "query": media_query, "password": ""}),
+              {"Content-Type": "application/json"})
+    r = c.getresponse()
+    r.read()
+    return r.status == 200
+
+
+scenario("POST validação do token de vídeo", media_auth)

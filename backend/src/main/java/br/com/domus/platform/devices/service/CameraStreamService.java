@@ -162,6 +162,7 @@ public class CameraStreamService implements ViewSessionRevoker {
         Instant expiresAt = now.plus(tokenTtl);
         UUID sessionId = UUID.randomUUID();
         // Abre espaço antes de gravar: o usuário fica com, no máximo, maxSessionsPerUser sessões ativas (a mais antiga cai).
+        sessions.lockUser(userId);
         sessions.enforceLimit(userId, Math.max(0, maxSessionsPerUser - 1), now);
         sessions.create(sessionId, condominiumId, deviceId, userId, kind, now, expiresAt);
         audit.record(userId, null, condominiumId, auditAction, "device", deviceId.toString(),
@@ -270,6 +271,7 @@ public class CameraStreamService implements ViewSessionRevoker {
     @Override
     @Transactional
     public int revokeForUser(UUID userId, UUID condominiumId, String reason) {
+        sessions.lockUser(userId);
         return sessions.revokeByUser(userId, condominiumId, reason, clock.instant());
     }
 

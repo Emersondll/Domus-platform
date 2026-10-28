@@ -1,15 +1,15 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-10-27. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-10-28. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
-## 1. Evidência do estado atual (2026-10-27)
+## 1. Evidência do estado atual (2026-10-28)
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 182 testes (31 unitários + 151 de integração com PostgreSQL real), 0 falhas (2026-10-27) |
+| Backend `mvn verify` | 184 testes (33 unitários + 151 de integração com PostgreSQL real), 0 falhas (2026-10-28, Spring Boot 4.1.2) |
 | Agente `mvn test` | 36 testes, 0 falhas (2026-10-27) |
 | Web `npm test` + build | 95 testes (59 painel + 36 app do morador), builds OK (código de saída conferido) |
 | `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK (reexecutados em 2026-10-27; o `e2e-contingency.sh` apaga o banco de desenvolvimento, e o `e2e-agent-update.sh` e o `e2e-browser.py` tiveram defeitos de teste corrigidos) |
@@ -19,7 +19,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | `scripts/api-smoke.py` | OK (2026-10-27): 55 GETs de condomínio × 4 papéis; só 3 endpoints sem tela (agente e contador de não lidas); **achou um vazamento real** em `me/accesses/policy`, já corrigido |
 | `scripts/load-test.py` | reexecutado em 2026-10-27 depois da trava de reservas: 0 erros nos 6 cenários (leitura 1.200–2.500 req/s, validar credencial ~1.200 req/s, leitor com identidade ~300 req/s). **"Meus acessos" auditado deu 400–650 req/s contra 1.550 em 26/10:** a máquina estava carregada (load ~15 com navegador) e o banco de desenvolvimento acumulou ~15 mil eventos de leitor das execuções repetidas; **não comparei com o jar anterior**, então não afirmo que não houve regressão. Reavaliar em banco limpo. O script agora reconecta a conexão de preparação ociosa |
 | `scripts/e2e-two-instances.py` | **novo, OK (2 execuções, 2026-10-27):** duas JVMs reais no mesmo banco, equipamento Dahua falso; nunca mais de 1 conexão de eventos; SIGKILL; instância nova assume |
-| CI no GitHub | verde em `5f18010` (7 jobs). **`66f4fca` falhou só no job de segredos (gitleaks):** o `e2e-oidc-browser.py` tinha uma senha de teste fixa (linha 24); trocada por uma senha aleatória por execução e o teste foi reexecutado (15 OK). `78d10a8` ainda não foi enviado; conferir o CI depois do próximo push (a senha antiga continua no histórico de `66f4fca`: é sintética, de usuário descartável do Keycloak de desenvolvimento) |
+| CI no GitHub | **verde em `9183976` (7 jobs), a `main` está enviada (2026-10-28).** Histórico: `66f4fca` falhou só no gitleaks (senha de teste fixa no `e2e-oidc-browser.py`, trocada por senha aleatória; a antiga continua no histórico: sintética, usuário descartável do Keycloak de desenvolvimento). O CI **não sobe** Keycloak, Grafana nem Prometheus: essas partes só foram provadas na minha máquina |
 | Câmera real, controladora real, celular real, Safari/iPhone | **nunca testados** (o Keycloak em Chromium real foi provado em 2026-10-27) |
 
 ## 1.1 Plano de ação (ordem recomendada)
@@ -92,6 +92,32 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B27 | **O fluxo de eventos Dahua reconectava a cada ~6 s:** o timeout de 5 s do pedido HTTP valia também para a leitura do fluxo, que nunca termina. Com equipamento real isso abriria uma janela de eventos perdidos a cada reconexão. Achado pelo teste das duas instâncias | alta (confirmação da porta) | **corrigido (2026-10-27)**: o prazo passou a valer só para os cabeçalhos; o socket é fechado quando a assinatura é interrompida; teste que falha sem a correção. **Não validado com equipamento real** |
 | B25 | O `me/accesses/policy` respondia 200 a usuário de outro condomínio. Achado pelo `api-smoke` | baixa (o prazo não é dado pessoal) | **corrigido (2026-10-27)**: só morador do condomínio; os demais recebem 404; teste |
 | B20 | Síndico/administração no painel: a consulta de atendimentos e turno (só de operador) devolvia 403 uma vez por login. Achado pelo e2e como síndico | baixa | **corrigido (2026-10-27):** `GET /me/admin-scope` passou a informar `operator`; o painel só consulta atendimentos e turno de quem é operador. A tolerância ao 403 ficou só como reserva se o escopo falhar; o e2e agora **não aceita nenhum 403** de síndico/administrador |
+
+## 1.3 Resumo do que está pendente (avaliação de 2026-10-28)
+
+**Bugs abertos (nenhum bloqueia o que já foi provado em simulação):**
+| # | Situação |
+|---|---|
+| B6 | Campos do evento Dahua/Intelbras não confirmados em equipamento real — **depende de controladora** |
+| B8, B9 | Riscos aceitos (revogação offline até 6 h; cota offline por agente) |
+| B10 | Passo documentado para Keycloak já existente |
+| B12 | Token de vídeo sem ligação com a pessoa (3 min) — **parcial, risco aceito** até haver sessão por pessoa |
+| B17 | HLS em iPhone/Safari **nunca testado** — depende de aparelho |
+| B19 | Notificação de câmera liberada chega a dependentes — depende de D17/D21 |
+
+Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corrigidos** com teste.
+
+**Pendências que ainda posso fazer sem terceiros (pequenas):**
+1. Aplicar o `actions/checkout` 7 (PR #12; CI do PR verde, 7 jobs): atualização de ação do GitHub, baixo risco. **Aguardo seu aval**, pois mexe em `.github/workflows/ci.yml` e exige novo push.
+2. Rodar `e2e-browser.py` de novo (não foi reexecutado depois do último commit de concorrência).
+3. Reavaliar "meus acessos" no teste de carga em banco limpo, comparando com o jar anterior (hoje não afirmo ausência de regressão).
+4. Revisar à mão os `@param` do Javadoc dos serviços centrais e documentar os 15 membros restantes.
+5. Regerar `docs/inventory/` (dependências e licenças) após as atualizações de 2026-10-28.
+6. Testes de integração por domínio (item 12 da seção 4) e relatório por unidade.
+
+**Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **Adiados:** #1 Grafana 13 (maior, AGPL), #7 Prometheus 3.15 (sem teste), #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Em avaliação:** #12 `actions/checkout` 7.
+
+**Depende de você, equipamento ou terceiros (sem mudança):** documentos jurídicos em `docs/juridico/` (D1, D16–D21), D3–D8, provedor de notificação (D5), infraestrutura (D6), câmera/controladora/celular/Safari reais (B6, B17, MA1, MA3, Fase 3), busca de marca (L1), varredura de proveniência (L3), parecer Grafana/AGPL (L5), RIPD/DPO, saída automática de visitante esquecido (decisão de produto), Redis para limitador, locks distribuídos, mTLS, réplica/PITR e pentest.
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.

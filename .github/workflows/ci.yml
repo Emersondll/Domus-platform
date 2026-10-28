@@ -27,7 +27,7 @@ jobs:
           cache: maven
       # Os testes de integração usam Testcontainers (PostgreSQL real): o runner já tem Docker.
       - run: mvn -B -f backend/pom.xml verify
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: backend-test-reports

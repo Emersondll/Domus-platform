@@ -51,6 +51,7 @@ public class DeviceService implements DeviceHealthLookup {
     private final Clock clock;
     private final NotificationService notifications;
 
+    /** Construtor de DeviceService; recebe as dependências por injeção. */
     public DeviceService(DeviceRepository devices, DeviceAdapters adapters, HostPolicy hostPolicy,
                          AccessService access, AuditService audit, Clock clock, NotificationService notifications) {
         this.devices = devices;
@@ -63,6 +64,16 @@ public class DeviceService implements DeviceHealthLookup {
     }
 
     @Transactional
+    /**
+     * Cadastra um dispositivo e, quando aplicável, devolve a chave gerada uma única vez.
+     *
+     * @param condominiumId condomínio
+     * @param name nome
+     * @param kind tipo
+     * @param adapterType tipo de adaptador
+     * @param entrance ponto de acesso
+     * @param config config
+     */
     public Registered register(UUID condominiumId, String name, String kind, String adapterType, String entrance,
                                Map<String, String> config) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.register");
@@ -188,6 +199,13 @@ public class DeviceService implements DeviceHealthLookup {
     }
 
     @Transactional
+    /**
+     * Gira a chave do dispositivo e devolve o novo valor em claro uma única vez.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @return texto resultante
+     */
     public String rotateKey(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.rotate-key");
         Device device = find(condominiumId, deviceId);
@@ -199,12 +217,25 @@ public class DeviceService implements DeviceHealthLookup {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os dispositivos do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Device> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "device.list");
         return devices.findByCondominiumId(condominiumId, pageable);
     }
 
     @Transactional
+    /**
+     * Consulta o equipamento e atualiza o estado do dispositivo.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public Device refreshStatus(UUID condominiumId, UUID deviceId) {
         access.require(condominiumId, AccessLevel.OPERATE, "device.status");
         Device device = find(condominiumId, deviceId);
@@ -240,15 +271,31 @@ public class DeviceService implements DeviceHealthLookup {
         return devices.findByCondominiumIdAndResidentViewableTrue(condominiumId);
     }
 
+    /**
+     * Consulta um dispositivo dentro do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public Device find(UUID condominiumId, UUID deviceId) {
         return devices.findByIdAndCondominiumId(deviceId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Device not found"));
     }
 
+    /**
+     * Converte o dispositivo no descritor usado pelos adaptadores.
+     *
+     * @param d dispositivo
+     */
     public static DeviceAdapter.DeviceDescriptor descriptor(Device d) {
         return new DeviceAdapter.DeviceDescriptor(d.getId(), d.getCondominiumId(), d.getEntrance(), d.getConfig());
     }
 
+    /**
+     * Devolve as capacidades que o adaptador do dispositivo declara.
+     *
+     * @param d dispositivo
+     */
     public Set<DeviceAdapter.Capability> capabilitiesOf(Device d) {
         return adapters.find(d.getAdapter()).map(DeviceAdapter::capabilities).orElse(Set.of());
     }

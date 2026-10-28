@@ -30,6 +30,7 @@ public class VisitRequestController {
 
     private final VisitRequestService service;
 
+    /** Construtor de VisitRequestController; recebe as dependências por injeção. */
     public VisitRequestController(VisitRequestService service) {
         this.service = service;
     }
@@ -83,12 +84,26 @@ public class VisitRequestController {
 
     @PostMapping("/visit-requests")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/visit-requests`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public VisitRequestResponse create(@PathVariable UUID condominiumId, @Valid @RequestBody CreateVisitRequest r) {
         return VisitRequestResponse.from(service.request(condominiumId, r.unitId(), r.visitorName(), r.kind(),
                 r.callId(), r.snapshotId()), false, r.snapshotId() != null);
     }
 
     @GetMapping("/visit-requests")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/visit-requests`.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<VisitRequestResponse> list(@PathVariable UUID condominiumId,
             @RequestParam(required = false) UUID callId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -107,6 +122,13 @@ public class VisitRequestController {
     }
 
     @GetMapping("/me/visit-requests")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/visit-requests`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<VisitRequestResponse> listMine(@PathVariable UUID condominiumId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         org.springframework.data.domain.Page<VisitRequest> page = service.listMine(condominiumId, pageable);
@@ -115,11 +137,23 @@ public class VisitRequestController {
     }
 
     @PostMapping("/me/visit-requests/{requestId}/approve")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/visit-requests/{requestId}/approve`.
+     *
+     * @param condominiumId condomínio
+     * @param requestId pedido de visita
+     */
     public VisitRequestResponse approve(@PathVariable UUID condominiumId, @PathVariable UUID requestId) {
         return VisitRequestResponse.from(service.decide(condominiumId, requestId, true));
     }
 
     @PostMapping("/me/visit-requests/{requestId}/deny")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/visit-requests/{requestId}/deny`.
+     *
+     * @param condominiumId condomínio
+     * @param requestId pedido de visita
+     */
     public VisitRequestResponse deny(@PathVariable UUID condominiumId, @PathVariable UUID requestId) {
         return VisitRequestResponse.from(service.decide(condominiumId, requestId, false));
     }

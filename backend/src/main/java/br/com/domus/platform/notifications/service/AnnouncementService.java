@@ -25,6 +25,7 @@ public class AnnouncementService {
     private final AuditService audit;
     private final Clock clock;
 
+    /** Construtor de AnnouncementService; recebe as dependências por injeção. */
     public AnnouncementService(AnnouncementRepository announcements, NotificationService notifications,
                                AccessService access, AuditService audit, Clock clock) {
         this.announcements = announcements;
@@ -35,6 +36,13 @@ public class AnnouncementService {
     }
 
     @Transactional
+    /**
+     * Publica um comunicado e notifica os moradores.
+     *
+     * @param condominiumId condomínio
+     * @param title título
+     * @param body texto
+     */
     public Announcement publish(UUID condominiumId, String title, String body) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "announcement.publish");
         Announcement a = announcements.save(new Announcement(condominiumId, title, body, actor.userId(),

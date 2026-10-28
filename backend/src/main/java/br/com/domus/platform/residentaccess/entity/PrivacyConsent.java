@@ -41,6 +41,7 @@ public class PrivacyConsent {
     protected PrivacyConsent() {
     }
 
+    /** Construtor para criação de um(a) privacy consent. */
     public PrivacyConsent(UUID condominiumId, UUID residentId, String purpose, String textVersion, Instant grantedAt,
                           UUID grantedByUserId) {
         this.id = UUID.randomUUID();
@@ -52,32 +53,43 @@ public class PrivacyConsent {
         this.grantedByUserId = grantedByUserId;
     }
 
+    /**
+     * Revoga o consentimento.
+     *
+     * @param when instante do fato
+     */
     public void revoke(Instant when) {
         if (revokedAt == null) {
             this.revokedAt = when;
         }
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return revokedAt == null;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o morador. */
     public UUID getResidentId() {
         return residentId;
     }
 
+    /** Retorna o campo text version. */
     public String getTextVersion() {
         return textVersion;
     }
 
+    /** Retorna o campo granted at. */
     public Instant getGrantedAt() {
         return grantedAt;
     }
 
+    /** Retorna o campo revoked at. */
     public Instant getRevokedAt() {
         return revokedAt;
     }

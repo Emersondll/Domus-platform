@@ -36,6 +36,7 @@ public class Visitor {
     protected Visitor() {
     }
 
+    /** Construtor para criação de um(a) visitor. */
     public Visitor(UUID condominiumId, UUID unitId, String fullName, String kind) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -44,22 +45,27 @@ public class Visitor {
         this.kind = kind;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o nome completo (decifrado). */
     public String getFullName() {
         return fullName;
     }
 
+    /** Retorna o tipo. */
     public String getKind() {
         return kind;
     }

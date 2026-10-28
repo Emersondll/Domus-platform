@@ -47,6 +47,7 @@ public class DirectMessageService {
     private final AuditService audit;
     private final Clock clock;
 
+    /** Construtor de DirectMessageService; recebe as dependências por injeção. */
     public DirectMessageService(DirectMessageRepository messages, ResidentRepository residents,
                                 AppUserRepository users, NotificationService notifications, AccessService access,
                                 AuditService audit, Clock clock) {
@@ -64,6 +65,12 @@ public class DirectMessageService {
     }
 
     @Transactional
+    /**
+     * Envia uma mensagem do morador autenticado para a portaria.
+     *
+     * @param condominiumId condomínio
+     * @param text texto
+     */
     public DirectMessage sendAsResident(UUID condominiumId, String text) {
         ResidentContext me = access.requireResident(condominiumId, "message.send.resident");
         UUID userId = me.actor().userId();
@@ -100,6 +107,12 @@ public class DirectMessageService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista as conversas da portaria, uma por morador.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<ThreadSummary> threads(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.OPERATE, "message.threads");
         List<ThreadRow> rows = messages.threads(condominiumId);
@@ -123,6 +136,13 @@ public class DirectMessageService {
     }
 
     @Transactional
+    /**
+     * Responde, como portaria, à conversa de um morador.
+     *
+     * @param condominiumId condomínio
+     * @param residentUserId usuário do morador
+     * @param text texto
+     */
     public DirectMessage replyAsDesk(UUID condominiumId, UUID residentUserId, String text) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "message.send.desk");
         requireResidentUser(condominiumId, residentUserId);

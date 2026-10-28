@@ -48,6 +48,7 @@ public class Incident {
     protected Incident() {
     }
 
+    /** Construtor para criação de um(a) incident. */
     public Incident(UUID condominiumId, UUID callId, String severity, String title, String description,
                     UUID openedBy, Instant openedAt) {
         this.id = UUID.randomUUID();
@@ -60,39 +61,52 @@ public class Incident {
         this.openedAt = openedAt;
     }
 
+    /**
+     * Marca a ocorrência como resolvida.
+     *
+     * @param when instante do fato
+     */
     public void resolve(Instant when) {
         this.status = RESOLVED;
         this.resolvedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo call id. */
     public UUID getCallId() {
         return callId;
     }
 
+    /** Retorna o campo severity. */
     public String getSeverity() {
         return severity;
     }
 
+    /** Retorna o título. */
     public String getTitle() {
         return title;
     }
 
+    /** Retorna o campo description. */
     public String getDescription() {
         return description;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }
 
+    /** Retorna o campo opened at. */
     public Instant getOpenedAt() {
         return openedAt;
     }
 
+    /** Retorna o instante da resolução. */
     public Instant getResolvedAt() {
         return resolvedAt;
     }

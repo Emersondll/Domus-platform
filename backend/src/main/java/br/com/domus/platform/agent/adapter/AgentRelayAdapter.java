@@ -29,6 +29,7 @@ public class AgentRelayAdapter implements DeviceAdapter {
     private final AgentCommandRepository queue;
     private final Clock clock;
 
+    /** Construtor de AgentRelayAdapter; recebe as dependências por injeção. */
     public AgentRelayAdapter(AgentRepository agents, AgentCommandRepository queue, Clock clock) {
         this.agents = agents;
         this.queue = queue;

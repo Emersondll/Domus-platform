@@ -45,6 +45,7 @@ public class Agent {
     protected Agent() {
     }
 
+    /** Construtor para criação de um(a) agent. */
     public Agent(UUID condominiumId, String name, String keyHash) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -65,6 +66,13 @@ public class Agent {
         this.prevKeyExpiresAt = null;
     }
 
+    /**
+     * Atualiza o último contato, a política confirmada e o backlog informados pelo agente.
+     *
+     * @param when instante do fato
+     * @param policyVersion versão de política
+     * @param backlog eventos pendentes no agente
+     */
     public void touch(Instant when, Long policyVersion, Integer backlog) {
         this.lastSeenAt = when;
         if (policyVersion != null) {
@@ -75,46 +83,57 @@ public class Agent {
         }
     }
 
+    /** Marca o agente como revogado. */
     public void revoke() {
         this.status = "REVOKED";
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }
 
+    /** Retorna o campo key hash. */
     public String getKeyHash() {
         return keyHash;
     }
 
+    /** Retorna o campo prev key hash. */
     public String getPrevKeyHash() {
         return prevKeyHash;
     }
 
+    /** Retorna o campo prev key expires at. */
     public Instant getPrevKeyExpiresAt() {
         return prevKeyExpiresAt;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }
 
+    /** Retorna o campo last seen at. */
     public Instant getLastSeenAt() {
         return lastSeenAt;
     }
 
+    /** Retorna o campo last policy version. */
     public Long getLastPolicyVersion() {
         return lastPolicyVersion;
     }
 
+    /** Retorna o campo backlog. */
     public int getBacklog() {
         return backlog;
     }

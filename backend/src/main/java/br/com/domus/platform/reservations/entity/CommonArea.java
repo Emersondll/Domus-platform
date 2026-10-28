@@ -26,6 +26,7 @@ public class CommonArea {
     protected CommonArea() {
     }
 
+    /** Construtor para criação de um(a) common area. */
     public CommonArea(UUID condominiumId, String name, int capacity) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -33,14 +34,17 @@ public class CommonArea {
         this.capacity = capacity;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }
 
+    /** Retorna o campo capacity. */
     public int getCapacity() {
         return capacity;
     }

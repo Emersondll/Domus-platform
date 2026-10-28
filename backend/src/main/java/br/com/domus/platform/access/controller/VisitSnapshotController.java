@@ -27,6 +27,7 @@ public class VisitSnapshotController {
     private final VisitSnapshotService snapshots;
     private final VisitRequestService requests;
 
+    /** Construtor de VisitSnapshotController; recebe as dependências por injeção. */
     public VisitSnapshotController(VisitSnapshotService snapshots, VisitRequestService requests) {
         this.snapshots = snapshots;
         this.requests = requests;
@@ -52,6 +53,11 @@ public class VisitSnapshotController {
     }
 
     @GetMapping("/entrance-snapshots/availability")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/entrance-snapshots/availability`.
+     *
+     * @param condominiumId condomínio
+     */
     public AvailabilityResponse availability(@PathVariable UUID condominiumId) {
         VisitSnapshotService.Availability a = snapshots.availability(condominiumId);
         return new AvailabilityResponse(a.enabled(), a.entrances());
@@ -59,22 +65,46 @@ public class VisitSnapshotController {
 
     @PostMapping("/entrance-snapshots")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/entrance-snapshots`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public CaptureResponse capture(@PathVariable UUID condominiumId, @Valid @RequestBody CaptureRequest r) {
         VisitSnapshotService.Captured c = snapshots.capture(condominiumId, r.entrance());
         return new CaptureResponse(c.id(), c.expiresAt(), c.cameraName());
     }
 
     @GetMapping("/entrance-snapshots/{snapshotId}/image")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/entrance-snapshots/{snapshotId}/image`.
+     *
+     * @param condominiumId condomínio
+     * @param snapshotId snapshot id
+     */
     public ResponseEntity<byte[]> preview(@PathVariable UUID condominiumId, @PathVariable UUID snapshotId) {
         return jpeg(snapshots.preview(condominiumId, snapshotId));
     }
 
     @GetMapping("/visit-requests/{requestId}/snapshot")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/visit-requests/{requestId}/snapshot`.
+     *
+     * @param condominiumId condomínio
+     * @param requestId pedido de visita
+     */
     public ResponseEntity<byte[]> forStaff(@PathVariable UUID condominiumId, @PathVariable UUID requestId) {
         return jpeg(snapshots.imageForStaff(condominiumId, requestId));
     }
 
     @GetMapping("/me/visit-requests/{requestId}/snapshot")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/visit-requests/{requestId}/snapshot`.
+     *
+     * @param condominiumId condomínio
+     * @param requestId pedido de visita
+     */
     public ResponseEntity<byte[]> forResident(@PathVariable UUID condominiumId, @PathVariable UUID requestId) {
         return jpeg(requests.snapshotForResident(condominiumId, requestId));
     }

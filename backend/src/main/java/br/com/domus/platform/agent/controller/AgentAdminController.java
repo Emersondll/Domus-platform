@@ -1,26 +1,18 @@
 package br.com.domus.platform.agent.controller;
 
 import br.com.domus.platform.agent.entity.SyncConflict;
-import br.com.domus.platform.agent.repository.SyncConflictRepository;
 import br.com.domus.platform.agent.service.AgentService;
+import br.com.domus.platform.agent.service.SyncConflictService;
 import br.com.domus.platform.shared.PageResponse;
-import br.com.domus.platform.shared.audit.AuditOutcome;
-import br.com.domus.platform.shared.audit.AuditService;
-import br.com.domus.platform.shared.error.NotFoundException;
-import br.com.domus.platform.shared.tenant.AccessLevel;
-import br.com.domus.platform.shared.tenant.AccessService;
-import br.com.domus.platform.shared.tenant.Actor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,18 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentAdminController {
 
     private final AgentService agents;
-    private final SyncConflictRepository conflicts;
-    private final AccessService access;
-    private final AuditService audit;
-    private final Clock clock;
+    private final SyncConflictService conflicts;
 
-    public AgentAdminController(AgentService agents, SyncConflictRepository conflicts, AccessService access,
-                                AuditService audit, Clock clock) {
+    /** Construtor de AgentAdminController; recebe as dependências por injeção. */
+    public AgentAdminController(AgentService agents, SyncConflictService conflicts) {
         this.agents = agents;
         this.conflicts = conflicts;
-        this.access = access;
-        this.audit = audit;
-        this.clock = clock;
     }
 
     /** @param name nome do agente (ex.: servidor da portaria) */
@@ -93,12 +79,24 @@ public class AgentAdminController {
 
     @PostMapping("/agents")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/agents`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public EnrollResponse enroll(@PathVariable UUID condominiumId, @Valid @RequestBody EnrollRequest r) {
         AgentService.Enrollment e = agents.enroll(condominiumId, r.name());
         return new EnrollResponse(e.agent().getId(), e.agent().getName(), e.apiKey(), e.policySecret());
     }
 
     @GetMapping("/agents")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/agents`.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<AgentResponse> list(@PathVariable UUID condominiumId) {
         return agents.list(condominiumId).stream().map(a -> new AgentResponse(a.getId(), a.getName(), a.getStatus(),
                 agents.isOnline(a), a.getLastSeenAt(), a.getLastPolicyVersion(), a.getBacklog())).toList();
@@ -106,27 +104,37 @@ public class AgentAdminController {
 
     @PostMapping("/agents/{agentId}/revoke")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/agents/{agentId}/revoke`.
+     *
+     * @param condominiumId condomínio
+     * @param agentId agente
+     */
     public void revoke(@PathVariable UUID condominiumId, @PathVariable UUID agentId) {
         agents.revoke(condominiumId, agentId);
     }
 
     @GetMapping("/sync-conflicts")
-    @Transactional(readOnly = true)
+    /**
+     * Atende `GET /condominiums/{condominiumId}/sync-conflicts`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<ConflictResponse> conflicts(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
-        access.require(condominiumId, AccessLevel.READ, "conflict.list");
-        return PageResponse.of(conflicts.findByCondominiumId(condominiumId, pageable), ConflictResponse::from);
+        return PageResponse.of(conflicts.list(condominiumId, pageable), ConflictResponse::from);
     }
 
     @PostMapping("/sync-conflicts/{conflictId}/resolve")
-    @Transactional
+    /**
+     * Atende `POST /condominiums/{condominiumId}/sync-conflicts/{conflictId}/resolve`.
+     *
+     * @param condominiumId condomínio
+     * @param conflictId conflito
+     */
     public ConflictResponse resolve(@PathVariable UUID condominiumId, @PathVariable UUID conflictId) {
-        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "conflict.resolve");
-        SyncConflict conflict = conflicts.findByIdAndCondominiumId(conflictId, condominiumId)
-                .orElseThrow(() -> new NotFoundException("Conflict not found"));
-        conflict.resolve(actor.userId(), Instant.now(clock));
-        audit.record(actor.userId(), null, condominiumId, "conflict.resolve", "sync_conflict",
-                conflictId.toString(), AuditOutcome.SUCCESS);
-        return ConflictResponse.from(conflict);
+        return ConflictResponse.from(conflicts.resolve(condominiumId, conflictId));
     }
 }

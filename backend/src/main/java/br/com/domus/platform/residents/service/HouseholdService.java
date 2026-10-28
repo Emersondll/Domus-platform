@@ -30,6 +30,7 @@ public class HouseholdService {
     private final AccessService access;
     private final AuditService audit;
 
+    /** Construtor de HouseholdService; recebe as dependências por injeção. */
     public HouseholdService(ResidentRepository residents, AccessService access, AuditService audit) {
         this.residents = residents;
         this.access = access;
@@ -37,6 +38,12 @@ public class HouseholdService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os integrantes da unidade do morador.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<Resident> list(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "household.list");
         return residents.findByCondominiumIdAndUnitIdAndActiveTrueOrderByFullName(condominiumId, unitOf(me));
@@ -49,6 +56,14 @@ public class HouseholdService {
     }
 
     @Transactional
+    /**
+     * Cadastra um integrante da família.
+     *
+     * @param condominiumId condomínio
+     * @param fullName full name
+     * @param relationship relationship
+     * @param phone phone
+     */
     public Resident add(UUID condominiumId, String fullName, ResidentType relationship, String phone) {
         ResidentContext me = access.requireResident(condominiumId, "household.add");
         if (!SELF_MANAGED.contains(relationship)) {
@@ -67,6 +82,12 @@ public class HouseholdService {
     }
 
     @Transactional
+    /**
+     * Remove um integrante da família.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     */
     public void remove(UUID condominiumId, UUID residentId) {
         ResidentContext me = access.requireResident(condominiumId, "household.remove");
         Resident member = residents.findByIdAndCondominiumId(residentId, condominiumId)

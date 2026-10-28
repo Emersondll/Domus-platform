@@ -57,6 +57,7 @@ public class AccessCredential {
     protected AccessCredential() {
     }
 
+    /** Construtor para criação de um(a) access credential. */
     public AccessCredential(UUID condominiumId, UUID unitId, UUID visitorId, Instant validFrom, Instant validUntil,
                             int maxUses, UUID createdByUserId) {
         this.id = UUID.randomUUID();
@@ -69,51 +70,67 @@ public class AccessCredential {
         this.createdByUserId = createdByUserId;
     }
 
+    /**
+     * Revoga a credencial a partir do instante informado.
+     *
+     * @param when instante do fato
+     */
     public void revoke(Instant when) {
         this.status = REVOKED;
         this.revokedAt = when;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo visitor id. */
     public UUID getVisitorId() {
         return visitorId;
     }
 
+    /** Retorna o campo valid from. */
     public Instant getValidFrom() {
         return validFrom;
     }
 
+    /** Retorna o campo valid until. */
     public Instant getValidUntil() {
         return validUntil;
     }
 
+    /** Retorna o campo max uses. */
     public int getMaxUses() {
         return maxUses;
     }
 
+    /** Retorna o campo use count. */
     public int getUseCount() {
         return useCount;
     }
 
+    /** Retorna o campo created by user id. */
     public UUID getCreatedByUserId() {
         return createdByUserId;
     }
 
+    /** Retorna o campo revoked at. */
     public Instant getRevokedAt() {
         return revokedAt;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }

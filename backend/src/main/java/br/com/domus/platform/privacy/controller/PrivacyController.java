@@ -18,17 +18,30 @@ public class PrivacyController {
 
     private final PrivacyService service;
 
+    /** Construtor de PrivacyController; recebe as dependências por injeção. */
     public PrivacyController(PrivacyService service) {
         this.service = service;
     }
 
     @GetMapping("/export")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/residents/{residentId}/export`.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     */
     public Map<String, Object> export(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         return service.export(condominiumId, residentId);
     }
 
     @PostMapping("/anonymize")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/residents/{residentId}/anonymize`.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     */
     public void anonymize(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         service.anonymize(condominiumId, residentId);
     }

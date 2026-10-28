@@ -31,6 +31,7 @@ public class AccessService {
     private final CondominiumLookup condominiums;
     private final AuditService audit;
 
+    /** Construtor de AccessService; recebe as dependências por injeção. */
     public AccessService(AppUserRepository users, MembershipRepository memberships,
                          CondominiumLookup condominiums, AuditService audit) {
         this.users = users;
@@ -40,6 +41,9 @@ public class AccessService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Identifica o usuário autenticado e suas associações.
+     */
     public Actor currentActor() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
@@ -51,6 +55,12 @@ public class AccessService {
         return new Actor(user.getId(), memberships.findByUserIdAndActiveTrue(user.getId()));
     }
 
+    /**
+     * Calcula o nível de acesso do usuário no condomínio.
+     *
+     * @param actor actor
+     * @param condominiumId condomínio
+     */
     public AccessLevel levelFor(Actor actor, UUID condominiumId) {
         UUID companyId = null;
         boolean companyLookedUp = false;
@@ -129,6 +139,11 @@ public class AccessService {
                 });
     }
 
+    /**
+     * Exige que o usuário seja administrador da plataforma.
+     *
+     * @param action action
+     */
     public Actor requirePlatformAdmin(String action) {
         Actor actor = currentActor();
         if (actor.memberships().stream().noneMatch(m -> m.getRole() == Role.PLATFORM_ADMIN)) {

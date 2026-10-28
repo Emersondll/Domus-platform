@@ -41,6 +41,7 @@ public class NotificationService {
     private final AccessService access;
     private final Clock clock;
 
+    /** Construtor de NotificationService; recebe as dependências por injeção. */
     public NotificationService(NotificationRepository notifications, NotificationPreferenceRepository preferences,
                                ResidentRepository residents, AccessService access, Clock clock) {
         this.notifications = notifications;
@@ -83,18 +84,37 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista as notificações do usuário autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Notification> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "notification.list");
         return notifications.findByUserIdAndCondominiumId(me.actor().userId(), condominiumId, pageable);
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Conta as notificações não lidas do usuário autenticado.
+     *
+     * @param condominiumId condomínio
+     * @return valor calculado
+     */
     public long unreadCount(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "notification.count");
         return notifications.countByUserIdAndCondominiumIdAndReadAtIsNull(me.actor().userId(), condominiumId);
     }
 
     @Transactional
+    /**
+     * Marca uma notificação do usuário autenticado como lida.
+     *
+     * @param condominiumId condomínio
+     * @param notificationId notificação
+     */
     public Notification markRead(UUID condominiumId, UUID notificationId) {
         ResidentContext me = access.requireResident(condominiumId, "notification.read");
         Notification n = notifications.findByIdAndUserId(notificationId, me.actor().userId())
@@ -104,12 +124,24 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Consulta as preferências de notificação do usuário autenticado.
+     *
+     * @param condominiumId condomínio
+     */
     public NotificationPreference preferences(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "preferences.read");
         return preferences.findById(me.actor().userId()).orElseGet(() -> new NotificationPreference(me.actor().userId()));
     }
 
     @Transactional
+    /**
+     * Atualiza as preferências de notificação do usuário autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param parcels preferência de encomendas
+     * @param visitorArrival preferência de chegada de visitante
+     */
     public NotificationPreference updatePreferences(UUID condominiumId, boolean parcels, boolean visitorArrival) {
         ResidentContext me = access.requireResident(condominiumId, "preferences.update");
         NotificationPreference pref = preferences.findById(me.actor().userId())

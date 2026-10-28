@@ -26,6 +26,7 @@ public class Unit {
     protected Unit() {
     }
 
+    /** Construtor para criação de um(a) unit. */
     public Unit(UUID condominiumId, UUID blockId, String number) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -33,18 +34,22 @@ public class Unit {
         this.number = number;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o campo block id. */
     public UUID getBlockId() {
         return blockId;
     }
 
+    /** Retorna o campo number. */
     public String getNumber() {
         return number;
     }

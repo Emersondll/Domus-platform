@@ -21,10 +21,12 @@ public class PolicyVersionRow {
     protected PolicyVersionRow() {
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o campo version. */
     public long getVersion() {
         return version;
     }

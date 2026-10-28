@@ -33,6 +33,7 @@ public class Announcement {
     protected Announcement() {
     }
 
+    /** Construtor para criação de um(a) announcement. */
     public Announcement(UUID condominiumId, String title, String body, UUID authorUserId, Instant createdAt) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -42,22 +43,27 @@ public class Announcement {
         this.createdAt = createdAt;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o título. */
     public String getTitle() {
         return title;
     }
 
+    /** Retorna o texto. */
     public String getBody() {
         return body;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }

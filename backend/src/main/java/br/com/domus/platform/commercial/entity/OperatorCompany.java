@@ -30,24 +30,29 @@ public class OperatorCompany {
     protected OperatorCompany() {
     }
 
+    /** Construtor para criação de um(a) operator company. */
     public OperatorCompany(String name, String taxId) {
         this.id = UUID.randomUUID();
         this.name = name;
         this.taxId = taxId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }
 
+    /** Retorna o campo tax id. */
     public String getTaxId() {
         return taxId;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }

@@ -32,6 +32,7 @@ public class OnvifAdapter implements DeviceAdapter {
     private final HostPolicy hosts;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
+    /** Construtor de OnvifAdapter; recebe as dependências por injeção. */
     public OnvifAdapter(HostPolicy hosts) {
         this.hosts = hosts;
     }

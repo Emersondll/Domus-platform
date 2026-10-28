@@ -11,6 +11,11 @@ public final class SnapshotImages {
     private SnapshotImages() {
     }
 
+    /**
+     * Valida e normaliza a imagem capturada para JPEG com limite de tamanho.
+     *
+     * @param raw bytes da imagem enviada
+     */
     public static byte[] normalize(byte[] raw) throws DeviceAdapter.DeviceCommunicationException {
         try {
             return JpegImages.normalize(raw);

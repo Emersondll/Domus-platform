@@ -26,6 +26,7 @@ public class AccessReportController {
 
     private final AccessReportService service;
 
+    /** Construtor de AccessReportController; recebe as dependências por injeção. */
     public AccessReportController(AccessReportService service) {
         this.service = service;
     }
@@ -50,12 +51,29 @@ public class AccessReportController {
     }
 
     @GetMapping("/on-site")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/access/on-site`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AccessRowResponse> onSite(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "occurredAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.onSite(condominiumId, pageable), AccessRowResponse::from);
     }
 
     @GetMapping("/report")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/access/report`.
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período
+     * @param result resultado
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AccessRowResponse> report(@PathVariable UUID condominiumId, @RequestParam Instant from,
             @RequestParam Instant to, @RequestParam(required = false) String result,
             @PageableDefault(size = 50, sort = "occurredAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -63,6 +81,14 @@ public class AccessReportController {
     }
 
     @GetMapping("/report.csv")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/access/report.csv`.
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período
+     * @param result resultado
+     */
     public ResponseEntity<byte[]> reportCsv(@PathVariable UUID condominiumId, @RequestParam Instant from,
             @RequestParam Instant to, @RequestParam(required = false) String result) {
         byte[] body = service.exportCsv(condominiumId, from, to, result).getBytes(StandardCharsets.UTF_8);
@@ -75,6 +101,12 @@ public class AccessReportController {
     }
 
     @PostMapping("/entries/{attemptId}/exit")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/access/entries/{attemptId}/exit`.
+     *
+     * @param condominiumId condomínio
+     * @param attemptId tentativa de acesso
+     */
     public AccessRowResponse registerExit(@PathVariable UUID condominiumId, @PathVariable UUID attemptId) {
         return AccessRowResponse.from(service.registerExit(condominiumId, attemptId));
     }

@@ -34,6 +34,7 @@ public class DeviceEventService implements DeviceEventSink {
     private final ResidentPassageRecorder passages;
     private final Clock clock;
 
+    /** Construtor de DeviceEventService; recebe as dependências por injeção. */
     public DeviceEventService(DeviceRepository devices, DeviceEventRepository events,
                               AccessCommandRepository commands, ResidentPassageRecorder passages, Clock clock) {
         this.devices = devices;

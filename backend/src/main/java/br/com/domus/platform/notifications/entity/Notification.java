@@ -39,6 +39,7 @@ public class Notification {
     protected Notification() {
     }
 
+    /** Construtor para criação de um(a) notification. */
     public Notification(UUID userId, UUID condominiumId, String type, String title, String body, Instant createdAt) {
         this.id = UUID.randomUUID();
         this.userId = userId;
@@ -49,32 +50,43 @@ public class Notification {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Marca a notificação como lida.
+     *
+     * @param when instante do fato
+     */
     public void markRead(Instant when) {
         if (readAt == null) {
             readAt = when;
         }
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo type. */
     public String getType() {
         return type;
     }
 
+    /** Retorna o título. */
     public String getTitle() {
         return title;
     }
 
+    /** Retorna o texto. */
     public String getBody() {
         return body;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o campo read at. */
     public Instant getReadAt() {
         return readAt;
     }

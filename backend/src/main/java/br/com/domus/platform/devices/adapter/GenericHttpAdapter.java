@@ -23,6 +23,7 @@ public class GenericHttpAdapter implements DeviceAdapter {
     private final HostPolicy hosts;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
+    /** Construtor de GenericHttpAdapter; recebe as dependências por injeção. */
     public GenericHttpAdapter(HostPolicy hosts) {
         this.hosts = hosts;
     }

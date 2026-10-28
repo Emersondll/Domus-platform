@@ -30,6 +30,7 @@ public class ResidentController {
 
     private final ResidentService service;
 
+    /** Construtor de ResidentController; recebe as dependências por injeção. */
     public ResidentController(ResidentService service) {
         this.service = service;
     }
@@ -65,6 +66,12 @@ public class ResidentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/residents`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public ResidentResponse create(@PathVariable UUID condominiumId, @Valid @RequestBody CreateResidentRequest r) {
         return ResidentResponse.from(service.create(condominiumId, r.unitId(), r.fullName(), r.email(),
                 r.phone(), r.residentType()));
@@ -91,6 +98,13 @@ public class ResidentController {
     }
 
     @PutMapping("/{residentId}")
+    /**
+     * Atende `PUT /condominiums/{condominiumId}/residents/{residentId}`.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     * @param r corpo da requisição (validado)
+     */
     public ResidentResponse update(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                    @Valid @RequestBody UpdateResidentRequest r) {
         return ResidentResponse.from(service.update(condominiumId, residentId, r.fullName(), r.email(), r.phone(),
@@ -98,6 +112,12 @@ public class ResidentController {
     }
 
     @GetMapping("/{residentId}")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/residents/{residentId}`.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     */
     public ResidentResponse get(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         return ResidentResponse.from(service.get(condominiumId, residentId));
     }

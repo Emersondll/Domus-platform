@@ -41,6 +41,7 @@ public class Vehicle {
     protected Vehicle() {
     }
 
+    /** Construtor para criação de um(a) vehicle. */
     public Vehicle(UUID condominiumId, UUID unitId, String plate, String plateHash, String model, String color) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -51,22 +52,27 @@ public class Vehicle {
         this.color = color;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo plate. */
     public String getPlate() {
         return plate;
     }
 
+    /** Retorna o campo model. */
     public String getModel() {
         return model;
     }
 
+    /** Retorna o campo color. */
     public String getColor() {
         return color;
     }

@@ -36,6 +36,7 @@ public class CallEvent {
     protected CallEvent() {
     }
 
+    /** Construtor para criação de um(a) call event. */
     public CallEvent(UUID callId, UUID condominiumId, UUID actorUserId, String type, String detail,
                      Instant occurredAt) {
         this.id = UUID.randomUUID();
@@ -47,22 +48,27 @@ public class CallEvent {
         this.occurredAt = occurredAt;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo actor user id. */
     public UUID getActorUserId() {
         return actorUserId;
     }
 
+    /** Retorna o campo type. */
     public String getType() {
         return type;
     }
 
+    /** Retorna o detalhe. */
     public String getDetail() {
         return detail;
     }
 
+    /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
     }

@@ -29,6 +29,7 @@ public class ShiftLogController {
 
     private final ShiftLogService service;
 
+    /** Construtor de ShiftLogController; recebe as dependências por injeção. */
     public ShiftLogController(ShiftLogService service) {
         this.service = service;
     }
@@ -56,11 +57,24 @@ public class ShiftLogController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/shift-log`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public EntryResponse write(@PathVariable UUID condominiumId, @Valid @RequestBody WriteRequest r) {
         return EntryResponse.from(service.write(condominiumId, r.kind(), r.text()));
     }
 
     @GetMapping
+    /**
+     * Atende `GET /condominiums/{condominiumId}/shift-log`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<EntryResponse> list(@PathVariable UUID condominiumId,
             @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, pageable), EntryResponse::from);

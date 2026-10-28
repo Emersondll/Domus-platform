@@ -51,6 +51,7 @@ public class AccessAttempt {
     protected AccessAttempt() {
     }
 
+    /** Construtor para criação de um(a) access attempt. */
     public AccessAttempt(UUID condominiumId, UUID credentialId, String entrance, String result, String reason,
                          UUID actorUserId, String correlationId, Instant occurredAt) {
         this.id = UUID.randomUUID();
@@ -73,38 +74,47 @@ public class AccessAttempt {
         return a;
     }
 
+    /** Retorna o campo visit request id. */
     public UUID getVisitRequestId() {
         return visitRequestId;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo credential id. */
     public UUID getCredentialId() {
         return credentialId;
     }
 
+    /** Retorna o ponto de acesso. */
     public String getEntrance() {
         return entrance;
     }
 
+    /** Retorna o campo result. */
     public String getResult() {
         return result;
     }
 
+    /** Retorna o campo reason. */
     public String getReason() {
         return reason;
     }
 
+    /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
     }
 
+    /** Retorna o campo exited at. */
     public Instant getExitedAt() {
         return exitedAt;
     }

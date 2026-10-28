@@ -23,6 +23,7 @@ public class CredentialTokenCodec {
 
     private final byte[] secret;
 
+    /** Construtor de CredentialTokenCodec; recebe as dependências por injeção. */
     public CredentialTokenCodec(@Value("${portaria.credentials.hmac-secret:}") String secret) {
         if (secret == null || secret.length() < 32) {
             throw new IllegalStateException(
@@ -31,6 +32,13 @@ public class CredentialTokenCodec {
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Gera o token assinado (HMAC) que representa a credencial no QR Code.
+     *
+     * @param credentialId credencial
+     * @param condominiumId condomínio
+     * @return texto resultante
+     */
     public String encode(UUID credentialId, UUID condominiumId) {
         return credentialId + "." + ENC.encodeToString(sign(credentialId, condominiumId));
     }

@@ -18,6 +18,7 @@ public class CameraStreamController {
 
     private final CameraStreamService streams;
 
+    /** Construtor de CameraStreamController; recebe as dependências por injeção. */
     public CameraStreamController(CameraStreamService streams) {
         this.streams = streams;
     }
@@ -41,6 +42,12 @@ public class CameraStreamController {
     }
 
     @PostMapping("/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session")
+    /**
+     * Atende `POST /api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public StreamSessionResponse open(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         CameraStreamService.Session s = streams.open(condominiumId, deviceId);
         return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());
@@ -62,6 +69,12 @@ public class CameraStreamController {
     }
 
     @PostMapping("/api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session")
+    /**
+     * Atende `POST /api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public StreamSessionResponse openMine(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         CameraStreamService.Session s = streams.openForResident(condominiumId, deviceId);
         return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());

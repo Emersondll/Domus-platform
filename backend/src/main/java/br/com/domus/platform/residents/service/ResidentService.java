@@ -25,6 +25,7 @@ public class ResidentService {
     private final AccessService access;
     private final AuditService audit;
 
+    /** Construtor de ResidentService; recebe as dependências por injeção. */
     public ResidentService(ResidentRepository residents, CommercialService commercial, AccessService access,
                            AuditService audit) {
         this.residents = residents;
@@ -34,6 +35,16 @@ public class ResidentService {
     }
 
     @Transactional
+    /**
+     * Cadastra um morador na unidade.
+     *
+     * @param condominiumId condomínio
+     * @param unitId unidade
+     * @param fullName full name
+     * @param email e-mail
+     * @param phone phone
+     * @param type type
+     */
     public Resident create(UUID condominiumId, UUID unitId, String fullName, String email, String phone,
                            ResidentType type) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.create");
@@ -45,6 +56,14 @@ public class ResidentService {
     }
 
     @Transactional
+    /**
+     * Lista os moradores do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param unitId unidade
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Resident> list(UUID condominiumId, UUID unitId, Pageable pageable) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.list");
         audit.record(actor.userId(), null, condominiumId, "resident.list", "resident", null, AuditOutcome.SUCCESS);
@@ -66,6 +85,12 @@ public class ResidentService {
     }
 
     @Transactional
+    /**
+     * Consulta um morador do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     */
     public Resident get(UUID condominiumId, UUID residentId) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.read");
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)

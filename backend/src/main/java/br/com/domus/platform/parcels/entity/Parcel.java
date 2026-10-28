@@ -46,6 +46,7 @@ public class Parcel {
     protected Parcel() {
     }
 
+    /** Construtor para criação de um(a) parcel. */
     public Parcel(UUID condominiumId, UUID unitId, String carrier, String description, UUID receivedByUserId,
                   Instant receivedAt) {
         this.id = UUID.randomUUID();
@@ -57,40 +58,54 @@ public class Parcel {
         this.receivedAt = receivedAt;
     }
 
+    /**
+     * Registra a retirada da encomenda e quem retirou.
+     *
+     * @param personName nome de quem retirou
+     * @param when instante do fato
+     */
     public void pickUp(String personName, Instant when) {
         this.status = PICKED_UP;
         this.pickedUpByName = personName;
         this.pickedUpAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo carrier. */
     public String getCarrier() {
         return carrier;
     }
 
+    /** Retorna o campo description. */
     public String getDescription() {
         return description;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }
 
+    /** Retorna o campo received at. */
     public Instant getReceivedAt() {
         return receivedAt;
     }
 
+    /** Retorna o campo picked up at. */
     public Instant getPickedUpAt() {
         return pickedUpAt;
     }
 
+    /** Retorna o campo picked up by name. */
     public String getPickedUpByName() {
         return pickedUpByName;
     }

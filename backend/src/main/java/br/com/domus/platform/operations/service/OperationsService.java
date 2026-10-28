@@ -74,6 +74,7 @@ public class OperationsService {
     private final FieldCipher cipher;
     private final NotificationService notifications;
 
+    /** Construtor de OperationsService; recebe as dependências por injeção. */
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
                              IncidentRepository incidents, MembershipRepository memberships,
                              ResidentRepository residents, CommercialService commercial, AccessService access,
@@ -99,6 +100,9 @@ public class OperationsService {
     // ---- turnos ----
 
     @Transactional
+    /**
+     * Inicia o turno do operador autenticado.
+     */
     public Shift startShift() {
         Actor actor = requireOperator();
         if (shifts.findByUserIdAndEndedAtIsNull(actor.userId()).isPresent()) {
@@ -111,6 +115,9 @@ public class OperationsService {
     }
 
     @Transactional
+    /**
+     * Encerra o turno do operador autenticado.
+     */
     public Shift endShift() {
         Actor actor = requireOperator();
         Shift shift = shifts.findByUserIdAndEndedAtIsNull(actor.userId())
@@ -126,6 +133,11 @@ public class OperationsService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Consulta o turno aberto do operador autenticado, se houver.
+     *
+     * @return resultado, se existir
+     */
     public Optional<Shift> currentShift() {
         return shifts.findByUserIdAndEndedAtIsNull(requireOperator().userId());
     }
@@ -133,6 +145,13 @@ public class OperationsService {
     // ---- atendimentos ----
 
     @Transactional
+    /**
+     * Abre um atendimento para uma unidade, registrado pela portaria.
+     *
+     * @param condominiumId condomínio
+     * @param unitId unidade
+     * @param callerName nome de quem chama
+     */
     public ServiceCall createCall(UUID condominiumId, UUID unitId, String callerName) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "call.create");
         if (unitId != null) {
@@ -142,6 +161,12 @@ public class OperationsService {
     }
 
     @Transactional
+    /**
+     * Abre um atendimento iniciado pelo morador autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param callerName nome de quem chama
+     */
     public ServiceCall createCallAsResident(UUID condominiumId, String callerName) {
         ResidentContext me = access.requireResident(condominiumId, "call.create.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
@@ -172,6 +197,11 @@ public class OperationsService {
     }
 
     @Transactional
+    /**
+     * Assume o atendimento mais antigo em espera, se houver.
+     *
+     * @return resultado, se existir
+     */
     public Optional<ServiceCall> claimNext() {
         Actor actor = requireOperator();
         if (shifts.findByUserIdAndEndedAtIsNull(actor.userId()).isEmpty()) {
@@ -192,17 +222,38 @@ public class OperationsService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os atendimentos em andamento do operador autenticado.
+     *
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<ServiceCall> myActiveCalls(Pageable pageable) {
         return calls.findByAssignedUserIdAndStatus(requireOperator().userId(), ServiceCall.ASSIGNED, pageable);
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os atendimentos do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<ServiceCall> listCalls(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "call.list");
         return calls.findByCondominiumId(condominiumId, pageable);
     }
 
     @Transactional
+    /**
+     * Transfere o atendimento para outro operador, com motivo.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param toUserId usuário de destino
+     * @param reason motivo
+     */
     public ServiceCall transfer(UUID condominiumId, UUID callId, UUID toUserId, String reason) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "call.transfer");
         ServiceCall call = assignedCall(condominiumId, callId, actor);
@@ -219,6 +270,14 @@ public class OperationsService {
     }
 
     @Transactional
+    /**
+     * Encerra o atendimento com desfecho e justificativa.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param outcome desfecho
+     * @param justification justificativa
+     */
     public ServiceCall close(UUID condominiumId, UUID callId, String outcome, String justification) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "call.close");
         if (!OUTCOMES.contains(outcome)) {
@@ -245,6 +304,13 @@ public class OperationsService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista a linha do tempo de eventos do atendimento.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @return lista de resultados
+     */
     public List<CallEvent> callEvents(UUID condominiumId, UUID callId) {
         access.require(condominiumId, AccessLevel.READ, "call.events");
         calls.findByIdAndCondominiumId(callId, condominiumId).orElseThrow(() -> new NotFoundException("Call not found"));
@@ -252,6 +318,12 @@ public class OperationsService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os operadores com turno aberto no condomínio.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<MembershipRepository.OnDutyOperator> onDutyOperators(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.OPERATE, "operator.list");
         // a consulta nativa devolve o nome cifrado: decifra aqui
@@ -274,6 +346,15 @@ public class OperationsService {
     // ---- incidentes ----
 
     @Transactional
+    /**
+     * Abre uma ocorrência, opcionalmente ligada a um atendimento.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param severity gravidade
+     * @param title título
+     * @param description descrição
+     */
     public Incident openIncident(UUID condominiumId, UUID callId, String severity, String title, String description) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "incident.open");
         if (callId != null) {
@@ -288,6 +369,12 @@ public class OperationsService {
     }
 
     @Transactional
+    /**
+     * Marca uma ocorrência como resolvida.
+     *
+     * @param condominiumId condomínio
+     * @param incidentId ocorrência
+     */
     public Incident resolveIncident(UUID condominiumId, UUID incidentId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "incident.resolve");
         Incident incident = incidents.findByIdAndCondominiumId(incidentId, condominiumId)
@@ -302,6 +389,13 @@ public class OperationsService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista as ocorrências do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Incident> listIncidents(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "incident.list");
         return incidents.findByCondominiumId(condominiumId, pageable);
@@ -336,6 +430,11 @@ public class OperationsService {
     // ---- visão geral ----
 
     @Transactional(readOnly = true)
+    /**
+     * Resume, por condomínio atendido, o que está em espera e em andamento.
+     *
+     * @return lista de resultados
+     */
     public List<Overview> overview() {
         return commercial.listCondominiums(PageRequest.of(0, 200)).getContent().stream()
                 .map(c -> new Overview(c, calls.countByStatus(c.getId(), ServiceCall.QUEUED),

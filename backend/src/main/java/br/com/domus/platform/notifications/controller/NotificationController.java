@@ -24,6 +24,7 @@ public class NotificationController {
 
     private final NotificationService service;
 
+    /** Construtor de NotificationController; recebe as dependências por injeção. */
     public NotificationController(NotificationService service) {
         this.service = service;
     }
@@ -66,6 +67,13 @@ public class NotificationController {
     }
 
     @GetMapping("/notifications")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/notifications`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<NotificationResponse> list(@PathVariable UUID condominiumId,
             @PageableDefault(size = 30, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             Pageable pageable) {
@@ -73,21 +81,43 @@ public class NotificationController {
     }
 
     @GetMapping("/notifications/unread-count")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/notifications/unread-count`.
+     *
+     * @param condominiumId condomínio
+     */
     public UnreadResponse unread(@PathVariable UUID condominiumId) {
         return new UnreadResponse(service.unreadCount(condominiumId));
     }
 
     @PostMapping("/notifications/{notificationId}/read")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/notifications/{notificationId}/read`.
+     *
+     * @param condominiumId condomínio
+     * @param notificationId notificação
+     */
     public NotificationResponse markRead(@PathVariable UUID condominiumId, @PathVariable UUID notificationId) {
         return NotificationResponse.from(service.markRead(condominiumId, notificationId));
     }
 
     @GetMapping("/preferences")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/preferences`.
+     *
+     * @param condominiumId condomínio
+     */
     public PreferencesResponse preferences(@PathVariable UUID condominiumId) {
         return PreferencesResponse.from(service.preferences(condominiumId));
     }
 
     @PutMapping("/preferences")
+    /**
+     * Atende `PUT /condominiums/{condominiumId}/me/preferences`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public PreferencesResponse updatePreferences(@PathVariable UUID condominiumId,
                                                  @Valid @RequestBody PreferencesRequest r) {
         return PreferencesResponse.from(service.updatePreferences(condominiumId, r.parcelsEnabled(),

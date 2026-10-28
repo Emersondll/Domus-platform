@@ -27,6 +27,7 @@ public class AnnouncementController {
 
     private final AnnouncementService service;
 
+    /** Construtor de AnnouncementController; recebe as dependências por injeção. */
     public AnnouncementController(AnnouncementService service) {
         this.service = service;
     }
@@ -52,17 +53,37 @@ public class AnnouncementController {
 
     @PostMapping("/announcements")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/announcements`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public AnnouncementResponse publish(@PathVariable UUID condominiumId, @Valid @RequestBody PublishRequest r) {
         return AnnouncementResponse.from(service.publish(condominiumId, r.title(), r.body()));
     }
 
     @GetMapping("/announcements")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/announcements`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AnnouncementResponse> list(@PathVariable UUID condominiumId,
             @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, pageable), AnnouncementResponse::from);
     }
 
     @GetMapping("/me/announcements")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/announcements`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AnnouncementResponse> listMine(@PathVariable UUID condominiumId,
             @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), AnnouncementResponse::from);

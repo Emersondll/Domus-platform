@@ -36,6 +36,7 @@ public class DeviceEvent {
     protected DeviceEvent() {
     }
 
+    /** Construtor para criação de um(a) device event. */
     public DeviceEvent(UUID deviceId, UUID condominiumId, String type, UUID commandId, Instant occurredAt,
                        Instant receivedAt) {
         this.id = UUID.randomUUID();
@@ -47,18 +48,22 @@ public class DeviceEvent {
         this.receivedAt = receivedAt;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo type. */
     public String getType() {
         return type;
     }
 
+    /** Retorna o campo command id. */
     public UUID getCommandId() {
         return commandId;
     }
 
+    /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
     }

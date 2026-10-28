@@ -49,6 +49,7 @@ public class AgentEvent {
     protected AgentEvent() {
     }
 
+    /** Construtor para criação de um(a) agent event. */
     public AgentEvent(UUID eventId, UUID agentId, UUID condominiumId, String type, UUID credentialId, UUID deviceId,
                       UUID commandId, String entrance, String reason, Instant occurredAt, Instant receivedAt) {
         this.eventId = eventId;
@@ -64,38 +65,47 @@ public class AgentEvent {
         this.receivedAt = receivedAt;
     }
 
+    /** Retorna o campo event id. */
     public UUID getEventId() {
         return eventId;
     }
 
+    /** Retorna o campo agent id. */
     public UUID getAgentId() {
         return agentId;
     }
 
+    /** Retorna o campo type. */
     public String getType() {
         return type;
     }
 
+    /** Retorna o campo credential id. */
     public UUID getCredentialId() {
         return credentialId;
     }
 
+    /** Retorna o dispositivo. */
     public UUID getDeviceId() {
         return deviceId;
     }
 
+    /** Retorna o campo command id. */
     public UUID getCommandId() {
         return commandId;
     }
 
+    /** Retorna o ponto de acesso. */
     public String getEntrance() {
         return entrance;
     }
 
+    /** Retorna o campo reason. */
     public String getReason() {
         return reason;
     }
 
+    /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
     }

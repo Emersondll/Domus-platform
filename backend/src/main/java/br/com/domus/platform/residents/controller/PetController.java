@@ -30,6 +30,7 @@ public class PetController {
 
     private final PetService service;
 
+    /** Construtor de PetController; recebe as dependências por injeção. */
     public PetController(PetService service) {
         this.service = service;
     }
@@ -62,6 +63,12 @@ public class PetController {
 
     @PostMapping("/pets")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/pets`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public PetResponse register(@PathVariable UUID condominiumId, @Valid @RequestBody PetRequest r) {
         if (r.unitId() == null) {
             throw new IllegalArgumentException("unitId is required");
@@ -71,6 +78,14 @@ public class PetController {
     }
 
     @GetMapping("/pets")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/pets`.
+     *
+     * @param condominiumId condomínio
+     * @param unitId unidade
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<PetResponse> list(@PathVariable UUID condominiumId,
                                           @RequestParam(required = false) UUID unitId,
                                           @PageableDefault(size = 100, sort = "name") Pageable pageable) {
@@ -78,6 +93,13 @@ public class PetController {
     }
 
     @PutMapping("/pets/{petId}")
+    /**
+     * Atende `PUT /condominiums/{condominiumId}/pets/{petId}`.
+     *
+     * @param condominiumId condomínio
+     * @param petId pet id
+     * @param r corpo da requisição (validado)
+     */
     public PetResponse update(@PathVariable UUID condominiumId, @PathVariable UUID petId,
                               @Valid @RequestBody PetRequest r) {
         return PetResponse.from(service.update(condominiumId, petId, r.name(), r.species(), r.breed(), r.notes()));
@@ -85,23 +107,47 @@ public class PetController {
 
     @PostMapping("/pets/{petId}/remove")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/pets/{petId}/remove`.
+     *
+     * @param condominiumId condomínio
+     * @param petId pet id
+     */
     public void remove(@PathVariable UUID condominiumId, @PathVariable UUID petId) {
         service.remove(condominiumId, petId);
     }
 
     @GetMapping("/me/pets")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/pets`.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<PetResponse> listMine(@PathVariable UUID condominiumId) {
         return service.listMine(condominiumId).stream().map(PetResponse::from).toList();
     }
 
     @PostMapping("/me/pets")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/pets`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public PetResponse registerMine(@PathVariable UUID condominiumId, @Valid @RequestBody PetRequest r) {
         return PetResponse.from(service.registerMine(condominiumId, r.name(), r.species(), r.breed(), r.notes()));
     }
 
     @PostMapping("/me/pets/{petId}/remove")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/pets/{petId}/remove`.
+     *
+     * @param condominiumId condomínio
+     * @param petId pet id
+     */
     public void removeMine(@PathVariable UUID condominiumId, @PathVariable UUID petId) {
         service.removeMine(condominiumId, petId);
     }

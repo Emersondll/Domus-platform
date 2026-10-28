@@ -19,6 +19,7 @@ public class EntranceSnapshotService implements EntranceCameraLookup {
     private final DeviceRepository devices;
     private final List<SnapshotSource> sources;
 
+    /** Construtor de EntranceSnapshotService; recebe as dependências por injeção. */
     public EntranceSnapshotService(DeviceRepository devices, List<SnapshotSource> sources) {
         this.devices = devices;
         this.sources = sources;

@@ -28,6 +28,7 @@ public class RemoteOpenPolicy {
     protected RemoteOpenPolicy() {
     }
 
+    /** Construtor para criação de um(a) remote open policy. */
     public RemoteOpenPolicy(UUID condominiumId, boolean enabled, UUID updatedByUserId, Instant updatedAt) {
         this.condominiumId = condominiumId;
         this.enabled = enabled;
@@ -35,12 +36,20 @@ public class RemoteOpenPolicy {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * Liga ou desliga a abertura remota pelo morador e registra quem alterou.
+     *
+     * @param enabled ligado ou desligado
+     * @param userId usuário
+     * @param at instante do fato
+     */
     public void change(boolean enabled, UUID userId, Instant at) {
         this.enabled = enabled;
         this.updatedByUserId = userId;
         this.updatedAt = at;
     }
 
+    /** Indica se enabled. */
     public boolean isEnabled() {
         return enabled;
     }

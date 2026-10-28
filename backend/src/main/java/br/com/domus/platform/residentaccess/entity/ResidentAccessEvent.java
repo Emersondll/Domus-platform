@@ -45,6 +45,7 @@ public class ResidentAccessEvent {
     protected ResidentAccessEvent() {
     }
 
+    /** Construtor para criação de um(a) resident access event. */
     public ResidentAccessEvent(UUID condominiumId, UUID residentId, UUID deviceId, String entrance, String direction,
                                String method, String result, Instant occurredAt, Instant receivedAt) {
         this.id = UUID.randomUUID();
@@ -59,26 +60,32 @@ public class ResidentAccessEvent {
         this.receivedAt = receivedAt;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o ponto de acesso. */
     public String getEntrance() {
         return entrance;
     }
 
+    /** Retorna o campo direction. */
     public String getDirection() {
         return direction;
     }
 
+    /** Retorna o campo method. */
     public String getMethod() {
         return method;
     }
 
+    /** Retorna o campo result. */
     public String getResult() {
         return result;
     }
 
+    /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
     }

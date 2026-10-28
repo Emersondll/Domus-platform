@@ -63,6 +63,7 @@ public class RetentionService {
     }
 
     @Scheduled(cron = "${portaria.retention.cron:0 30 3 * * *}")
+    /** Executa o expurgo periódico conforme os prazos de retenção configurados. */
     public void scheduled() {
         if (enabled) {
             purge();

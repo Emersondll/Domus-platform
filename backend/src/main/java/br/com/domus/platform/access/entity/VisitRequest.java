@@ -60,6 +60,7 @@ public class VisitRequest {
     protected VisitRequest() {
     }
 
+    /** Construtor para criação de um(a) visit request. */
     public VisitRequest(UUID condominiumId, UUID unitId, UUID callId, String visitorName, String kind,
                         UUID requestedByUserId, Instant createdAt, Instant expiresAt) {
         this.id = UUID.randomUUID();
@@ -78,48 +79,65 @@ public class VisitRequest {
         return PENDING.equals(status) && !now.isBefore(expiresAt) ? EXPIRED : status;
     }
 
+    /**
+     * Registra a decisão do morador sobre o pedido de visita.
+     *
+     * @param approve verdadeiro para autorizar, falso para negar
+     * @param userId usuário
+     * @param when instante do fato
+     */
     public void decide(boolean approve, UUID userId, Instant when) {
         this.status = approve ? APPROVED : DENIED;
         this.decidedByUserId = userId;
         this.decidedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo call id. */
     public UUID getCallId() {
         return callId;
     }
 
+    /** Retorna o campo visitor name. */
     public String getVisitorName() {
         return visitorName;
     }
 
+    /** Retorna o tipo. */
     public String getKind() {
         return kind;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o instante de expiração. */
     public Instant getExpiresAt() {
         return expiresAt;
     }
 
+    /** Retorna o campo decided at. */
     public Instant getDecidedAt() {
         return decidedAt;
     }

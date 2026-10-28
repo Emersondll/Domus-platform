@@ -42,6 +42,7 @@ public class ShiftLogEntry {
     protected ShiftLogEntry() {
     }
 
+    /** Construtor para criação de um(a) shift log entry. */
     public ShiftLogEntry(UUID condominiumId, UUID shiftId, UUID authorUserId, String kind, String text,
                          Instant createdAt) {
         this.id = UUID.randomUUID();
@@ -53,26 +54,32 @@ public class ShiftLogEntry {
         this.createdAt = createdAt;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo shift id. */
     public UUID getShiftId() {
         return shiftId;
     }
 
+    /** Retorna o campo author user id. */
     public UUID getAuthorUserId() {
         return authorUserId;
     }
 
+    /** Retorna o tipo. */
     public String getKind() {
         return kind;
     }
 
+    /** Retorna o campo text. */
     public String getText() {
         return text;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }

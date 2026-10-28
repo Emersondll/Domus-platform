@@ -55,6 +55,17 @@ public class AuditService {
         this.isolated = JdbcClient.create(isolatedPool);
     }
 
+    /**
+     * Registra um fato na trilha de auditoria (sucesso na mesma transação; negação e falha pelo pool dedicado).
+     *
+     * @param actorUserId actor user id
+     * @param operatorCompanyId operator company id
+     * @param condominiumId condomínio
+     * @param action action
+     * @param resourceType resource type
+     * @param resourceId resource id
+     * @param outcome desfecho
+     */
     public void record(UUID actorUserId, UUID operatorCompanyId, UUID condominiumId, String action,
                        String resourceType, String resourceId, AuditOutcome outcome) {
         boolean sameTransaction = outcome == AuditOutcome.SUCCESS;

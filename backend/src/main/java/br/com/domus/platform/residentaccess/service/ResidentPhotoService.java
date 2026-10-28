@@ -59,6 +59,7 @@ public class ResidentPhotoService {
     private final Clock clock;
     private final boolean enabled;
 
+    /** Construtor de ResidentPhotoService; recebe as dependências por injeção. */
     public ResidentPhotoService(PrivacyConsentRepository consents, ResidentPhotoRepository photos,
                                 ResidentRepository residents, AccessService access, AuditService audit, Clock clock,
                                 @Value("${portaria.resident-photo.enabled:false}") boolean enabled) {
@@ -72,6 +73,11 @@ public class ResidentPhotoService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Informa se o recurso está ligado e o estado do consentimento e da foto do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     */
     public Status status(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "resident.photo.status");
         Optional<PrivacyConsent> consent = consents.findFirstByResidentIdAndPurposeAndRevokedAtIsNull(
@@ -82,6 +88,12 @@ public class ResidentPhotoService {
     }
 
     @Transactional
+    /**
+     * Registra o consentimento específico do morador para o uso da foto.
+     *
+     * @param condominiumId condomínio
+     * @param textVersion versão do texto de consentimento
+     */
     public PrivacyConsent grant(UUID condominiumId, String textVersion) {
         ResidentContext me = access.requireResident(condominiumId, "consent.grant");
         requireEnabled();
@@ -114,6 +126,12 @@ public class ResidentPhotoService {
     }
 
     @Transactional
+    /**
+     * Valida, cifra e guarda a foto enviada pelo morador.
+     *
+     * @param condominiumId condomínio
+     * @param raw bytes da imagem enviada
+     */
     public Instant upload(UUID condominiumId, byte[] raw) {
         ResidentContext me = access.requireResident(condominiumId, "resident.photo.upload");
         requireEnabled();
@@ -135,6 +153,11 @@ public class ResidentPhotoService {
     }
 
     @Transactional
+    /**
+     * Devolve a foto do morador autenticado e registra a visualização na auditoria.
+     *
+     * @param condominiumId condomínio
+     */
     public byte[] view(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "resident.photo.view.self");
         requireEnabled();
@@ -146,6 +169,11 @@ public class ResidentPhotoService {
     }
 
     @Transactional
+    /**
+     * Apaga a foto do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     */
     public void delete(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "resident.photo.delete");
         photos.deleteByResidentId(me.residentId());
@@ -177,6 +205,11 @@ public class ResidentPhotoService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os consentimentos do morador (uso interno, para exportação e anonimização).
+     *
+     * @param residentId morador
+     */
     public java.util.List<PrivacyConsent> consentsOf(UUID residentId) {
         return consents.findByResidentIdOrderByGrantedAtDesc(residentId);
     }

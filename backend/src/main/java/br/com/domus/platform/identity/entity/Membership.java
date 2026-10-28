@@ -45,6 +45,7 @@ public class Membership {
     protected Membership() {
     }
 
+    /** Construtor para criação de um(a) membership. */
     public Membership(UUID userId, Role role, UUID operatorCompanyId, UUID condominiumId) {
         this.id = UUID.randomUUID();
         this.userId = userId;
@@ -60,34 +61,42 @@ public class Membership {
         return m;
     }
 
+    /** Retorna o morador. */
     public UUID getResidentId() {
         return residentId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o usuário. */
     public UUID getUserId() {
         return userId;
     }
 
+    /** Retorna o campo role. */
     public Role getRole() {
         return role;
     }
 
+    /** Retorna o campo operator company id. */
     public UUID getOperatorCompanyId() {
         return operatorCompanyId;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return active;
     }
 
+    /** Revoga a associação. */
     public void revoke() {
         this.active = false;
     }

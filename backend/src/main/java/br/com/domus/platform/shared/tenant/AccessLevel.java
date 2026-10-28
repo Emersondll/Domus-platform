@@ -4,6 +4,12 @@ package br.com.domus.platform.shared.tenant;
 public enum AccessLevel {
     NONE, READ, OPERATE, MANAGE;
 
+    /**
+     * Indica se este nível cobre o nível exigido.
+     *
+     * @param required required
+     * @return verdadeiro ou falso
+     */
     public boolean atLeast(AccessLevel required) {
         return this.ordinal() >= required.ordinal();
     }

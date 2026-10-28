@@ -45,6 +45,7 @@ public class DahuaEventStream {
     private final int heartbeatSeconds;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
+    /** Construtor de DahuaEventStream; recebe as dependências por injeção. */
     public DahuaEventStream(HostPolicy hosts, DeviceSecrets secrets) {
         this(hosts, secrets, HEARTBEAT_SECONDS);
     }

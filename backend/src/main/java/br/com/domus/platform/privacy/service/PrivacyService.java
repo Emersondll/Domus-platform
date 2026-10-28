@@ -59,6 +59,7 @@ public class PrivacyService {
     private final AuditService audit;
     private final Clock clock;
 
+    /** Construtor de PrivacyService; recebe as dependências por injeção. */
     public PrivacyService(ResidentRepository residents, MembershipRepository memberships, AppUserRepository users,
                           NotificationRepository notifications, NotificationPreferenceRepository preferences,
                           VehicleRepository vehicles, ParcelRepository parcels, AccessCredentialRepository credentials,

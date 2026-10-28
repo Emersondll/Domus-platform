@@ -27,6 +27,7 @@ public class VehicleService {
     private final AuditService audit;
     private final FieldCipher cipher;
 
+    /** Construtor de VehicleService; recebe as dependências por injeção. */
     public VehicleService(VehicleRepository vehicles, ResidentRepository residents, AccessService access,
                           AuditService audit, FieldCipher cipher) {
         this.vehicles = vehicles;
@@ -68,12 +69,27 @@ public class VehicleService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os veículos da unidade do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Vehicle> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "vehicle.list.self");
         return vehicles.findByCondominiumIdAndUnitId(condominiumId, unitOf(me), pageable);
     }
 
     @Transactional
+    /**
+     * Cadastra um veículo na unidade do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param plate placa
+     * @param model model
+     * @param color color
+     */
     public Vehicle registerMine(UUID condominiumId, String plate, String model, String color) {
         ResidentContext me = access.requireResident(condominiumId, "vehicle.create.self");
         String normalized = FieldCipher.normalizePlate(plate);

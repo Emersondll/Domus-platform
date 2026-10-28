@@ -11,6 +11,7 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     private final FieldCipher cipher;
 
+    /** Construtor de EncryptedStringConverter; recebe as dependências por injeção. */
     public EncryptedStringConverter(FieldCipher cipher) {
         this.cipher = cipher;
     }

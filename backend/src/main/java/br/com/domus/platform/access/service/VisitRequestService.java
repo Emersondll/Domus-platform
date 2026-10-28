@@ -48,6 +48,7 @@ public class VisitRequestService {
     private final VisitSnapshotService snapshots;
     private final Clock clock;
 
+    /** Construtor de VisitRequestService; recebe as dependências por injeção. */
     public VisitRequestService(VisitRequestRepository requests, AccessAttemptRepository attempts,
                                VisitSnapshotService snapshots,
                                CommercialService commercial,
@@ -65,6 +66,16 @@ public class VisitRequestService {
     }
 
     @Transactional
+    /**
+     * Registra o pedido de autorização de um visitante e avisa a unidade.
+     *
+     * @param condominiumId condomínio
+     * @param unitId unidade
+     * @param visitorName nome do visitante
+     * @param kind tipo
+     * @param callId atendimento
+     * @param snapshotId snapshot id
+     */
     public VisitRequest request(UUID condominiumId, UUID unitId, String visitorName, String kind, UUID callId,
                                 UUID snapshotId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "visit.request");
@@ -86,6 +97,14 @@ public class VisitRequestService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os pedidos de visita do condomínio, opcionalmente de um atendimento.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<VisitRequest> list(UUID condominiumId, UUID callId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "visit.list");
         return callId == null ? requests.findByCondominiumId(condominiumId, pageable)
@@ -93,12 +112,26 @@ public class VisitRequestService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os pedidos de visita da unidade do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<VisitRequest> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "visit.list.self");
         return requests.findByCondominiumIdAndUnitId(condominiumId, myUnit(me, condominiumId), pageable);
     }
 
     @Transactional
+    /**
+     * Registra a autorização ou a negação do pedido pelo morador.
+     *
+     * @param condominiumId condomínio
+     * @param requestId pedido de visita
+     * @param approve verdadeiro para autorizar, falso para negar
+     */
     public VisitRequest decide(UUID condominiumId, UUID requestId, boolean approve) {
         String action = approve ? "visit.approve" : "visit.deny";
         ResidentContext me = access.requireResident(condominiumId, action);

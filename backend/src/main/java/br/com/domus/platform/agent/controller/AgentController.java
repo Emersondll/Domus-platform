@@ -1,8 +1,7 @@
 package br.com.domus.platform.agent.controller;
 
 import br.com.domus.platform.agent.entity.Agent;
-import br.com.domus.platform.agent.entity.AgentCommand;
-import br.com.domus.platform.agent.repository.AgentCommandRepository;
+import br.com.domus.platform.agent.service.AgentCommandService;
 import br.com.domus.platform.agent.service.AgentService;
 import br.com.domus.platform.agent.service.PolicyService;
 import br.com.domus.platform.agent.service.SyncService;
@@ -11,7 +10,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -19,7 +17,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,16 +37,15 @@ public class AgentController {
     private final AgentService agents;
     private final PolicyService policies;
     private final SyncService sync;
-    private final AgentCommandRepository commandQueue;
-    private final Clock clock;
+    private final AgentCommandService commands;
 
+    /** Construtor de AgentController; recebe as dependências por injeção. */
     public AgentController(AgentService agents, PolicyService policies, SyncService sync,
-                           AgentCommandRepository commandQueue, Clock clock) {
+                           AgentCommandService commands) {
         this.agents = agents;
         this.policies = policies;
         this.sync = sync;
-        this.commandQueue = commandQueue;
-        this.clock = clock;
+        this.commands = commands;
     }
 
     /**
@@ -97,6 +93,15 @@ public class AgentController {
     }
 
     @GetMapping("/policy")
+    /**
+     * Atende `GET /agent/policy`.
+     *
+     * @param id identificador
+     * @param key chave
+     * @param backlog eventos pendentes no agente
+     * @param sinceVersion since version
+     * @param ageSeconds age seconds
+     */
     public ResponseEntity<PolicyResponse> policy(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
@@ -113,6 +118,14 @@ public class AgentController {
     }
 
     @PostMapping("/events")
+    /**
+     * Atende `POST /agent/events`.
+     *
+     * @param id identificador
+     * @param key chave
+     * @param backlog eventos pendentes no agente
+     * @param batch batch
+     */
     public Map<String, List<EventResult>> events(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
@@ -126,20 +139,30 @@ public class AgentController {
     }
 
     @GetMapping("/commands")
-    @Transactional
+    /**
+     * Atende `GET /agent/commands`.
+     *
+     * @param id identificador
+     * @param key chave
+     * @param backlog eventos pendentes no agente
+     */
     public Map<String, List<CommandDto>> commands(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog) {
-        Agent agent = agents.authenticate(id, key, null, backlog);
-        Instant now = Instant.now(clock);
-        List<AgentCommand> pending = commandQueue.findPending(agent.getId(), now);
-        pending.forEach(c -> c.deliver(now));
-        return Map.of("commands", pending.stream()
+        return Map.of("commands", commands.deliverPending(id, key, backlog).stream()
                 .map(c -> new CommandDto(c.getId(), c.getDeviceId(), c.getEntrance(), c.getExpiresAt())).toList());
     }
 
     @PostMapping("/heartbeat")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /agent/heartbeat`.
+     *
+     * @param id identificador
+     * @param key chave
+     * @param backlog eventos pendentes no agente
+     * @param policyVersion versão de política
+     */
     public void heartbeat(@RequestHeader("X-Agent-Id") UUID id, @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
             @RequestParam(required = false) Long policyVersion) {
@@ -147,6 +170,12 @@ public class AgentController {
     }
 
     @PostMapping("/rotate-key")
+    /**
+     * Atende `POST /agent/rotate-key`.
+     *
+     * @param id identificador
+     * @param key chave
+     */
     public Map<String, String> rotate(@RequestHeader("X-Agent-Id") UUID id, @RequestHeader("X-Agent-Key") String key) {
         Agent agent = agents.authenticate(id, key, null, null);
         if (!"ACTIVE".equals(agent.getStatus())) {

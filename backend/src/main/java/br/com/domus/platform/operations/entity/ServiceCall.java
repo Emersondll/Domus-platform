@@ -54,6 +54,7 @@ public class ServiceCall {
     protected ServiceCall() {
     }
 
+    /** Construtor para criação de um(a) service call. */
     public ServiceCall(UUID condominiumId, UUID unitId, String source, String callerName, Instant createdAt) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -63,57 +64,80 @@ public class ServiceCall {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Transfere o atendimento para outro operador.
+     *
+     * @param userId usuário
+     * @param when instante do fato
+     */
     public void transferTo(UUID userId, Instant when) {
         this.assignedUserId = userId;
         this.assignedAt = when;
     }
 
+    /**
+     * Encerra o atendimento com o desfecho informado.
+     *
+     * @param outcome desfecho
+     * @param when instante do fato
+     */
     public void close(String outcome, Instant when) {
         this.status = CLOSED;
         this.outcome = outcome;
         this.closedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo source. */
     public String getSource() {
         return source;
     }
 
+    /** Retorna o campo caller name. */
     public String getCallerName() {
         return callerName;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }
 
+    /** Retorna o campo assigned user id. */
     public UUID getAssignedUserId() {
         return assignedUserId;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o campo assigned at. */
     public Instant getAssignedAt() {
         return assignedAt;
     }
 
+    /** Retorna o campo closed at. */
     public Instant getClosedAt() {
         return closedAt;
     }
 
+    /** Retorna o campo outcome. */
     public String getOutcome() {
         return outcome;
     }

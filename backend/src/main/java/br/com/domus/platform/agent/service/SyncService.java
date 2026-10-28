@@ -46,6 +46,7 @@ public class SyncService {
     private final Clock clock;
     private final MeterRegistry meters;
 
+    /** Construtor de SyncService; recebe as dependências por injeção. */
     public SyncService(AgentEventRepository events, SyncConflictRepository conflicts, CredentialService credentials,
                        DeviceEventService deviceEvents, AuditService audit, Clock clock,
                        MeterRegistry meters) {
@@ -59,6 +60,13 @@ public class SyncService {
     }
 
     @Transactional
+    /**
+     * Processa, de forma idempotente, os eventos que o agente acumulou offline.
+     *
+     * @param agent agente autenticado
+     * @param incoming eventos recebidos
+     * @return lista de resultados
+     */
     public List<Result> process(Agent agent, List<Incoming> incoming) {
         List<Result> results = new ArrayList<>();
         for (Incoming e : incoming) {

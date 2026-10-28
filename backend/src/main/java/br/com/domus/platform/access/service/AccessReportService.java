@@ -66,6 +66,7 @@ public class AccessReportService {
     private final AuditService audit;
     private final Clock clock;
 
+    /** Construtor de AccessReportService; recebe as dependências por injeção. */
     public AccessReportService(AccessAttemptRepository attempts, AccessCredentialRepository credentials,
                                VisitorRepository visitors, VisitRequestRepository visitRequests, UnitRepository units, BlockRepository blocks,
                                AccessService access, AuditService audit, Clock clock) {
@@ -81,6 +82,13 @@ public class AccessReportService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os visitantes que entraram e ainda não tiveram a saída registrada.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Row> onSite(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "access.onsite.list");
         Page<AccessAttempt> page = attempts.findOnSite(condominiumId, pageable);
@@ -88,6 +96,16 @@ public class AccessReportService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Monta o relatório de acessos do período, com filtro opcional por resultado.
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período
+     * @param result resultado
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<Row> report(UUID condominiumId, Instant from, Instant to, String result, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "access.report");
         validatePeriod(from, to);
@@ -117,6 +135,12 @@ public class AccessReportService {
     }
 
     @Transactional
+    /**
+     * Registra a saída de um visitante que está no local.
+     *
+     * @param condominiumId condomínio
+     * @param attemptId tentativa de acesso
+     */
     public Row registerExit(UUID condominiumId, UUID attemptId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.exit");
         AccessAttempt attempt = attempts.findByIdAndCondominiumId(attemptId, condominiumId)

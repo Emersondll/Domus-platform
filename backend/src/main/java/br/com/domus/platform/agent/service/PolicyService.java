@@ -41,6 +41,7 @@ public class PolicyService {
     private final Duration ttl;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /** Construtor de PolicyService; recebe as dependências por injeção. */
     public PolicyService(AgentService agents, CredentialService credentials, DeviceRepository devices, Clock clock,
                          @Value("${portaria.agent.policy-ttl:PT6H}") Duration ttl) {
         this.agents = agents;
@@ -50,11 +51,19 @@ public class PolicyService {
         this.ttl = ttl;
     }
 
+    /**
+     * Devolve o prazo de validade da política enviada ao agente.
+     */
     public Duration ttl() {
         return ttl;
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Monta e assina o envelope de política para o agente.
+     *
+     * @param agent agente autenticado
+     */
     public Envelope build(Agent agent) {
         Instant now = Instant.now(clock);
         long version = agents.currentVersion(agent.getCondominiumId());

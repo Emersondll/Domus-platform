@@ -42,6 +42,7 @@ public class DirectMessage {
     protected DirectMessage() {
     }
 
+    /** Construtor para criação de um(a) direct message. */
     public DirectMessage(UUID condominiumId, UUID residentUserId, UUID senderUserId, boolean fromResident,
                          String text, Instant createdAt) {
         this.id = UUID.randomUUID();
@@ -53,32 +54,43 @@ public class DirectMessage {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Marca a mensagem como lida.
+     *
+     * @param when instante do fato
+     */
     public void markRead(Instant when) {
         if (readAt == null) {
             readAt = when;
         }
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo resident user id. */
     public UUID getResidentUserId() {
         return residentUserId;
     }
 
+    /** Indica se from resident. */
     public boolean isFromResident() {
         return fromResident;
     }
 
+    /** Retorna o campo text. */
     public String getText() {
         return text;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o campo read at. */
     public Instant getReadAt() {
         return readAt;
     }

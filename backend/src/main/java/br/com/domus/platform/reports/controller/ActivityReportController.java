@@ -21,6 +21,7 @@ public class ActivityReportController {
 
     private final ActivityReportService service;
 
+    /** Construtor de ActivityReportController; recebe as dependências por injeção. */
     public ActivityReportController(ActivityReportService service) {
         this.service = service;
     }
@@ -33,6 +34,13 @@ public class ActivityReportController {
     }
 
     @GetMapping("/activity.csv")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/reports/activity.csv`.
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período
+     */
     public ResponseEntity<byte[]> activityCsv(@PathVariable UUID condominiumId, @RequestParam Instant from,
                                               @RequestParam Instant to) {
         byte[] body = service.csv(service.report(condominiumId, from, to)).getBytes(StandardCharsets.UTF_8);

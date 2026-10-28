@@ -33,6 +33,7 @@ public class Condominium {
     protected Condominium() {
     }
 
+    /** Construtor para criação de um(a) condominium. */
     public Condominium(UUID operatorCompanyId, String name, String taxId) {
         this.id = UUID.randomUUID();
         this.operatorCompanyId = operatorCompanyId;
@@ -40,22 +41,27 @@ public class Condominium {
         this.taxId = taxId;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo operator company id. */
     public UUID getOperatorCompanyId() {
         return operatorCompanyId;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }
 
+    /** Retorna o campo tax id. */
     public String getTaxId() {
         return taxId;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }

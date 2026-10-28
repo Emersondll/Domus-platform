@@ -35,6 +35,7 @@ public class DahuaCgiAdapter implements DeviceAdapter {
 
     private final DeviceSecrets secrets;
 
+    /** Construtor de DahuaCgiAdapter; recebe as dependências por injeção. */
     public DahuaCgiAdapter(HostPolicy hosts, DeviceSecrets secrets) {
         this.hosts = hosts;
         this.secrets = secrets;

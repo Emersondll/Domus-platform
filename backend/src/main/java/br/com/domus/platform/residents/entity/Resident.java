@@ -48,6 +48,7 @@ public class Resident {
     protected Resident() {
     }
 
+    /** Construtor para criação de um(a) resident. */
     public Resident(UUID condominiumId, UUID unitId, String fullName, String email, String phone,
                     ResidentType residentType) {
         this.id = UUID.randomUUID();
@@ -76,39 +77,53 @@ public class Resident {
         this.active = active;
     }
 
+    /**
+     * Atualiza os dados de contato do morador.
+     *
+     * @param email e-mail
+     * @param phone phone
+     */
     public void updateContact(String email, String phone) {
         this.email = email;
         this.phone = phone;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o nome completo (decifrado). */
     public String getFullName() {
         return fullName;
     }
 
+    /** Retorna o e-mail (decifrado). */
     public String getEmail() {
         return email;
     }
 
+    /** Retorna o campo phone. */
     public String getPhone() {
         return phone;
     }
 
+    /** Retorna o campo resident type. */
     public ResidentType getResidentType() {
         return residentType;
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return active;
     }

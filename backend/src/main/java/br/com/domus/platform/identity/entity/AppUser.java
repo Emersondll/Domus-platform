@@ -41,6 +41,7 @@ public class AppUser {
     protected AppUser() {
     }
 
+    /** Construtor para criação de um(a) app user. */
     public AppUser(String externalSubject, String email, String displayName) {
         this.id = UUID.randomUUID();
         this.externalSubject = externalSubject;
@@ -48,27 +49,33 @@ public class AppUser {
         this.displayName = displayName;
     }
 
+    /** Construtor para criação de um(a) app user. */
     public AppUser(String externalSubject, String email, String displayName, String emailHash) {
         this(externalSubject, email, displayName);
         this.emailHash = emailHash;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo external subject. */
     public String getExternalSubject() {
         return externalSubject;
     }
 
+    /** Retorna o e-mail (decifrado). */
     public String getEmail() {
         return email;
     }
 
+    /** Retorna o nome de exibição (decifrado). */
     public String getDisplayName() {
         return displayName;
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return active;
     }
@@ -82,14 +89,17 @@ public class AppUser {
         this.active = false;
     }
 
+    /** Retorna o campo email hash. */
     public String getEmailHash() {
         return emailHash;
     }
 
+    /** Define o campo email hash. */
     public void setEmailHash(String emailHash) {
         this.emailHash = emailHash;
     }
 
+    /** Desativa o usuário. */
     public void deactivate() {
         this.active = false;
     }

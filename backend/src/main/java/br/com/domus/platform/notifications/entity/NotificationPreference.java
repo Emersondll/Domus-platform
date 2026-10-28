@@ -24,19 +24,28 @@ public class NotificationPreference {
     protected NotificationPreference() {
     }
 
+    /** Construtor para criação de um(a) notification preference. */
     public NotificationPreference(UUID userId) {
         this.userId = userId;
     }
 
+    /**
+     * Atualiza as preferências de assunto.
+     *
+     * @param parcelsEnabled parcels enabled
+     * @param visitorArrivalEnabled visitor arrival enabled
+     */
     public void update(boolean parcelsEnabled, boolean visitorArrivalEnabled) {
         this.parcelsEnabled = parcelsEnabled;
         this.visitorArrivalEnabled = visitorArrivalEnabled;
     }
 
+    /** Indica se parcels enabled. */
     public boolean isParcelsEnabled() {
         return parcelsEnabled;
     }
 
+    /** Indica se visitor arrival enabled. */
     public boolean isVisitorArrivalEnabled() {
         return visitorArrivalEnabled;
     }

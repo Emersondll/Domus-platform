@@ -39,6 +39,7 @@ public class Reservation {
     protected Reservation() {
     }
 
+    /** Construtor para criação de um(a) reservation. */
     public Reservation(UUID condominiumId, UUID areaId, UUID unitId, Instant startAt, Instant endAt) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
@@ -48,30 +49,37 @@ public class Reservation {
         this.endAt = endAt;
     }
 
+    /** Cancela a reserva. */
     public void cancel() {
         this.status = CANCELLED;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo area id. */
     public UUID getAreaId() {
         return areaId;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o campo start at. */
     public Instant getStartAt() {
         return startAt;
     }
 
+    /** Retorna o campo end at. */
     public Instant getEndAt() {
         return endAt;
     }
 
+    /** Retorna o estado atual. */
     public String getStatus() {
         return status;
     }

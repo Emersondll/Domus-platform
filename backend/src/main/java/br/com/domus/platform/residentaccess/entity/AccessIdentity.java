@@ -46,6 +46,7 @@ public class AccessIdentity {
     protected AccessIdentity() {
     }
 
+    /** Construtor para criação de um(a) access identity. */
     public AccessIdentity(UUID condominiumId, UUID residentId, String kind, String externalRef, String refHash,
                           Instant createdAt) {
         this.id = UUID.randomUUID();
@@ -57,35 +58,47 @@ public class AccessIdentity {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Revoga o meio de acesso.
+     *
+     * @param when instante do fato
+     */
     public void revoke(Instant when) {
         this.active = false;
         this.revokedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o morador. */
     public UUID getResidentId() {
         return residentId;
     }
 
+    /** Retorna o tipo. */
     public String getKind() {
         return kind;
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return active;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o campo revoked at. */
     public Instant getRevokedAt() {
         return revokedAt;
     }

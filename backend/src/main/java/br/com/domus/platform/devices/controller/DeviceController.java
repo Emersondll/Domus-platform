@@ -36,6 +36,7 @@ public class DeviceController {
     private final AccessCommandService commands;
     private final DeviceEventService events;
 
+    /** Construtor de DeviceController; recebe as dependências por injeção. */
     public DeviceController(DeviceService devices, AccessCommandService commands, DeviceEventService events) {
         this.devices = devices;
         this.commands = commands;
@@ -129,6 +130,12 @@ public class DeviceController {
 
     @PostMapping("/condominiums/{condominiumId}/devices")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public DeviceResponse register(@PathVariable UUID condominiumId, @Valid @RequestBody RegisterDeviceRequest r) {
         DeviceService.Registered reg = devices.register(condominiumId, r.name(), r.kind(), r.adapter(), r.entrance(),
                 r.config());
@@ -136,6 +143,13 @@ public class DeviceController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/devices")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/devices`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<DeviceResponse> list(@PathVariable UUID condominiumId,
                                              @PageableDefault(size = 50, sort = "name") Pageable pageable) {
         return PageResponse.of(devices.list(condominiumId, pageable), d -> DeviceResponse.from(d, null));
@@ -162,6 +176,13 @@ public class DeviceController {
     }
 
     @org.springframework.web.bind.annotation.PutMapping("/condominiums/{condominiumId}/devices/{deviceId}")
+    /**
+     * Atende `PUT /condominiums/{condominiumId}/devices/{deviceId}`: edita o dispositivo.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @param r corpo da requisição (validado)
+     */
     public DeviceResponse update(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                  @Valid @RequestBody UpdateDeviceRequest r) {
         return DeviceResponse.from(devices.update(condominiumId, deviceId, r.name().trim(), r.entrance().trim(),
@@ -169,12 +190,26 @@ public class DeviceController {
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/active")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/active`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @param r corpo da requisição (validado)
+     */
     public DeviceResponse active(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                  @RequestBody ActiveRequest r) {
         return DeviceResponse.from(devices.setActive(condominiumId, deviceId, r.active()), null);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/visitor-entrance")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/visitor-entrance`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @param r corpo da requisição (validado)
+     */
     public DeviceResponse visitorEntrance(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                           @RequestBody VisitorEntranceRequest r) {
         return DeviceResponse.from(devices.setVisitorEntrance(condominiumId, deviceId, r.enabled()), null);
@@ -188,29 +223,60 @@ public class DeviceController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/devices/permissions")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/devices/permissions`.
+     *
+     * @param condominiumId condomínio
+     */
     public PermissionsResponse permissions(@PathVariable UUID condominiumId) {
         var level = devices.myLevel(condominiumId);
         return new PermissionsResponse(level.name(), level == AccessLevel.MANAGE);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/resident-viewable")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/resident-viewable`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @param r corpo da requisição (validado)
+     */
     public DeviceResponse residentViewable(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                            @RequestBody ResidentViewableRequest r) {
         return DeviceResponse.from(devices.setResidentViewable(condominiumId, deviceId, r.enabled()), null);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/refresh-status")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/refresh-status`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public DeviceResponse refresh(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         return DeviceResponse.from(devices.refreshStatus(condominiumId, deviceId), null);
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/rotate-key")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/rotate-key`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     */
     public Map<String, String> rotate(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         return Map.of("apiKey", devices.rotateKey(condominiumId, deviceId));
     }
 
     @PostMapping("/condominiums/{condominiumId}/devices/{deviceId}/open")
     @ResponseStatus(HttpStatus.ACCEPTED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/devices/{deviceId}/open`.
+     *
+     * @param condominiumId condomínio
+     * @param deviceId dispositivo
+     * @param r corpo da requisição (validado)
+     */
     public CommandResponse open(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                 @Valid @RequestBody OpenRequest r) {
         return CommandResponse.from(commands.open(condominiumId, deviceId, r.callId(), r.attemptId(),
@@ -218,11 +284,24 @@ public class DeviceController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/commands/{commandId}")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/commands/{commandId}`.
+     *
+     * @param condominiumId condomínio
+     * @param commandId comando
+     */
     public CommandResponse command(@PathVariable UUID condominiumId, @PathVariable UUID commandId) {
         return CommandResponse.from(commands.get(condominiumId, commandId));
     }
 
     @GetMapping("/condominiums/{condominiumId}/commands")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/commands`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<CommandResponse> commandList(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "requestedAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             Pageable pageable) {

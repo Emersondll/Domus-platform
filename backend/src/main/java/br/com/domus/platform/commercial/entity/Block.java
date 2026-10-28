@@ -23,20 +23,24 @@ public class Block {
     protected Block() {
     }
 
+    /** Construtor para criação de um(a) block. */
     public Block(UUID condominiumId, String name) {
         this.id = UUID.randomUUID();
         this.condominiumId = condominiumId;
         this.name = name;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }

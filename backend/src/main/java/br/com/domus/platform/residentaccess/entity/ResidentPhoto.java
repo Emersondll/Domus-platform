@@ -40,6 +40,7 @@ public class ResidentPhoto {
     protected ResidentPhoto() {
     }
 
+    /** Construtor para criação de um(a) resident photo. */
     public ResidentPhoto(UUID condominiumId, UUID residentId, byte[] jpeg, Instant capturedAt, UUID uploadedByUserId,
                          UUID consentId) {
         this.id = UUID.randomUUID();
@@ -48,6 +49,14 @@ public class ResidentPhoto {
         replace(jpeg, capturedAt, uploadedByUserId, consentId);
     }
 
+    /**
+     * Substitui a imagem armazenada.
+     *
+     * @param jpeg jpeg
+     * @param capturedAt captured at
+     * @param uploadedByUserId uploaded by user id
+     * @param consentId consent id
+     */
     public final void replace(byte[] jpeg, Instant capturedAt, UUID uploadedByUserId, UUID consentId) {
         this.content = Base64.getEncoder().encodeToString(jpeg);
         this.capturedAt = capturedAt;
@@ -55,10 +64,14 @@ public class ResidentPhoto {
         this.consentId = consentId;
     }
 
+    /**
+     * Devolve os bytes da imagem.
+     */
     public byte[] jpeg() {
         return Base64.getDecoder().decode(content);
     }
 
+    /** Retorna o campo captured at. */
     public Instant getCapturedAt() {
         return capturedAt;
     }

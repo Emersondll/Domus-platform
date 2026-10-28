@@ -40,6 +40,7 @@ public class Pet {
     protected Pet() {
     }
 
+    /** Construtor para criação de um(a) pet. */
     public Pet(UUID condominiumId, UUID unitId, String name, String species, String breed, String notes,
                Instant createdAt) {
         this.id = UUID.randomUUID();
@@ -52,6 +53,14 @@ public class Pet {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Atualiza os dados do animal.
+     *
+     * @param name nome
+     * @param species species
+     * @param breed breed
+     * @param notes notes
+     */
     public void update(String name, String species, String breed, String notes) {
         this.name = name;
         this.species = species;
@@ -59,34 +68,42 @@ public class Pet {
         this.notes = notes;
     }
 
+    /** Desativa o registro do animal. */
     public void deactivate() {
         this.active = false;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna a unidade. */
     public UUID getUnitId() {
         return unitId;
     }
 
+    /** Retorna o nome. */
     public String getName() {
         return name;
     }
 
+    /** Retorna o campo species. */
     public String getSpecies() {
         return species;
     }
 
+    /** Retorna o campo breed. */
     public String getBreed() {
         return breed;
     }
 
+    /** Retorna o campo notes. */
     public String getNotes() {
         return notes;
     }
 
+    /** Indica se active. */
     public boolean isActive() {
         return active;
     }

@@ -46,6 +46,7 @@ public class VisitSnapshot {
     protected VisitSnapshot() {
     }
 
+    /** Construtor para criação de um(a) visit snapshot. */
     public VisitSnapshot(UUID condominiumId, UUID deviceId, UUID capturedByUserId, Instant capturedAt, Instant expiresAt,
                          byte[] jpeg) {
         this.id = UUID.randomUUID();
@@ -57,38 +58,53 @@ public class VisitSnapshot {
         this.content = Base64.getEncoder().encodeToString(jpeg);
     }
 
+    /**
+     * Vincula o quadro capturado ao pedido de visita.
+     *
+     * @param visitRequestId visit request id
+     */
     public void attachTo(UUID visitRequestId) {
         this.visitRequestId = visitRequestId;
     }
 
+    /**
+     * Devolve os bytes do quadro (já cifrados em repouso pela camada de persistência).
+     */
     public byte[] jpeg() {
         return Base64.getDecoder().decode(content);
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /** Retorna o dispositivo. */
     public UUID getDeviceId() {
         return deviceId;
     }
 
+    /** Retorna o campo captured by user id. */
     public UUID getCapturedByUserId() {
         return capturedByUserId;
     }
 
+    /** Retorna o campo captured at. */
     public Instant getCapturedAt() {
         return capturedAt;
     }
 
+    /** Retorna o instante de expiração. */
     public Instant getExpiresAt() {
         return expiresAt;
     }
 
+    /** Retorna o campo visit request id. */
     public UUID getVisitRequestId() {
         return visitRequestId;
     }

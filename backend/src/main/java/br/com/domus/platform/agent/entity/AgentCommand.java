@@ -39,6 +39,7 @@ public class AgentCommand {
     protected AgentCommand() {
     }
 
+    /** Construtor para criação de um(a) agent command. */
     public AgentCommand(UUID commandId, UUID agentId, UUID condominiumId, UUID deviceId, String entrance,
                         Instant createdAt, Instant expiresAt) {
         this.id = commandId;
@@ -50,22 +51,31 @@ public class AgentCommand {
         this.expiresAt = expiresAt;
     }
 
+    /**
+     * Marca o comando como entregue ao agente.
+     *
+     * @param when instante do fato
+     */
     public void deliver(Instant when) {
         this.deliveredAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o dispositivo. */
     public UUID getDeviceId() {
         return deviceId;
     }
 
+    /** Retorna o ponto de acesso. */
     public String getEntrance() {
         return entrance;
     }
 
+    /** Retorna o instante de expiração. */
     public Instant getExpiresAt() {
         return expiresAt;
     }

@@ -7,6 +7,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class PlatformApplication {
 
+    /**
+     * Inicia a aplicação Spring Boot.
+     *
+     * @param args args
+     */
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);
     }

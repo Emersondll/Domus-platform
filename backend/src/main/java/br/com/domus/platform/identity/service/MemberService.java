@@ -38,6 +38,7 @@ public class MemberService {
     private final AuditService audit;
     private final FieldCipher cipher;
 
+    /** Construtor para criação de um(a) member service. */
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
                          OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher) {
         this.cipher = cipher;
@@ -50,6 +51,14 @@ public class MemberService {
     }
 
     @Transactional
+    /**
+     * Cadastra um administrador da empresa operadora.
+     *
+     * @param companyId empresa operadora
+     * @param subject identificador do usuário no provedor de identidade
+     * @param email e-mail
+     * @param displayName nome de exibição
+     */
     public Membership addCompanyAdmin(UUID companyId, String subject, String email, String displayName) {
         Actor actor = access.requirePlatformAdmin("member.company-admin.add");
         if (!companies.existsById(companyId)) {
@@ -66,6 +75,15 @@ public class MemberService {
     }
 
     @Transactional
+    /**
+     * Cadastra um membro da equipe do condomínio (operador ou síndico).
+     *
+     * @param condominiumId condomínio
+     * @param role papel
+     * @param subject identificador do usuário no provedor de identidade
+     * @param email e-mail
+     * @param displayName nome de exibição
+     */
     public Membership addStaff(UUID condominiumId, Role role, String subject, String email, String displayName) {
         if (role != Role.OPERATOR && role != Role.CONDO_MANAGER) {
             throw new IllegalArgumentException("Role must be OPERATOR or CONDO_MANAGER");
@@ -82,6 +100,15 @@ public class MemberService {
     }
 
     @Transactional
+    /**
+     * Vincula um morador a uma conta de acesso ao app.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     * @param subject identificador do usuário no provedor de identidade
+     * @param email e-mail
+     * @param displayName nome de exibição
+     */
     public Membership linkResident(UUID condominiumId, UUID residentId, String subject, String email, String displayName) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "member.resident.link");
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
@@ -100,6 +127,13 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista as associações do condomínio, com filtro opcional por e-mail (índice cego).
+     *
+     * @param condominiumId condomínio
+     * @param email e-mail
+     * @return lista de resultados
+     */
     public List<Membership> list(UUID condominiumId, String email) {
         access.require(condominiumId, AccessLevel.MANAGE, "member.list");
         List<Membership> all = memberships.findByCondominiumIdAndActiveTrue(condominiumId);
@@ -112,6 +146,12 @@ public class MemberService {
     }
 
     @Transactional
+    /**
+     * Revoga uma associação do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param membershipId associação
+     */
     public void revoke(UUID condominiumId, UUID membershipId) {
         Actor actor = access.requireCompanyAdminOf(condominiumId, "member.revoke");
         Membership m = memberships.findByIdAndCondominiumId(membershipId, condominiumId)

@@ -36,6 +36,7 @@ public class PiiEncryptionMigration implements ApplicationRunner {
     private final FieldCipher cipher;
     private final boolean migrateOnStart;
 
+    /** Construtor de PiiEncryptionMigration; recebe as dependências por injeção. */
     public PiiEncryptionMigration(JdbcClient jdbc, FieldCipher cipher,
                                   @Value("${portaria.crypto.migrate-on-start:false}") boolean migrateOnStart) {
         this.jdbc = jdbc;

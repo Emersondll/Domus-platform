@@ -21,6 +21,7 @@ public class ResidentSelfController {
 
     private final ResidentSelfService service;
 
+    /** Construtor de ResidentSelfController; recebe as dependências por injeção. */
     public ResidentSelfController(ResidentSelfService service) {
         this.service = service;
     }
@@ -52,18 +53,34 @@ public class ResidentSelfController {
     }
 
     @GetMapping("/me/residencies")
+    /**
+     * Atende `GET /me/residencies`.
+     *
+     * @return lista de resultados
+     */
     public List<ResidencyResponse> residencies() {
         return service.residencies().stream().map(r -> new ResidencyResponse(r.condominiumId(),
                 r.condominiumName(), r.unitId(), r.unitNumber(), r.residentId())).toList();
     }
 
     @GetMapping("/condominiums/{condominiumId}/me/profile")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/profile`.
+     *
+     * @param condominiumId condomínio
+     */
     public ProfileResponse profile(@PathVariable UUID condominiumId) {
         Resident r = service.profile(condominiumId);
         return new ProfileResponse(r.getFullName(), r.getEmail(), r.getPhone());
     }
 
     @PutMapping("/condominiums/{condominiumId}/me/profile")
+    /**
+     * Atende `PUT /condominiums/{condominiumId}/me/profile`.
+     *
+     * @param condominiumId condomínio
+     * @param request request
+     */
     public ProfileResponse updateContact(@PathVariable UUID condominiumId,
                                          @Valid @RequestBody UpdateContactRequest request) {
         Resident r = service.updateContact(condominiumId, request.email(), request.phone());

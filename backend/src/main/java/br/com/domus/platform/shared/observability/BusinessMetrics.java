@@ -32,6 +32,7 @@ public class BusinessMetrics {
     private final AtomicLong commandsUnknown1h = new AtomicLong();
     private final AtomicLong commandsFailed1h = new AtomicLong();
 
+    /** Construtor de BusinessMetrics; recebe as dependências por injeção. */
     public BusinessMetrics(MeterRegistry registry, JdbcClient jdbc) {
         this.jdbc = jdbc;
         gauge(registry, "portaria.calls.queued", "Atendimentos aguardando operador", queuedCalls);
@@ -57,6 +58,7 @@ public class BusinessMetrics {
     }
 
     @Scheduled(fixedDelay = 30_000, initialDelay = 30_000)
+    /** Atualiza os medidores de negócio a partir do banco. */
     public void refresh() {
         try {
             jdbc.sql("""

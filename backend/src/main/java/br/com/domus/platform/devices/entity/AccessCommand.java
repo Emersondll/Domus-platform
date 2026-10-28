@@ -67,6 +67,7 @@ public class AccessCommand {
     protected AccessCommand() {
     }
 
+    /** Construtor para criação de um(a) access command. */
     public AccessCommand(UUID condominiumId, UUID deviceId, UUID requestedBy, UUID callId, UUID attemptId,
                          String justification, String idempotencyKey, String correlationId, Instant requestedAt) {
         this.id = UUID.randomUUID();
@@ -91,50 +92,62 @@ public class AccessCommand {
         return c;
     }
 
+    /** Indica se requested by resident. */
     public boolean isRequestedByResident() {
         return requestedByResident;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o dispositivo. */
     public UUID getDeviceId() {
         return deviceId;
     }
 
+    /** Retorna o campo requested by. */
     public UUID getRequestedBy() {
         return requestedBy;
     }
 
+    /** Retorna o campo call id. */
     public UUID getCallId() {
         return callId;
     }
 
+    /** Retorna o campo attempt id. */
     public UUID getAttemptId() {
         return attemptId;
     }
 
+    /** Retorna o campo state. */
     public String getState() {
         return state == null ? "PENDING" : state;
     }
 
+    /** Retorna o campo failure reason. */
     public String getFailureReason() {
         return failureReason;
     }
 
+    /** Retorna o campo evidence. */
     public String getEvidence() {
         return evidence;
     }
 
+    /** Retorna o campo requested at. */
     public Instant getRequestedAt() {
         return requestedAt;
     }
 
+    /** Retorna o campo sent at. */
     public Instant getSentAt() {
         return sentAt;
     }
 
+    /** Retorna o instante da resolução. */
     public Instant getResolvedAt() {
         return resolvedAt;
     }

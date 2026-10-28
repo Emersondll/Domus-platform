@@ -23,6 +23,11 @@ public final class JpegImages {
     private JpegImages() {
     }
 
+    /**
+     * Valida e normaliza a imagem para JPEG dentro dos limites de tamanho e dimensão.
+     *
+     * @param raw bytes da imagem enviada
+     */
     public static byte[] normalize(byte[] raw) {
         return normalize(raw, 1, Double.MAX_VALUE);
     }

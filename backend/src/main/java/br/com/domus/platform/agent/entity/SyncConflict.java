@@ -39,6 +39,7 @@ public class SyncConflict {
     protected SyncConflict() {
     }
 
+    /** Construtor para criação de um(a) sync conflict. */
     public SyncConflict(UUID eventId, UUID condominiumId, String kind, String detail, Instant createdAt) {
         this.id = UUID.randomUUID();
         this.eventId = eventId;
@@ -48,31 +49,43 @@ public class SyncConflict {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Marca o conflito como resolvido pelo usuário.
+     *
+     * @param userId usuário
+     * @param when instante do fato
+     */
     public void resolve(UUID userId, Instant when) {
         this.resolvedBy = userId;
         this.resolvedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo event id. */
     public UUID getEventId() {
         return eventId;
     }
 
+    /** Retorna o tipo. */
     public String getKind() {
         return kind;
     }
 
+    /** Retorna o detalhe. */
     public String getDetail() {
         return detail;
     }
 
+    /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /** Retorna o instante da resolução. */
     public Instant getResolvedAt() {
         return resolvedAt;
     }

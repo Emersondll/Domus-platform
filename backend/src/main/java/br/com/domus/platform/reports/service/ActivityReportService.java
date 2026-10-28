@@ -61,12 +61,20 @@ public class ActivityReportService {
     private final JdbcClient jdbc;
     private final AccessService access;
 
+    /** Construtor de ActivityReportService; recebe as dependências por injeção. */
     public ActivityReportService(JdbcClient jdbc, AccessService access) {
         this.jdbc = jdbc;
         this.access = access;
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Monta o resumo agregado da atividade do período (somente números, sem dado pessoal).
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período
+     */
     public Report report(UUID condominiumId, Instant from, Instant to) {
         access.require(condominiumId, AccessLevel.READ, "report.activity");
         if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {

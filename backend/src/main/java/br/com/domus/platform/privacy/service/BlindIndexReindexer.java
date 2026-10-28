@@ -30,6 +30,7 @@ public class BlindIndexReindexer implements ApplicationRunner {
     private final FieldCipher cipher;
     private final boolean enabled;
 
+    /** Construtor de BlindIndexReindexer; recebe as dependências por injeção. */
     public BlindIndexReindexer(JdbcClient jdbc, FieldCipher cipher,
                                @Value("${portaria.crypto.reindex-blind-on-start:true}") boolean enabled) {
         this.jdbc = jdbc;

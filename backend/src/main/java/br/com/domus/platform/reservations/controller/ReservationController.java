@@ -29,6 +29,7 @@ public class ReservationController {
 
     private final ReservationService service;
 
+    /** Construtor de ReservationController; recebe as dependências por injeção. */
     public ReservationController(ReservationService service) {
         this.service = service;
     }
@@ -77,34 +78,74 @@ public class ReservationController {
 
     @PostMapping("/common-areas")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/common-areas`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public AreaResponse createArea(@PathVariable UUID condominiumId, @Valid @RequestBody CreateAreaRequest r) {
         return AreaResponse.from(service.createArea(condominiumId, r.name(), r.capacity()));
     }
 
     @GetMapping("/common-areas")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/common-areas`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AreaResponse> listAreas(@PathVariable UUID condominiumId,
                                                 @PageableDefault(size = 50, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listAreas(condominiumId, pageable), AreaResponse::from);
     }
 
     @GetMapping("/me/common-areas")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/common-areas`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<AreaResponse> listAreasMine(@PathVariable UUID condominiumId,
                                                     @PageableDefault(size = 50, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listAreasAsResident(condominiumId, pageable), AreaResponse::from);
     }
 
     @GetMapping("/reservations")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/reservations`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<ReservationResponse> list(@PathVariable UUID condominiumId,
                                                   @PageableDefault(size = 50, sort = "startAt") Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, pageable), ReservationResponse::from);
     }
 
     @PostMapping("/reservations/{reservationId}/cancel")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/reservations/{reservationId}/cancel`.
+     *
+     * @param condominiumId condomínio
+     * @param reservationId reserva
+     */
     public ReservationResponse cancel(@PathVariable UUID condominiumId, @PathVariable UUID reservationId) {
         return ReservationResponse.from(service.cancelAsStaff(condominiumId, reservationId));
     }
 
     @GetMapping("/me/reservations")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/reservations`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<ReservationResponse> listMine(@PathVariable UUID condominiumId,
                                                       @PageableDefault(size = 50, sort = "startAt") Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), ReservationResponse::from);
@@ -112,11 +153,23 @@ public class ReservationController {
 
     @PostMapping("/me/reservations")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/reservations`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public ReservationResponse reserve(@PathVariable UUID condominiumId, @Valid @RequestBody ReserveRequest r) {
         return ReservationResponse.from(service.reserve(condominiumId, r.areaId(), r.startAt(), r.endAt()));
     }
 
     @PostMapping("/me/reservations/{reservationId}/cancel")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/reservations/{reservationId}/cancel`.
+     *
+     * @param condominiumId condomínio
+     * @param reservationId reserva
+     */
     public ReservationResponse cancelMine(@PathVariable UUID condominiumId, @PathVariable UUID reservationId) {
         return ReservationResponse.from(service.cancelAsResident(condominiumId, reservationId));
     }

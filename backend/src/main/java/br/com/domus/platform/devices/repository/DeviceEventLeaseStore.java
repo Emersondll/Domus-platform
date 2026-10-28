@@ -14,6 +14,7 @@ public class DeviceEventLeaseStore {
 
     private final JdbcClient jdbc;
 
+    /** Construtor de DeviceEventLeaseStore; recebe as dependências por injeção. */
     public DeviceEventLeaseStore(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }

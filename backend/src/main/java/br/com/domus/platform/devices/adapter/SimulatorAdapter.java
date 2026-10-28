@@ -27,6 +27,7 @@ public class SimulatorAdapter implements DeviceAdapter {
         return t;
     });
 
+    /** Construtor de SimulatorAdapter; recebe as dependências por injeção. */
     public SimulatorAdapter(@Lazy DeviceEventSink sink,
                             @Value("${portaria.devices.simulator-confirm-delay-ms:300}") long confirmDelayMs) {
         this.sink = sink;

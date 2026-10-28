@@ -33,6 +33,12 @@ public final class DahuaEventMapper {
     private DahuaEventMapper() {
     }
 
+    /**
+     * Converte um evento do equipamento no evento interno; devolve nulo se o texto não puder ser interpretado.
+     *
+     * @param event event
+     * @return resultado, se existir
+     */
     public static Optional<Mapped> map(DahuaEventStream.Event event) {
         String data = event.data() == null ? "" : event.data();
         JsonNode json = parse(data);

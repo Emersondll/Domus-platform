@@ -30,6 +30,7 @@ public class ShiftLogService {
     private final AuditService audit;
     private final Clock clock;
 
+    /** Construtor de ShiftLogService; recebe as dependências por injeção. */
     public ShiftLogService(ShiftLogEntryRepository entries, ShiftRepository shifts, AccessService access,
                            AuditService audit, Clock clock) {
         this.entries = entries;
@@ -40,6 +41,13 @@ public class ShiftLogService {
     }
 
     @Transactional
+    /**
+     * Registra uma anotação no livro de turno.
+     *
+     * @param condominiumId condomínio
+     * @param kind tipo
+     * @param text texto
+     */
     public ShiftLogEntry write(UUID condominiumId, String kind, String text) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "shiftlog.write");
         UUID shiftId = shifts.findByUserIdAndEndedAtIsNull(actor.userId()).map(Shift::getId).orElse(null);
@@ -51,6 +59,13 @@ public class ShiftLogService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista as anotações do livro de turno.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página de resultados
+     */
     public Page<ShiftLogEntry> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "shiftlog.list");
         return entries.findByCondominiumId(condominiumId, pageable);

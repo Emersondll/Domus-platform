@@ -54,6 +54,7 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     private final Clock clock;
     private final byte[] masterSecret;
 
+    /** Construtor de AgentService; recebe as dependências por injeção. */
     public AgentService(AgentRepository agents, PolicyVersionRepository versions, AccessService access,
                         AuditService audit, Clock clock,
                         @Value("${portaria.agent.policy-master-secret:}") String masterSecret) {
@@ -70,6 +71,12 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     }
 
     @Transactional
+    /**
+     * Cadastra um agente local e devolve as credenciais, exibidas uma única vez.
+     *
+     * @param condominiumId condomínio
+     * @param name nome
+     */
     public Enrollment enroll(UUID condominiumId, String name) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "agent.enroll");
         if (agents.existsByCondominiumIdAndName(condominiumId, name)) {
@@ -83,12 +90,24 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Lista os agentes do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<Agent> list(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.READ, "agent.list");
         return agents.findByCondominiumId(condominiumId);
     }
 
     @Transactional
+    /**
+     * Revoga o agente do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param agentId agente
+     */
     public void revoke(UUID condominiumId, UUID agentId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "agent.revoke");
         Agent agent = agents.findByIdAndCondominiumId(agentId, condominiumId)
@@ -124,6 +143,12 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     }
 
     @Transactional
+    /**
+     * Gera uma nova chave de API para o agente e devolve o valor em claro uma única vez.
+     *
+     * @param authenticated agente já autenticado
+     * @return texto resultante
+     */
     public String rotateKey(Agent authenticated) {
         Agent agent = agents.findById(authenticated.getId()).orElseThrow();
         String newKey = newKey();
@@ -133,6 +158,12 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         return newKey;
     }
 
+    /**
+     * Indica se o agente teve contato dentro da janela de conexão.
+     *
+     * @param agent agente autenticado
+     * @return verdadeiro ou falso
+     */
     public boolean isOnline(Agent agent) {
         return agent.getLastSeenAt() != null
                 && agent.getLastSeenAt().isAfter(Instant.now(clock).minus(ONLINE_WINDOW));
@@ -158,6 +189,12 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Devolve a versão atual da política do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @return valor calculado
+     */
     public long currentVersion(UUID condominiumId) {
         return versions.findByCondominiumId(condominiumId).map(PolicyVersionRow::getVersion).orElse(1L);
     }

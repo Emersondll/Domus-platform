@@ -28,6 +28,7 @@ public class MemberController {
 
     private final MemberService service;
 
+    /** Construtor para criação de um(a) member controller. */
     public MemberController(MemberService service) {
         this.service = service;
     }
@@ -66,24 +67,50 @@ public class MemberController {
 
     @PostMapping("/companies/{companyId}/admins")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /companies/{companyId}/admins`.
+     *
+     * @param companyId empresa operadora
+     * @param r corpo da requisição (validado)
+     */
     public MembershipResponse addCompanyAdmin(@PathVariable UUID companyId, @Valid @RequestBody AccountRequest r) {
         return MembershipResponse.from(service.addCompanyAdmin(companyId, r.externalSubject(), r.email(), r.displayName()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/members")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/members`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public MembershipResponse addStaff(@PathVariable UUID condominiumId, @Valid @RequestBody StaffRequest r) {
         return MembershipResponse.from(service.addStaff(condominiumId, Role.valueOf(r.role()),
                 r.account().externalSubject(), r.account().email(), r.account().displayName()));
     }
 
     @GetMapping("/condominiums/{condominiumId}/members")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/members`.
+     *
+     * @param condominiumId condomínio
+     * @param email e-mail
+     * @return lista de resultados
+     */
     public List<MembershipResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String email) {
         return service.list(condominiumId, email).stream().map(MembershipResponse::from).toList();
     }
 
     @PostMapping("/condominiums/{condominiumId}/residents/{residentId}/account")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/residents/{residentId}/account`.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     * @param r corpo da requisição (validado)
+     */
     public MembershipResponse linkResident(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                            @Valid @RequestBody AccountRequest r) {
         return MembershipResponse.from(service.linkResident(condominiumId, residentId, r.externalSubject(), r.email(),
@@ -92,6 +119,12 @@ public class MemberController {
 
     @PostMapping("/condominiums/{condominiumId}/members/{membershipId}/revoke")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/members/{membershipId}/revoke`.
+     *
+     * @param condominiumId condomínio
+     * @param membershipId associação
+     */
     public void revoke(@PathVariable UUID condominiumId, @PathVariable UUID membershipId) {
         service.revoke(condominiumId, membershipId);
     }

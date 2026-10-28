@@ -33,6 +33,7 @@ public class OperationsController {
 
     private final OperationsService service;
 
+    /** Construtor de OperationsController; recebe as dependências por injeção. */
     public OperationsController(OperationsService service) {
         this.service = service;
     }
@@ -188,28 +189,46 @@ public class OperationsController {
 
     @PostMapping("/operator/shifts/start")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /operator/shifts/start`.
+     */
     public ShiftResponse startShift() {
         return ShiftResponse.from(service.startShift());
     }
 
     @PostMapping("/operator/shifts/end")
+    /**
+     * Atende `POST /operator/shifts/end`.
+     */
     public ShiftResponse endShift() {
         return ShiftResponse.from(service.endShift());
     }
 
     @GetMapping("/operator/shifts/current")
+    /**
+     * Atende `GET /operator/shifts/current`.
+     */
     public ResponseEntity<ShiftResponse> currentShift() {
         return service.currentShift().map(s -> ResponseEntity.ok(ShiftResponse.from(s)))
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @PostMapping("/operator/calls/next")
+    /**
+     * Atende `POST /operator/calls/next`.
+     */
     public ResponseEntity<CallResponse> claimNext() {
         return service.claimNext().map(c -> ResponseEntity.ok(view(c)))
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/operator/calls/mine")
+    /**
+     * Atende `GET /operator/calls/mine`.
+     *
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<CallResponse> myCalls(@PageableDefault(size = 50, sort = "assignedAt") Pageable pageable) {
         return PageResponse.of(service.myActiveCalls(pageable), this::view);
     }
@@ -222,6 +241,11 @@ public class OperationsController {
     }
 
     @GetMapping("/operator/overview")
+    /**
+     * Atende `GET /operator/overview`.
+     *
+     * @return lista de resultados
+     */
     public List<OverviewResponse> overview() {
         return service.overview().stream().map(o -> new OverviewResponse(o.condominium().getId(),
                 o.condominium().getName(), o.queuedCalls(), o.assignedCalls(), o.openIncidents(), o.queuedPanics(),
@@ -230,12 +254,24 @@ public class OperationsController {
 
     @PostMapping("/condominiums/{condominiumId}/calls")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/calls`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public CallResponse createCall(@PathVariable UUID condominiumId, @Valid @RequestBody CreateCallRequest r) {
         return view(service.createCall(condominiumId, r.unitId(), r.callerName()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/me/calls")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/calls`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public CallResponse createResidentCall(@PathVariable UUID condominiumId,
                                            @Valid @RequestBody ResidentCallRequest r) {
         return view(service.createCallAsResident(condominiumId, r.callerName()));
@@ -243,11 +279,23 @@ public class OperationsController {
 
     @PostMapping("/condominiums/{condominiumId}/me/panic")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/me/panic`.
+     *
+     * @param condominiumId condomínio
+     */
     public MyCallResponse panic(@PathVariable UUID condominiumId) {
         return MyCallResponse.from(service.raisePanic(condominiumId));
     }
 
     @GetMapping("/condominiums/{condominiumId}/me/calls")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/me/calls`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<MyCallResponse> myCalls(@PathVariable UUID condominiumId,
             @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             Pageable pageable) {
@@ -255,24 +303,52 @@ public class OperationsController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/calls")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/calls`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<CallResponse> listCalls(@PathVariable UUID condominiumId,
                                                 @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listCalls(condominiumId, pageable), this::view);
     }
 
     @PostMapping("/condominiums/{condominiumId}/calls/{callId}/transfer")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/calls/{callId}/transfer`.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param r corpo da requisição (validado)
+     */
     public CallResponse transfer(@PathVariable UUID condominiumId, @PathVariable UUID callId,
                                  @Valid @RequestBody TransferRequest r) {
         return view(service.transfer(condominiumId, callId, r.toUserId(), r.reason()));
     }
 
     @PostMapping("/condominiums/{condominiumId}/calls/{callId}/close")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/calls/{callId}/close`.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param r corpo da requisição (validado)
+     */
     public CallResponse close(@PathVariable UUID condominiumId, @PathVariable UUID callId,
                               @Valid @RequestBody CloseRequest r) {
         return view(service.close(condominiumId, callId, r.outcome(), r.justification()));
     }
 
     @GetMapping("/condominiums/{condominiumId}/calls/{callId}/events")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/calls/{callId}/events`.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @return lista de resultados
+     */
     public List<CallEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID callId) {
         return service.callEvents(condominiumId, callId).stream().map(CallEventResponse::from).toList();
     }
@@ -285,6 +361,12 @@ public class OperationsController {
     }
 
     @GetMapping("/condominiums/{condominiumId}/operators/on-duty")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/operators/on-duty`.
+     *
+     * @param condominiumId condomínio
+     * @return lista de resultados
+     */
     public List<OnDutyOperatorResponse> onDuty(@PathVariable UUID condominiumId) {
         return service.onDutyOperators(condominiumId).stream()
                 .map(o -> new OnDutyOperatorResponse(o.getId(), o.getDisplayName())).toList();
@@ -292,6 +374,12 @@ public class OperationsController {
 
     @PostMapping("/condominiums/{condominiumId}/incidents")
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * Atende `POST /condominiums/{condominiumId}/incidents`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
     public IncidentResponse openIncident(@PathVariable UUID condominiumId,
                                          @Valid @RequestBody OpenIncidentRequest r) {
         return IncidentResponse.from(service.openIncident(condominiumId, r.callId(), r.severity(), r.title(),
@@ -299,11 +387,24 @@ public class OperationsController {
     }
 
     @PostMapping("/condominiums/{condominiumId}/incidents/{incidentId}/resolve")
+    /**
+     * Atende `POST /condominiums/{condominiumId}/incidents/{incidentId}/resolve`.
+     *
+     * @param condominiumId condomínio
+     * @param incidentId ocorrência
+     */
     public IncidentResponse resolveIncident(@PathVariable UUID condominiumId, @PathVariable UUID incidentId) {
         return IncidentResponse.from(service.resolveIncident(condominiumId, incidentId));
     }
 
     @GetMapping("/condominiums/{condominiumId}/incidents")
+    /**
+     * Atende `GET /condominiums/{condominiumId}/incidents`.
+     *
+     * @param condominiumId condomínio
+     * @param pageable paginação
+     * @return página no formato da API
+     */
     public PageResponse<IncidentResponse> incidents(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "openedAt") Pageable pageable) {
         return PageResponse.of(service.listIncidents(condominiumId, pageable), IncidentResponse::from);

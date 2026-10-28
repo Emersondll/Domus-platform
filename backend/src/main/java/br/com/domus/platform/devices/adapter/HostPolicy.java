@@ -16,11 +16,18 @@ public class HostPolicy {
 
     private final Set<String> allowed;
 
+    /** Construtor de HostPolicy; recebe as dependências por injeção. */
     public HostPolicy(@Value("${portaria.devices.http-allowed-hosts:}") String hosts) {
         this.allowed = Arrays.stream(hosts.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
     }
 
+    /**
+     * Exige que o host esteja na lista permitida (proteção contra SSRF).
+     *
+     * @param baseUrl base url
+     * @param path path
+     */
     public URI requireAllowed(String baseUrl, String path) throws DeviceAdapter.DeviceCommunicationException {
         URI uri;
         try {

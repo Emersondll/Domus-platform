@@ -27,24 +27,33 @@ public class Shift {
     protected Shift() {
     }
 
+    /** Construtor para criação de um(a) shift. */
     public Shift(UUID userId, Instant startedAt) {
         this.id = UUID.randomUUID();
         this.userId = userId;
         this.startedAt = startedAt;
     }
 
+    /**
+     * Encerra o turno.
+     *
+     * @param when instante do fato
+     */
     public void end(Instant when) {
         this.endedAt = when;
     }
 
+    /** Retorna o identificador. */
     public UUID getId() {
         return id;
     }
 
+    /** Retorna o campo started at. */
     public Instant getStartedAt() {
         return startedAt;
     }
 
+    /** Retorna o campo ended at. */
     public Instant getEndedAt() {
         return endedAt;
     }

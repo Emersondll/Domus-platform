@@ -59,22 +59,41 @@ public class AuditLogEntry {
         this.correlationId = correlationId;
     }
 
+    /**
+     * Retorna o identificador do registro.
+     */
     public UUID getId() {
         return id;
     }
 
+    /**
+     * Retorna o usuário que praticou a ação, se houver.
+     */
     public UUID getActorUserId() {
         return actorUserId;
     }
 
+    /**
+     * Retorna o condomínio da ação, se houver.
+     */
     public UUID getCondominiumId() {
         return condominiumId;
     }
 
+    /**
+     * Retorna o código da ação auditada.
+     *
+     * @return texto resultante
+     */
     public String getAction() {
         return action;
     }
 
+    /**
+     * Retorna o desfecho (sucesso, negado ou falha).
+     *
+     * @return texto resultante
+     */
     public String getOutcome() {
         return outcome;
     }

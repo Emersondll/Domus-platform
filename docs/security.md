@@ -36,3 +36,19 @@ renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. I
 9. CI no GitHub Actions: 7 jobs verdes desde 2026-10-22 e nos pushes seguintes.
 10. **Vídeo ao vivo:** o endereço RTSP e a senha da câmera nunca vão ao navegador; a sessão usa token HMAC de 10 min preso ao caminho da câmera, validado pelo servidor de mídia em `/internal/media/auth` (bloqueado no proxy e restrito por IP). O MediaMTX precisa de TLS na frente e de `hlsAllowOrigin` restrito ao painel em produção.
 11. **"Meus acessos" e foto de cadastro:** o histórico pessoal de entradas e saídas é lido só pelo titular (outro morador da mesma unidade, equipe e outro condomínio recebem 404), cada consulta é auditada e a referência do cartão ou usuário fica cifrada com índice cego. A foto é cifrada (AES-GCM), sem URL pública, `no-store`, e o consentimento é registrado e revogável. **Limites:** o morador pode capturar a tela; sem detecção de rosto (a qualidade depende de quem envia); o evento do leitor é autenticado pela chave do dispositivo, então um dispositivo comprometido pode forjar passagens do próprio ponto de acesso; os campos do evento Dahua não foram confirmados em campo (B6).
+
+## Varredura das imagens de contêiner (2026-10-27)
+Trivy 0.58 (`--severity HIGH,CRITICAL --scanners vuln`), imagens baixadas no mesmo dia. **Achados reais; nenhum foi corrigido por atualização de versão** (cada troca exige reteste da pilha):
+
+| Imagem | CRITICAL | HIGH | Origem principal |
+|---|---|---|---|
+| `eclipse-temurin:26-jre` (backend) | 0 | 0 | — |
+| `postgres:17` | 2 | 86 | `gosu` compilado com Go 1.24 (a imagem oficial); 1 CRITICAL e 25 HIGH têm correção |
+| `caddy:2` | 0 | 10 | Alpine (`curl`, `brotli`) e `go-jose`; 9 têm correção |
+| `quay.io/keycloak/keycloak:26.4` | 8 | 82 | pacotes do RHEL 9 e OpenJDK 21; quase todos com correção em um 26.x mais novo |
+| `bluenviron/mediamtx:1.15.1` | 1 | 45 | bibliotecas Go (`quic-go`, `x/crypto`); todos com correção em versão mais nova |
+| `prom/prometheus:v3.5.0` | 4 | 108 | bibliotecas Go; a maioria com correção |
+| `grafana/grafana:12.2.0` | 9 | 148 | Alpine e bibliotecas Go; a maioria com correção |
+
+**Leitura honesta:** vulnerabilidade listada não é vulnerabilidade explorável (o `gosu`, por exemplo, não recebe entrada externa), mas as imagens de Keycloak, MediaMTX, Prometheus e Grafana estão **defasadas** e devem subir de versão antes de produção, com reteste (`verify_keycloak.py`, `e2e-oidc-browser.py`, `e2e-browser.py` com vídeo). Quem expõe porta é o Caddy, o Keycloak e o MediaMTX: priorizar esses três. O Dependabot (`docker`, `docker-compose`) abre os pedidos de atualização.
+**Digests fixados** (`tag@sha256`) nas tags móveis: `postgres:17`, `caddy:2` e `eclipse-temurin:26-jre`; o Dependabot atualiza o digest. As tags já versionadas (Keycloak, MediaMTX, Prometheus, Grafana) não foram fixadas por digest.

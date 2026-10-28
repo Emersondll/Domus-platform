@@ -1,14 +1,14 @@
 # Inventário de dependências e licenças
 
-Regenerado em 2026-10-22 a partir das próprias ferramentas de build.
+Regenerado em 2026-10-28 a partir das próprias ferramentas de build (`license-maven-plugin` 2.4.0 e `npm ls`), depois das atualizações do Spring Boot 4.1.2 e das dependências do agente e do web. Os textos de licença e a lista de jars sem arquivo de licença (42) são de 2026-10-22 e **não foram regerados**.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `maven-backend-THIRD-PARTY.txt` | 155 dependências de runtime do backend (`license-maven-plugin`) |
+| `maven-backend-THIRD-PARTY.txt` | 154 dependências de runtime do backend (`license-maven-plugin`) |
 | `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
 | `backend-jars-without-license-files.txt` | 42 jars do backend sem arquivo de licença próprio, com licença e página do projeto |
 | `Apache-2.0.txt`, `EPL-2.0.txt`, `MIT-notices.txt` | textos de licença que acompanham os artefatos |
-| `npm-production-licenses.txt` | dependências npm que entram nos bundles (MIT/ISC e hls.js, Apache-2.0) |
+| `npm-production-licenses.txt` | 35 dependências npm que entram nos bundles (27 MIT, 7 ISC e hls.js, Apache-2.0) |
 
 Resumo: Apache-2.0, MIT, BSD-2/3, EPL-2.0/EDL-1.0 e CC0. Itens com GPL/LGPL no relatório são **duplo licenciamento** com opção permissiva
 (logback: EPL-2.0 ou LGPL-2.1 — usamos EPL-2.0; jakarta.annotation/transaction: EPL-2.0 ou GPL-2.0 com Classpath Exception).

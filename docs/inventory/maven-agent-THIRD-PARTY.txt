@@ -1,8 +1,8 @@
 
 Lists of 6 third-party dependencies.
-     (The Apache Software License, Version 2.0) Jackson-annotations (com.fasterxml.jackson.core:jackson-annotations:2.21 - https://github.com/FasterXML/jackson)
-     (MIT) SLF4J API Module (org.slf4j:slf4j-api:2.0.17 - http://www.slf4j.org)
-     (MIT) SLF4J Simple Provider (org.slf4j:slf4j-simple:2.0.17 - http://www.slf4j.org)
+     (The Apache Software License, Version 2.0) Jackson-annotations (com.fasterxml.jackson.core:jackson-annotations:2.22 - https://github.com/FasterXML/jackson)
+     (MIT) SLF4J API Module (org.slf4j:slf4j-api:2.0.20 - http://www.slf4j.org)
+     (MIT) SLF4J Simple Provider (org.slf4j:slf4j-simple:2.0.20 - http://www.slf4j.org)
      (The Apache Software License, Version 2.0) SQLite JDBC (org.xerial:sqlite-jdbc:3.53.4.0 - https://github.com/xerial/sqlite-jdbc)
-     (The Apache Software License, Version 2.0) Jackson-core (tools.jackson.core:jackson-core:3.1.7 - https://github.com/FasterXML/jackson-core)
-     (The Apache Software License, Version 2.0) jackson-databind (tools.jackson.core:jackson-databind:3.1.7 - https://github.com/FasterXML/jackson)
+     (The Apache Software License, Version 2.0) Jackson-core (tools.jackson.core:jackson-core:3.2.4 - https://github.com/FasterXML/jackson-core)
+     (The Apache Software License, Version 2.0) jackson-databind (tools.jackson.core:jackson-databind:3.2.4 - https://github.com/FasterXML/jackson)

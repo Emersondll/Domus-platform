@@ -1,6 +1,4 @@
-# Dependências npm de PRODUÇÃO (o que entra nos bundles) e suas licenças — gerado de npm ls + package.json
-# Acrescentado depois: hls.js@1.6.13 (Apache-2.0), usado só no painel para tocar o vídeo HLS das câmeras (sem dependências próprias).
-hls.js@1.6.13	Apache-2.0
+# Dependências npm de PRODUÇÃO (o que entra nos bundles) e suas licenças — regerado em 2026-10-28 de npm ls + package.json (inclui hls.js, usado só no painel para o vídeo HLS)
 ansi-regex@5.0.1	MIT
 ansi-styles@4.3.0	MIT
 camelcase@5.3.1	MIT
@@ -12,6 +10,7 @@ dijkstrajs@1.0.3	MIT
 emoji-regex@8.0.0	MIT
 find-up@4.1.0	MIT
 get-caller-file@2.0.5	ISC
+hls.js@1.7.3	Apache-2.0
 is-fullwidth-code-point@3.0.0	MIT
 js-tokens@4.0.0	MIT
 locate-path@5.0.0	MIT
@@ -21,11 +20,9 @@ p-locate@4.1.0	MIT
 p-try@2.2.0	MIT
 path-exists@4.0.0	MIT
 pngjs@5.0.0	MIT
-portaria-panel@0.1.0	UNKNOWN
-portaria-resident@0.1.0	UNKNOWN
 qrcode@1.5.4	MIT
-react-dom@18.3.1	MIT
 react@18.3.1	MIT
+react-dom@18.3.1	MIT
 require-directory@2.1.1	MIT
 require-main-filename@2.0.0	ISC
 scheduler@0.23.2	MIT
@@ -35,10 +32,5 @@ strip-ansi@6.0.1	MIT
 which-module@2.0.1	ISC
 wrap-ansi@6.2.0	MIT
 y18n@4.0.3	ISC
-yargs-parser@18.1.3	ISC
 yargs@15.4.1	MIT
-
-# Resumo
- 27 MIT
-  7 ISC
-  2 UNKNOWN
+yargs-parser@18.1.3	ISC

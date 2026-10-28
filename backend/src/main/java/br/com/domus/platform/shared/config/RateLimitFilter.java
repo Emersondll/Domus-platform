@@ -46,6 +46,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Window> failures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> blockedUntil = new ConcurrentHashMap<>();
+    /** Instante da última varredura de entradas vencidas; só otimiza a frequência, então a corrida entre threads é inofensiva. */
+    private volatile long lastSweep;
 
     public RateLimitFilter(Clock clock,
             @Value("${portaria.rate-limit.enabled:true}") boolean enabled,
@@ -138,10 +140,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return true;
     }
 
+    /**
+     * Remove entradas vencidas das três tabelas, no máximo uma vez por janela (ou antes, se a tabela de janelas passar do
+     * teto). Sem isso, {@code failures} e {@code blockedUntil} só encolhiam quando a mesma origem voltava, e uma varredura
+     * de origens diferentes fazia a memória crescer sem limite.
+     */
     private void prune(long now) {
-        if (windows.size() > MAX_KEYS) {
-            windows.entrySet().removeIf(e -> now - e.getValue().start >= WINDOW_MS);
+        if (now - lastSweep < WINDOW_MS && windows.size() <= MAX_KEYS) {
+            return;
         }
+        lastSweep = now;
+        windows.entrySet().removeIf(e -> now - e.getValue().start >= WINDOW_MS);
+        failures.entrySet().removeIf(e -> now - e.getValue().start >= LOCKOUT_MS);
+        blockedUntil.entrySet().removeIf(e -> e.getValue() <= now);
+    }
+
+    /** Quantidade de chaves guardadas nas três tabelas (usado nos testes). */
+    int trackedKeys() {
+        return windows.size() + failures.size() + blockedUntil.size();
     }
 
     private long retryAfter(Long until, long now) {

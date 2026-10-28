@@ -50,7 +50,6 @@ public class ReservationService {
         this.clock = clock;
     }
 
-    @Transactional
     /**
      * Cadastra uma área comum reservável.
      *
@@ -58,6 +57,7 @@ public class ReservationService {
      * @param name nome
      * @param capacity capacidade
      */
+    @Transactional
     public CommonArea createArea(UUID condominiumId, String name, int capacity) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "area.create");
         if (areas.existsByCondominiumIdAndName(condominiumId, name)) {
@@ -69,7 +69,6 @@ public class ReservationService {
         return area;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as áreas comuns do condomínio.
      *
@@ -77,12 +76,12 @@ public class ReservationService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<CommonArea> listAreas(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "area.list");
         return areas.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as áreas comuns para o morador autenticado.
      *
@@ -90,12 +89,12 @@ public class ReservationService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<CommonArea> listAreasAsResident(UUID condominiumId, Pageable pageable) {
         access.requireResident(condominiumId, "area.list.self");
         return areas.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional
     /**
      * Reserva a área no intervalo pedido; sobreposição devolve conflito (409).
      *
@@ -104,6 +103,7 @@ public class ReservationService {
      * @param startAt início
      * @param endAt fim
      */
+    @Transactional
     public Reservation reserve(UUID condominiumId, UUID areaId, Instant startAt, Instant endAt) {
         ResidentContext me = access.requireResident(condominiumId, "reservation.create");
         validateWindow(startAt, endAt);
@@ -119,13 +119,13 @@ public class ReservationService {
         return saved;
     }
 
-    @Transactional
     /**
      * Cancela uma reserva do morador autenticado.
      *
      * @param condominiumId condomínio
      * @param reservationId reserva
      */
+    @Transactional
     public Reservation cancelAsResident(UUID condominiumId, UUID reservationId) {
         ResidentContext me = access.requireResident(condominiumId, "reservation.cancel.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
@@ -135,13 +135,13 @@ public class ReservationService {
         return cancel(reservation, me.actor().userId(), condominiumId);
     }
 
-    @Transactional
     /**
      * Cancela uma reserva como equipe do condomínio.
      *
      * @param condominiumId condomínio
      * @param reservationId reserva
      */
+    @Transactional
     public Reservation cancelAsStaff(UUID condominiumId, UUID reservationId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "reservation.cancel");
         Reservation reservation = reservations.findByIdAndCondominiumId(reservationId, condominiumId)
@@ -149,7 +149,6 @@ public class ReservationService {
         return cancel(reservation, actor.userId(), condominiumId);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as reservas do condomínio.
      *
@@ -157,12 +156,12 @@ public class ReservationService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Reservation> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "reservation.list");
         return reservations.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as reservas do morador autenticado.
      *
@@ -170,6 +169,7 @@ public class ReservationService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Reservation> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "reservation.list.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();

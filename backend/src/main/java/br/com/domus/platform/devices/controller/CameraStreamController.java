@@ -41,13 +41,13 @@ public class CameraStreamController {
     public record MediaAuthRequest(String action, String path, String query, String password) {
     }
 
-    @PostMapping("/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session")
     /**
      * Atende `POST /api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session`.
      *
      * @param condominiumId condomínio
      * @param deviceId dispositivo
      */
+    @PostMapping("/api/v1/condominiums/{condominiumId}/devices/{deviceId}/stream-session")
     public StreamSessionResponse open(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         CameraStreamService.Session s = streams.open(condominiumId, deviceId);
         return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());
@@ -68,13 +68,13 @@ public class CameraStreamController {
                 .map(d -> new ResidentCameraResponse(d.getId(), d.getName(), d.getEntrance())).toList();
     }
 
-    @PostMapping("/api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session")
     /**
      * Atende `POST /api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session`.
      *
      * @param condominiumId condomínio
      * @param deviceId dispositivo
      */
+    @PostMapping("/api/v1/condominiums/{condominiumId}/me/cameras/{deviceId}/stream-session")
     public StreamSessionResponse openMine(@PathVariable UUID condominiumId, @PathVariable UUID deviceId) {
         CameraStreamService.Session s = streams.openForResident(condominiumId, deviceId);
         return new StreamSessionResponse(s.hlsUrl(), s.expiresAt());

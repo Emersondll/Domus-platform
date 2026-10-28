@@ -65,19 +65,18 @@ public class ParcelController {
         }
     }
 
-    @PostMapping("/parcels")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/parcels`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/parcels")
+    @ResponseStatus(HttpStatus.CREATED)
     public ParcelResponse register(@PathVariable UUID condominiumId, @Valid @RequestBody RegisterParcelRequest r) {
         return ParcelResponse.from(service.register(condominiumId, r.unitId(), r.carrier(), r.description()));
     }
 
-    @PostMapping("/parcels/{parcelId}/pickup")
     /**
      * Atende `POST /condominiums/{condominiumId}/parcels/{parcelId}/pickup`.
      *
@@ -85,6 +84,7 @@ public class ParcelController {
      * @param parcelId encomenda
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/parcels/{parcelId}/pickup")
     public ParcelResponse pickUp(@PathVariable UUID condominiumId, @PathVariable UUID parcelId,
                                  @Valid @RequestBody PickUpRequest r) {
         return ParcelResponse.from(service.pickUp(condominiumId, parcelId, r.pickedUpByName()));
@@ -104,7 +104,6 @@ public class ParcelController {
         return PageResponse.of(service.list(condominiumId, status, pageable), ParcelResponse::from);
     }
 
-    @GetMapping("/me/parcels")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/parcels`.
      *
@@ -113,6 +112,7 @@ public class ParcelController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/me/parcels")
     public PageResponse<ParcelResponse> listMine(@PathVariable UUID condominiumId,
                                                  @RequestParam(required = false) @Pattern(regexp = "RECEIVED|PICKED_UP") String status,
                                                  @PageableDefault(size = 50, sort = "receivedAt") Pageable pageable) {

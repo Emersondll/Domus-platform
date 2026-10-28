@@ -192,19 +192,18 @@ public class AccessCommandService {
         return result;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Consulta um comando de acesso do condomínio.
      *
      * @param condominiumId condomínio
      * @param commandId comando
      */
+    @Transactional(readOnly = true)
     public AccessCommand get(UUID condominiumId, UUID commandId) {
         access.require(condominiumId, AccessLevel.READ, "command.read");
         return reload(condominiumId, commandId);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os comandos de acesso do condomínio.
      *
@@ -212,6 +211,7 @@ public class AccessCommandService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<AccessCommand> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "command.list");
         return commands.findByCondominiumId(condominiumId, pageable);

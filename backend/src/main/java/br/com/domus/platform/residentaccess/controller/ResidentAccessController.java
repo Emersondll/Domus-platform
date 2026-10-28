@@ -80,8 +80,6 @@ public class ResidentAccessController {
     public record LastAccessResponse(AccessResponse last) {
     }
 
-    @PostMapping("/residents/{residentId}/access-identities")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/residents/{residentId}/access-identities`.
      *
@@ -89,12 +87,13 @@ public class ResidentAccessController {
      * @param residentId morador
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/residents/{residentId}/access-identities")
+    @ResponseStatus(HttpStatus.CREATED)
     public IdentityResponse register(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                      @Valid @RequestBody RegisterIdentityRequest r) {
         return IdentityResponse.from(service.register(condominiumId, residentId, r.kind(), r.ref()));
     }
 
-    @GetMapping("/residents/{residentId}/access-identities")
     /**
      * Atende `GET /condominiums/{condominiumId}/residents/{residentId}/access-identities`.
      *
@@ -102,11 +101,11 @@ public class ResidentAccessController {
      * @param residentId morador
      * @return lista de resultados
      */
+    @GetMapping("/residents/{residentId}/access-identities")
     public List<IdentityResponse> identities(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         return service.listIdentities(condominiumId, residentId).stream().map(IdentityResponse::from).toList();
     }
 
-    @PostMapping("/residents/{residentId}/access-identities/{identityId}/revoke")
     /**
      * Atende `POST /condominiums/{condominiumId}/residents/{residentId}/access-identities/{identityId}/revoke`.
      *
@@ -114,6 +113,7 @@ public class ResidentAccessController {
      * @param residentId morador
      * @param identityId meio de acesso
      */
+    @PostMapping("/residents/{residentId}/access-identities/{identityId}/revoke")
     public IdentityResponse revoke(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                    @PathVariable UUID identityId) {
         return IdentityResponse.from(service.revoke(condominiumId, residentId, identityId));
@@ -137,12 +137,12 @@ public class ResidentAccessController {
         return new AccessPolicyResponse(service.retentionDays(condominiumId));
     }
 
-    @GetMapping("/me/accesses/last")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/accesses/last`.
      *
      * @param condominiumId condomínio
      */
+    @GetMapping("/me/accesses/last")
     public ResponseEntity<LastAccessResponse> last(@PathVariable UUID condominiumId) {
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
                 .body(new LastAccessResponse(service.myLast(condominiumId).map(AccessResponse::from).orElse(null)));

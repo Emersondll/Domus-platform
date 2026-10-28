@@ -57,8 +57,8 @@ public class BusinessMetrics {
         Gauge.builder(name, value, AtomicLong::get).description(description).register(registry);
     }
 
-    @Scheduled(fixedDelay = 30_000, initialDelay = 30_000)
     /** Atualiza os medidores de negócio a partir do banco. */
+    @Scheduled(fixedDelay = 30_000, initialDelay = 30_000)
     public void refresh() {
         try {
             jdbc.sql("""

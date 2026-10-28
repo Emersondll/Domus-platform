@@ -1,6 +1,11 @@
 spring:
   application:
     name: portaria-platform
+  task:
+    scheduling:
+      # Os agendamentos (assinatura de eventos, expiração de comandos, métricas, retenção) não podem esperar uns pelos outros.
+      pool:
+        size: 4
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/portaria}
     username: ${DB_USER:portaria}

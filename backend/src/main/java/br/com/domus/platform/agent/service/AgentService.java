@@ -70,13 +70,13 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         this.masterSecret = masterSecret.getBytes(StandardCharsets.UTF_8);
     }
 
-    @Transactional
     /**
      * Cadastra um agente local e devolve as credenciais, exibidas uma única vez.
      *
      * @param condominiumId condomínio
      * @param name nome
      */
+    @Transactional
     public Enrollment enroll(UUID condominiumId, String name) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "agent.enroll");
         if (agents.existsByCondominiumIdAndName(condominiumId, name)) {
@@ -89,25 +89,25 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         return new Enrollment(agent, apiKey, policySecretFor(agent.getId()));
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os agentes do condomínio.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @Transactional(readOnly = true)
     public List<Agent> list(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.READ, "agent.list");
         return agents.findByCondominiumId(condominiumId);
     }
 
-    @Transactional
     /**
      * Revoga o agente do condomínio.
      *
      * @param condominiumId condomínio
      * @param agentId agente
      */
+    @Transactional
     public void revoke(UUID condominiumId, UUID agentId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "agent.revoke");
         Agent agent = agents.findByIdAndCondominiumId(agentId, condominiumId)
@@ -142,13 +142,13 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         return agent;
     }
 
-    @Transactional
     /**
      * Gera uma nova chave de API para o agente e devolve o valor em claro uma única vez.
      *
      * @param authenticated agente já autenticado
      * @return texto resultante
      */
+    @Transactional
     public String rotateKey(Agent authenticated) {
         Agent agent = agents.findById(authenticated.getId()).orElseThrow();
         String newKey = newKey();
@@ -188,13 +188,13 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         versions.bump(condominiumId);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Devolve a versão atual da política do condomínio.
      *
      * @param condominiumId condomínio
      * @return valor calculado
      */
+    @Transactional(readOnly = true)
     public long currentVersion(UUID condominiumId) {
         return versions.findByCondominiumId(condominiumId).map(PolicyVersionRow::getVersion).orElse(1L);
     }

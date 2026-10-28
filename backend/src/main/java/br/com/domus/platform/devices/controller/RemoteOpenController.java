@@ -65,28 +65,27 @@ public class RemoteOpenController {
     public record ResidentOpenRequest(@NotBlank @Size(max = 80) String idempotencyKey) {
     }
 
-    @GetMapping("/remote-open")
     /**
      * Atende `GET /condominiums/{condominiumId}/remote-open`.
      *
      * @param condominiumId condomínio
      */
+    @GetMapping("/remote-open")
     public PolicyResponse policy(@PathVariable UUID condominiumId) {
         return new PolicyResponse(remoteOpen.policy(condominiumId));
     }
 
-    @PutMapping("/remote-open")
     /**
      * Atende `PUT /condominiums/{condominiumId}/remote-open`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PutMapping("/remote-open")
     public PolicyResponse setPolicy(@PathVariable UUID condominiumId, @RequestBody PolicyRequest r) {
         return new PolicyResponse(remoteOpen.setPolicy(condominiumId, r.enabled()));
     }
 
-    @PutMapping("/devices/{deviceId}/resident-openable")
     /**
      * Atende `PUT /condominiums/{condominiumId}/devices/{deviceId}/resident-openable`.
      *
@@ -94,26 +93,25 @@ public class RemoteOpenController {
      * @param deviceId dispositivo
      * @param r corpo da requisição (validado)
      */
+    @PutMapping("/devices/{deviceId}/resident-openable")
     public DeviceResponse allow(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                 @RequestBody DeviceAllowRequest r) {
         return DeviceController.DeviceResponse.from(remoteOpen.setDeviceAllowed(condominiumId, deviceId, r.allowed()),
                 null);
     }
 
-    @GetMapping("/me/doors")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/doors`.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @GetMapping("/me/doors")
     public List<DoorResponse> myDoors(@PathVariable UUID condominiumId) {
         return remoteOpen.doorsForResident(condominiumId).stream()
                 .map(d -> new DoorResponse(d.getId(), d.getName(), d.getEntrance())).toList();
     }
 
-    @PostMapping("/me/doors/{deviceId}/open")
-    @ResponseStatus(HttpStatus.ACCEPTED)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/doors/{deviceId}/open`.
      *
@@ -121,18 +119,20 @@ public class RemoteOpenController {
      * @param deviceId dispositivo
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/me/doors/{deviceId}/open")
+    @ResponseStatus(HttpStatus.ACCEPTED)
     public CommandResponse open(@PathVariable UUID condominiumId, @PathVariable UUID deviceId,
                                 @Valid @RequestBody ResidentOpenRequest r) {
         return CommandResponse.from(commands.openForResident(condominiumId, deviceId, r.idempotencyKey()));
     }
 
-    @GetMapping("/me/commands/{commandId}")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/commands/{commandId}`.
      *
      * @param condominiumId condomínio
      * @param commandId comando
      */
+    @GetMapping("/me/commands/{commandId}")
     public CommandResponse myCommand(@PathVariable UUID condominiumId, @PathVariable UUID commandId) {
         return CommandResponse.from(commands.getMine(condominiumId, commandId));
     }

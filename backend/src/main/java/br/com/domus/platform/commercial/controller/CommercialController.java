@@ -123,75 +123,74 @@ public class CommercialController {
         return new AdminScopeResponse(scope.platformAdmin(), scope.operator(), scope.companies().stream().map(CompanyResponse::from).toList());
     }
 
-    @PostMapping("/companies")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /companies`.
      *
      * @param request request
      */
+    @PostMapping("/companies")
+    @ResponseStatus(HttpStatus.CREATED)
     public CompanyResponse createCompany(@Valid @RequestBody CreateCompanyRequest request) {
         return CompanyResponse.from(service.createCompany(request.name(), request.taxId()));
     }
 
-    @GetMapping("/companies")
     /**
      * Atende `GET /companies`.
      *
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/companies")
     public PageResponse<CompanyResponse> listCompanies(@PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listCompanies(pageable), CompanyResponse::from);
     }
 
-    @PostMapping("/condominiums")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums`.
      *
      * @param request request
      */
+    @PostMapping("/condominiums")
+    @ResponseStatus(HttpStatus.CREATED)
     public CondominiumResponse createCondominium(@Valid @RequestBody CreateCondominiumRequest request) {
         return CondominiumResponse.from(
                 service.createCondominium(request.operatorCompanyId(), request.name(), request.taxId()));
     }
 
-    @GetMapping("/condominiums")
     /**
      * Atende `GET /condominiums`.
      *
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/condominiums")
     public PageResponse<CondominiumResponse> listCondominiums(
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listCondominiums(pageable), CondominiumResponse::from);
     }
 
-    @GetMapping("/condominiums/{condominiumId}")
     /**
      * Atende `GET /condominiums/{condominiumId}`.
      *
      * @param condominiumId condomínio
      */
+    @GetMapping("/condominiums/{condominiumId}")
     public CondominiumResponse getCondominium(@PathVariable UUID condominiumId) {
         return CondominiumResponse.from(service.getCondominium(condominiumId));
     }
 
-    @PostMapping("/condominiums/{condominiumId}/blocks")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/blocks`.
      *
      * @param condominiumId condomínio
      * @param request request
      */
+    @PostMapping("/condominiums/{condominiumId}/blocks")
+    @ResponseStatus(HttpStatus.CREATED)
     public BlockResponse createBlock(@PathVariable UUID condominiumId, @Valid @RequestBody CreateBlockRequest request) {
         return BlockResponse.from(service.createBlock(condominiumId, request.name()));
     }
 
-    @GetMapping("/condominiums/{condominiumId}/blocks")
     /**
      * Atende `GET /condominiums/{condominiumId}/blocks`.
      *
@@ -199,24 +198,24 @@ public class CommercialController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/condominiums/{condominiumId}/blocks")
     public PageResponse<BlockResponse> listBlocks(@PathVariable UUID condominiumId,
                                                   @PageableDefault(size = 50, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listBlocks(condominiumId, pageable), BlockResponse::from);
     }
 
-    @PostMapping("/condominiums/{condominiumId}/units")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/units`.
      *
      * @param condominiumId condomínio
      * @param request request
      */
+    @PostMapping("/condominiums/{condominiumId}/units")
+    @ResponseStatus(HttpStatus.CREATED)
     public UnitResponse createUnit(@PathVariable UUID condominiumId, @Valid @RequestBody CreateUnitRequest request) {
         return UnitResponse.from(service.createUnit(condominiumId, request.blockId(), request.number()));
     }
 
-    @GetMapping("/condominiums/{condominiumId}/units")
     /**
      * Atende `GET /condominiums/{condominiumId}/units`.
      *
@@ -224,6 +223,7 @@ public class CommercialController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/condominiums/{condominiumId}/units")
     public PageResponse<UnitResponse> listUnits(@PathVariable UUID condominiumId,
                                                 @PageableDefault(size = 50, sort = "number") Pageable pageable) {
         return PageResponse.of(service.listUnits(condominiumId, pageable), UnitResponse::from);

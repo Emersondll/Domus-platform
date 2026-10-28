@@ -47,7 +47,6 @@ public class PetService {
         this.clock = clock;
     }
 
-    @Transactional
     /**
      * Cadastra um animal da unidade.
      *
@@ -58,13 +57,13 @@ public class PetService {
      * @param breed breed
      * @param notes notes
      */
+    @Transactional
     public Pet register(UUID condominiumId, UUID unitId, String name, String species, String breed, String notes) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "pet.register");
         commercial.requireUnit(condominiumId, unitId);
         return create(actor.userId(), condominiumId, unitId, name, species, breed, notes, "pet.register");
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os animais do condomínio.
      *
@@ -73,13 +72,13 @@ public class PetService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Pet> list(UUID condominiumId, UUID unitId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "pet.list");
         return unitId == null ? pets.findByCondominiumIdAndActiveTrue(condominiumId, pageable)
                 : pets.findByCondominiumIdAndUnitIdAndActiveTrue(condominiumId, unitId, pageable);
     }
 
-    @Transactional
     /**
      * Atualiza um animal.
      *
@@ -90,6 +89,7 @@ public class PetService {
      * @param breed breed
      * @param notes notes
      */
+    @Transactional
     public Pet update(UUID condominiumId, UUID petId, String name, String species, String breed, String notes) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "pet.update");
         Pet pet = find(condominiumId, petId);
@@ -98,32 +98,31 @@ public class PetService {
         return pet;
     }
 
-    @Transactional
     /**
      * Remove um animal.
      *
      * @param condominiumId condomínio
      * @param petId pet id
      */
+    @Transactional
     public void remove(UUID condominiumId, UUID petId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "pet.remove");
         find(condominiumId, petId).deactivate();
         audit.record(actor.userId(), null, condominiumId, "pet.remove", "pet", petId.toString(), AuditOutcome.SUCCESS);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os animais da unidade do morador autenticado.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @Transactional(readOnly = true)
     public List<Pet> listMine(UUID condominiumId) {
         UUID unitId = myUnit(access.requireResident(condominiumId, "pet.list.self"));
         return pets.findByCondominiumIdAndUnitIdAndActiveTrueOrderByName(condominiumId, unitId);
     }
 
-    @Transactional
     /**
      * Cadastra um animal na unidade do morador autenticado.
      *
@@ -133,19 +132,20 @@ public class PetService {
      * @param breed breed
      * @param notes notes
      */
+    @Transactional
     public Pet registerMine(UUID condominiumId, String name, String species, String breed, String notes) {
         ResidentContext me = access.requireResident(condominiumId, "pet.register.self");
         return create(me.actor().userId(), condominiumId, myUnit(me), name, species, breed, notes,
                 "pet.register.self");
     }
 
-    @Transactional
     /**
      * Remove um animal da unidade do morador autenticado.
      *
      * @param condominiumId condomínio
      * @param petId pet id
      */
+    @Transactional
     public void removeMine(UUID condominiumId, UUID petId) {
         ResidentContext me = access.requireResident(condominiumId, "pet.remove.self");
         Pet pet = find(condominiumId, petId);

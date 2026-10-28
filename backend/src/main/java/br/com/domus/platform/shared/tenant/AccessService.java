@@ -40,10 +40,10 @@ public class AccessService {
         this.audit = audit;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Identifica o usuário autenticado e suas associações.
      */
+    @Transactional(readOnly = true)
     public Actor currentActor() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {

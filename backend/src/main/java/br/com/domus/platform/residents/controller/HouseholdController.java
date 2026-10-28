@@ -54,39 +54,39 @@ public class HouseholdController {
         }
     }
 
-    @GetMapping
     /**
      * Atende `GET /condominiums/{condominiumId}/me/household`.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @GetMapping
     public List<MemberResponse> list(@PathVariable UUID condominiumId) {
         UUID self = service.selfId(condominiumId);
         return service.list(condominiumId).stream().map(r -> MemberResponse.from(r, self)).toList();
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/household`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public MemberResponse add(@PathVariable UUID condominiumId, @Valid @RequestBody AddMemberRequest r) {
         return MemberResponse.from(service.add(condominiumId, r.fullName(), r.relationship(), r.phone()),
                 service.selfId(condominiumId));
     }
 
-    @PostMapping("/{residentId}/remove")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/household/{residentId}/remove`.
      *
      * @param condominiumId condomínio
      * @param residentId morador
      */
+    @PostMapping("/{residentId}/remove")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         service.remove(condominiumId, residentId);
     }

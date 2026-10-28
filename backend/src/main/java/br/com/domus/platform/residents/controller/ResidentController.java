@@ -64,14 +64,14 @@ public class ResidentController {
         }
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/residents`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ResidentResponse create(@PathVariable UUID condominiumId, @Valid @RequestBody CreateResidentRequest r) {
         return ResidentResponse.from(service.create(condominiumId, r.unitId(), r.fullName(), r.email(),
                 r.phone(), r.residentType()));
@@ -97,7 +97,6 @@ public class ResidentController {
         return PageResponse.of(service.list(condominiumId, unitId, pageable), ResidentResponse::from);
     }
 
-    @PutMapping("/{residentId}")
     /**
      * Atende `PUT /condominiums/{condominiumId}/residents/{residentId}`.
      *
@@ -105,19 +104,20 @@ public class ResidentController {
      * @param residentId morador
      * @param r corpo da requisição (validado)
      */
+    @PutMapping("/{residentId}")
     public ResidentResponse update(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                    @Valid @RequestBody UpdateResidentRequest r) {
         return ResidentResponse.from(service.update(condominiumId, residentId, r.fullName(), r.email(), r.phone(),
                 r.residentType(), r.active()));
     }
 
-    @GetMapping("/{residentId}")
     /**
      * Atende `GET /condominiums/{condominiumId}/residents/{residentId}`.
      *
      * @param condominiumId condomínio
      * @param residentId morador
      */
+    @GetMapping("/{residentId}")
     public ResidentResponse get(@PathVariable UUID condominiumId, @PathVariable UUID residentId) {
         return ResidentResponse.from(service.get(condominiumId, residentId));
     }

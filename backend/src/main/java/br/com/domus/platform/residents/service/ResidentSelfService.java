@@ -38,12 +38,12 @@ public class ResidentSelfService {
         this.audit = audit;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os condomínios e unidades do morador autenticado.
      *
      * @return lista de resultados
      */
+    @Transactional(readOnly = true)
     public List<Residency> residencies() {
         Actor actor = access.currentActor();
         return actor.memberships().stream()
@@ -52,18 +52,17 @@ public class ResidentSelfService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     /**
      * Consulta o perfil do morador autenticado.
      *
      * @param condominiumId condomínio
      */
+    @Transactional(readOnly = true)
     public Resident profile(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "profile.read");
         return residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow();
     }
 
-    @Transactional
     /**
      * Atualiza o contato do morador autenticado.
      *
@@ -71,6 +70,7 @@ public class ResidentSelfService {
      * @param email e-mail
      * @param phone phone
      */
+    @Transactional
     public Resident updateContact(UUID condominiumId, String email, String phone) {
         ResidentContext me = access.requireResident(condominiumId, "profile.update");
         Resident resident = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow();

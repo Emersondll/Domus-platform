@@ -68,19 +68,18 @@ public class DirectMessageController {
     public record UnreadResponse(long unread) {
     }
 
-    @PostMapping("/me/messages")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/messages`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/me/messages")
+    @ResponseStatus(HttpStatus.CREATED)
     public MessageResponse send(@PathVariable UUID condominiumId, @Valid @RequestBody SendRequest r) {
         return MessageResponse.from(service.sendAsResident(condominiumId, r.text()));
     }
 
-    @GetMapping("/me/messages")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/messages`.
      *
@@ -88,33 +87,33 @@ public class DirectMessageController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/me/messages")
     public PageResponse<MessageResponse> listMine(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), MessageResponse::from);
     }
 
-    @GetMapping("/me/messages/unread")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/messages/unread`.
      *
      * @param condominiumId condomínio
      */
+    @GetMapping("/me/messages/unread")
     public UnreadResponse unreadMine(@PathVariable UUID condominiumId) {
         return new UnreadResponse(service.unreadForResident(condominiumId));
     }
 
-    @GetMapping("/messages/threads")
     /**
      * Atende `GET /condominiums/{condominiumId}/messages/threads`.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @GetMapping("/messages/threads")
     public List<ThreadResponse> threads(@PathVariable UUID condominiumId) {
         return service.threads(condominiumId).stream().map(ThreadResponse::from).toList();
     }
 
-    @GetMapping("/messages/threads/{residentUserId}")
     /**
      * Atende `GET /condominiums/{condominiumId}/messages/threads/{residentUserId}`.
      *
@@ -123,14 +122,13 @@ public class DirectMessageController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/messages/threads/{residentUserId}")
     public PageResponse<MessageResponse> openThread(@PathVariable UUID condominiumId,
             @PathVariable UUID residentUserId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.openThread(condominiumId, residentUserId, pageable), MessageResponse::from);
     }
 
-    @PostMapping("/messages/threads/{residentUserId}")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/messages/threads/{residentUserId}`.
      *
@@ -138,6 +136,8 @@ public class DirectMessageController {
      * @param residentUserId usuário do morador
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/messages/threads/{residentUserId}")
+    @ResponseStatus(HttpStatus.CREATED)
     public MessageResponse reply(@PathVariable UUID condominiumId, @PathVariable UUID residentUserId,
                                  @Valid @RequestBody SendRequest r) {
         return MessageResponse.from(service.replyAsDesk(condominiumId, residentUserId, r.text()));

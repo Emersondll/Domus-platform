@@ -81,7 +81,6 @@ public class AccessReportService {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os visitantes que entraram e ainda não tiveram a saída registrada.
      *
@@ -89,13 +88,13 @@ public class AccessReportService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Row> onSite(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "access.onsite.list");
         Page<AccessAttempt> page = attempts.findOnSite(condominiumId, pageable);
         return page.map(rowMapper(condominiumId, page.getContent()));
     }
 
-    @Transactional(readOnly = true)
     /**
      * Monta o relatório de acessos do período, com filtro opcional por resultado.
      *
@@ -106,6 +105,7 @@ public class AccessReportService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Row> report(UUID condominiumId, Instant from, Instant to, String result, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "access.report");
         validatePeriod(from, to);
@@ -134,13 +134,13 @@ public class AccessReportService {
         return csv.toString();
     }
 
-    @Transactional
     /**
      * Registra a saída de um visitante que está no local.
      *
      * @param condominiumId condomínio
      * @param attemptId tentativa de acesso
      */
+    @Transactional
     public Row registerExit(UUID condominiumId, UUID attemptId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.exit");
         AccessAttempt attempt = attempts.findByIdAndCondominiumId(attemptId, condominiumId)

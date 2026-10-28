@@ -90,7 +90,6 @@ public class CredentialService {
     public record Validation(boolean granted, String reason, UUID unitId, String visitorName, UUID attemptId) {
     }
 
-    @Transactional
     /**
      * Emite o convite de acesso de um visitante ou prestador para a unidade do morador.
      *
@@ -101,6 +100,7 @@ public class CredentialService {
      * @param validUntil fim da validade
      * @param maxUses max uses
      */
+    @Transactional
     public Issued issueInvitation(UUID condominiumId, String visitorName, String kind, Instant validFrom,
                                   Instant validUntil, int maxUses) {
         ResidentContext me = access.requireResident(condominiumId, "invitation.create");
@@ -120,7 +120,6 @@ public class CredentialService {
         return new Issued(credential, visitor, codec.encode(credential.getId(), condominiumId));
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os convites emitidos pelo morador autenticado.
      *
@@ -128,18 +127,19 @@ public class CredentialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<AccessCredential> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "invitation.list");
         return credentials.findByCondominiumIdAndUnitId(condominiumId, unitOf(me), pageable);
     }
 
-    @Transactional
     /**
      * Revoga um convite do morador autenticado.
      *
      * @param condominiumId condomínio
      * @param credentialId credencial
      */
+    @Transactional
     public AccessCredential revokeMine(UUID condominiumId, UUID credentialId) {
         ResidentContext me = access.requireResident(condominiumId, "invitation.revoke");
         UUID unitId = unitOf(me);
@@ -153,7 +153,6 @@ public class CredentialService {
         return credential;
     }
 
-    @Transactional
     /**
      * Valida o token apresentado na portaria e registra a tentativa; não aciona nenhuma porta.
      *
@@ -161,6 +160,7 @@ public class CredentialService {
      * @param token token apresentado
      * @param entrance ponto de acesso
      */
+    @Transactional
     public Validation validate(UUID condominiumId, String token, String entrance) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.validate");
         Instant now = Instant.now(clock);
@@ -254,7 +254,6 @@ public class CredentialService {
                 MDC.get(CorrelationIdFilter.MDC_KEY), occurredAt));
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as tentativas de acesso da unidade do morador autenticado.
      *
@@ -262,12 +261,12 @@ public class CredentialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<AccessAttempt> historyOfMyUnit(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "access.history.self");
         return attempts.findByUnit(condominiumId, unitOf(me), pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as tentativas de acesso do condomínio.
      *
@@ -275,12 +274,12 @@ public class CredentialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<AccessAttempt> listAttempts(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "access.attempts.list");
         return attempts.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os visitantes cadastrados no condomínio.
      *
@@ -288,6 +287,7 @@ public class CredentialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Visitor> listVisitors(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "visitor.list");
         return visitors.findByCondominiumId(condominiumId, pageable);

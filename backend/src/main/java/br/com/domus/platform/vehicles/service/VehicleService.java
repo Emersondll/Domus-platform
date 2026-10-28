@@ -68,7 +68,6 @@ public class VehicleService {
         return new org.springframework.data.domain.PageImpl<>(all.subList(from, to), pageable, all.size());
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os veículos da unidade do morador autenticado.
      *
@@ -76,12 +75,12 @@ public class VehicleService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Vehicle> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "vehicle.list.self");
         return vehicles.findByCondominiumIdAndUnitId(condominiumId, unitOf(me), pageable);
     }
 
-    @Transactional
     /**
      * Cadastra um veículo na unidade do morador autenticado.
      *
@@ -90,6 +89,7 @@ public class VehicleService {
      * @param model model
      * @param color color
      */
+    @Transactional
     public Vehicle registerMine(UUID condominiumId, String plate, String model, String color) {
         ResidentContext me = access.requireResident(condominiumId, "vehicle.create.self");
         String normalized = FieldCipher.normalizePlate(plate);

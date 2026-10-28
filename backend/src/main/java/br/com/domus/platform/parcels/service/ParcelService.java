@@ -46,7 +46,6 @@ public class ParcelService {
         this.notifications = notifications;
     }
 
-    @Transactional
     /**
      * Registra a chegada de uma encomenda para a unidade e avisa os moradores.
      *
@@ -55,6 +54,7 @@ public class ParcelService {
      * @param carrier transportadora
      * @param description descrição
      */
+    @Transactional
     public Parcel register(UUID condominiumId, UUID unitId, String carrier, String description) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "parcel.register");
         commercial.requireUnit(condominiumId, unitId);
@@ -67,7 +67,6 @@ public class ParcelService {
         return parcel;
     }
 
-    @Transactional
     /**
      * Registra a retirada da encomenda na portaria.
      *
@@ -75,6 +74,7 @@ public class ParcelService {
      * @param parcelId encomenda
      * @param personName nome de quem retirou
      */
+    @Transactional
     public Parcel pickUp(UUID condominiumId, UUID parcelId, String personName) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "parcel.pickup");
         Parcel parcel = parcels.findByIdAndCondominiumId(parcelId, condominiumId)
@@ -88,7 +88,6 @@ public class ParcelService {
         return parcel;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as encomendas do condomínio, com filtro opcional por estado.
      *
@@ -97,13 +96,13 @@ public class ParcelService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Parcel> list(UUID condominiumId, String status, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "parcel.list");
         return status == null ? parcels.findByCondominiumId(condominiumId, pageable)
                 : parcels.findByCondominiumIdAndStatus(condominiumId, status, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as encomendas da unidade do morador autenticado.
      *
@@ -112,6 +111,7 @@ public class ParcelService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Parcel> listMine(UUID condominiumId, String status, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "parcel.list.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();

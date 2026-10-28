@@ -52,13 +52,13 @@ public class CommercialService {
         this.audit = audit;
     }
 
-    @Transactional
     /**
      * Cadastra uma empresa operadora.
      *
      * @param name nome
      * @param taxId CNPJ
      */
+    @Transactional
     public OperatorCompany createCompany(String name, String taxId) {
         Actor actor = access.requirePlatformAdmin("company.create");
         if (companies.existsByTaxId(taxId)) {
@@ -70,13 +70,13 @@ public class CommercialService {
         return company;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as empresas operadoras visíveis ao usuário.
      *
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<OperatorCompany> listCompanies(Pageable pageable) {
         access.requirePlatformAdmin("company.list");
         return companies.findAll(pageable);
@@ -106,7 +106,6 @@ public class CommercialService {
     public record AdminScope(boolean platformAdmin, boolean operator, List<OperatorCompany> companies) {
     }
 
-    @Transactional
     /**
      * Cria um condomínio vinculado à empresa operadora.
      *
@@ -114,6 +113,7 @@ public class CommercialService {
      * @param name nome
      * @param taxId CNPJ
      */
+    @Transactional
     public Condominium createCondominium(UUID companyId, String name, String taxId) {
         Actor actor = access.currentActor();
         boolean allowed = access.companyIdsAdministeredBy(actor).contains(companyId)
@@ -135,13 +135,13 @@ public class CommercialService {
         return condominium;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os condomínios visíveis ao usuário.
      *
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Condominium> listCondominiums(Pageable pageable) {
         Actor actor = access.currentActor();
         Set<UUID> condominiumIds = new HashSet<>(access.directCondominiumIds(actor));
@@ -151,25 +151,25 @@ public class CommercialService {
         return condominiums.findVisible(condominiumIds, companyIds, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Consulta um condomínio dentro do escopo do usuário.
      *
      * @param condominiumId condomínio
      */
+    @Transactional(readOnly = true)
     public Condominium getCondominium(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.READ, "condominium.read");
         return condominiums.findById(condominiumId)
                 .orElseThrow(() -> new NotFoundException("Condominium not found"));
     }
 
-    @Transactional
     /**
      * Cria um bloco no condomínio.
      *
      * @param condominiumId condomínio
      * @param name nome
      */
+    @Transactional
     public Block createBlock(UUID condominiumId, String name) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "block.create");
         if (blocks.existsByCondominiumIdAndName(condominiumId, name)) {
@@ -181,7 +181,6 @@ public class CommercialService {
         return block;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os blocos do condomínio.
      *
@@ -189,12 +188,12 @@ public class CommercialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Block> listBlocks(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "block.list");
         return blocks.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional
     /**
      * Cria uma unidade em um bloco do condomínio.
      *
@@ -202,6 +201,7 @@ public class CommercialService {
      * @param blockId bloco
      * @param number número
      */
+    @Transactional
     public Unit createUnit(UUID condominiumId, UUID blockId, String number) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "unit.create");
         blocks.findByIdAndCondominiumId(blockId, condominiumId)
@@ -215,7 +215,6 @@ public class CommercialService {
         return unit;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as unidades do condomínio.
      *
@@ -223,6 +222,7 @@ public class CommercialService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Unit> listUnits(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "unit.list");
         return units.findByCondominiumId(condominiumId, pageable);
@@ -246,13 +246,13 @@ public class CommercialService {
                 .orElse(null);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Devolve a unidade ou falha com 404 se ela não pertence ao condomínio.
      *
      * @param condominiumId condomínio
      * @param unitId unidade
      */
+    @Transactional(readOnly = true)
     public Unit requireUnit(UUID condominiumId, UUID unitId) {
         return units.findByIdAndCondominiumId(unitId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Unit not found"));

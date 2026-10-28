@@ -5,6 +5,8 @@ import br.com.domus.platform.devices.service.CameraStreamService;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -19,6 +21,8 @@ import org.springframework.stereotype.Component;
 class MediaSnapshotSource implements SnapshotSource {
 
     private static final int TIMEOUT_SECONDS = 6;
+    /** Leitura bloqueante da saída do ffmpeg: thread virtual, para não ocupar o pool comum do ForkJoin. */
+    private static final Executor READER = Executors.newVirtualThreadPerTaskExecutor();
 
     private final CameraStreamService streams;
     private final String ffmpeg;
@@ -51,7 +55,7 @@ class MediaSnapshotSource implements SnapshotSource {
                 } catch (IOException e) {
                     return new byte[0];
                 }
-            });
+            }, READER);
             return frame.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (IOException e) {
             throw new DeviceAdapter.DeviceCommunicationException("Could not start the capture");

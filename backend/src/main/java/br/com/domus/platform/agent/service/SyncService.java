@@ -59,7 +59,6 @@ public class SyncService {
         this.meters = meters;
     }
 
-    @Transactional
     /**
      * Processa, de forma idempotente, os eventos que o agente acumulou offline.
      *
@@ -67,6 +66,7 @@ public class SyncService {
      * @param incoming eventos recebidos
      * @return lista de resultados
      */
+    @Transactional
     public List<Result> process(Agent agent, List<Incoming> incoming) {
         List<Result> results = new ArrayList<>();
         for (Incoming e : incoming) {

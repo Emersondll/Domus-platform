@@ -63,12 +63,12 @@ public class VisitSnapshotService {
     public record Availability(boolean enabled, List<String> entrances) {
     }
 
-    @Transactional(readOnly = true)
     /**
      * Informa se a imagem da câmera de entrada está disponível para anexar ao pedido.
      *
      * @param condominiumId condomínio
      */
+    @Transactional(readOnly = true)
     public Availability availability(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.OPERATE, "snapshot.availability");
         return new Availability(enabled, enabled ? cameras.visitorEntranceNames(condominiumId) : List.of());

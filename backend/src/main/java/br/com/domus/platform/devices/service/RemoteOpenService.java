@@ -42,30 +42,29 @@ public class RemoteOpenService {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Indica se a abertura remota está ligada no condomínio (sem checar permissão).
      *
      * @param condominiumId condomínio
      * @return verdadeiro ou falso
      */
+    @Transactional(readOnly = true)
     public boolean isEnabled(UUID condominiumId) {
         return policies.findById(condominiumId).map(RemoteOpenPolicy::isEnabled).orElse(false);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Consulta a política de abertura remota do condomínio.
      *
      * @param condominiumId condomínio
      * @return verdadeiro ou falso
      */
+    @Transactional(readOnly = true)
     public boolean policy(UUID condominiumId) {
         access.require(condominiumId, AccessLevel.READ, "remote-open.policy.read");
         return isEnabled(condominiumId);
     }
 
-    @Transactional
     /**
      * Liga ou desliga a abertura remota pelo morador no condomínio.
      *
@@ -73,6 +72,7 @@ public class RemoteOpenService {
      * @param enabled ligado ou desligado
      * @return verdadeiro ou falso
      */
+    @Transactional
     public boolean setPolicy(UUID condominiumId, boolean enabled) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "remote-open.policy");
         Instant now = Instant.now(clock);
@@ -83,7 +83,6 @@ public class RemoteOpenService {
         return enabled;
     }
 
-    @Transactional
     /**
      * Permite ou proíbe a abertura remota por morador em uma porta.
      *
@@ -91,6 +90,7 @@ public class RemoteOpenService {
      * @param deviceId dispositivo
      * @param allowed permitido ou não
      */
+    @Transactional
     public Device setDeviceAllowed(UUID condominiumId, UUID deviceId, boolean allowed) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "remote-open.device");
         Device device = deviceService.find(condominiumId, deviceId);

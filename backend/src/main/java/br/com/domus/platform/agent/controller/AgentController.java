@@ -92,7 +92,6 @@ public class AgentController {
     public record CommandDto(UUID commandId, UUID deviceId, String entrance, Instant expiresAt) {
     }
 
-    @GetMapping("/policy")
     /**
      * Atende `GET /agent/policy`.
      *
@@ -102,6 +101,7 @@ public class AgentController {
      * @param sinceVersion since version
      * @param ageSeconds age seconds
      */
+    @GetMapping("/policy")
     public ResponseEntity<PolicyResponse> policy(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
@@ -117,7 +117,6 @@ public class AgentController {
         return ResponseEntity.ok(new PolicyResponse(env.policy(), env.signature()));
     }
 
-    @PostMapping("/events")
     /**
      * Atende `POST /agent/events`.
      *
@@ -126,6 +125,7 @@ public class AgentController {
      * @param backlog eventos pendentes no agente
      * @param batch batch
      */
+    @PostMapping("/events")
     public Map<String, List<EventResult>> events(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
@@ -138,7 +138,6 @@ public class AgentController {
                 .map(r -> new EventResult(r.eventId(), r.status(), r.detail())).toList());
     }
 
-    @GetMapping("/commands")
     /**
      * Atende `GET /agent/commands`.
      *
@@ -146,6 +145,7 @@ public class AgentController {
      * @param key chave
      * @param backlog eventos pendentes no agente
      */
+    @GetMapping("/commands")
     public Map<String, List<CommandDto>> commands(@RequestHeader("X-Agent-Id") UUID id,
             @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog) {
@@ -153,8 +153,6 @@ public class AgentController {
                 .map(c -> new CommandDto(c.getId(), c.getDeviceId(), c.getEntrance(), c.getExpiresAt())).toList());
     }
 
-    @PostMapping("/heartbeat")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     /**
      * Atende `POST /agent/heartbeat`.
      *
@@ -163,19 +161,21 @@ public class AgentController {
      * @param backlog eventos pendentes no agente
      * @param policyVersion versão de política
      */
+    @PostMapping("/heartbeat")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void heartbeat(@RequestHeader("X-Agent-Id") UUID id, @RequestHeader("X-Agent-Key") String key,
             @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
             @RequestParam(required = false) Long policyVersion) {
         agents.authenticate(id, key, policyVersion, backlog);
     }
 
-    @PostMapping("/rotate-key")
     /**
      * Atende `POST /agent/rotate-key`.
      *
      * @param id identificador
      * @param key chave
      */
+    @PostMapping("/rotate-key")
     public Map<String, String> rotate(@RequestHeader("X-Agent-Id") UUID id, @RequestHeader("X-Agent-Key") String key) {
         Agent agent = agents.authenticate(id, key, null, null);
         if (!"ACTIVE".equals(agent.getStatus())) {

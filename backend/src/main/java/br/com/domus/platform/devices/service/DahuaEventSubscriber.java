@@ -61,8 +61,8 @@ public class DahuaEventSubscriber {
         this.enabled = enabled;
     }
 
-    @Scheduled(initialDelay = 10_000, fixedDelayString = "${portaria.devices.dahua-events.reconcile-ms:30000}")
     /** Reconcilia as assinaturas de eventos com os dispositivos cadastrados e com a posse (lease) de cada um. */
+    @Scheduled(initialDelay = 10_000, fixedDelayString = "${portaria.devices.dahua-events.reconcile-ms:30000}")
     public void reconcile() {
         if (!enabled || !running) {
             return;

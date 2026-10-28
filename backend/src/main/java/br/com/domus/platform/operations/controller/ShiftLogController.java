@@ -55,19 +55,18 @@ public class ShiftLogController {
         }
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/shift-log`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public EntryResponse write(@PathVariable UUID condominiumId, @Valid @RequestBody WriteRequest r) {
         return EntryResponse.from(service.write(condominiumId, r.kind(), r.text()));
     }
 
-    @GetMapping
     /**
      * Atende `GET /condominiums/{condominiumId}/shift-log`.
      *
@@ -75,6 +74,7 @@ public class ShiftLogController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping
     public PageResponse<EntryResponse> list(@PathVariable UUID condominiumId,
             @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, pageable), EntryResponse::from);

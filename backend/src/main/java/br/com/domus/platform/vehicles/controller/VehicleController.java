@@ -54,7 +54,6 @@ public class VehicleController {
         }
     }
 
-    @GetMapping("/vehicles")
     /**
      * Atende `GET /condominiums/{condominiumId}/vehicles`.
      *
@@ -63,12 +62,12 @@ public class VehicleController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/vehicles")
     public PageResponse<VehicleResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String plate,
                                               @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.list(condominiumId, plate, pageable), VehicleResponse::from);
     }
 
-    @GetMapping("/me/vehicles")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/vehicles`.
      *
@@ -76,19 +75,20 @@ public class VehicleController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/me/vehicles")
     public PageResponse<VehicleResponse> listMine(@PathVariable UUID condominiumId,
                                                   @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), VehicleResponse::from);
     }
 
-    @PostMapping("/me/vehicles")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/vehicles`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/me/vehicles")
+    @ResponseStatus(HttpStatus.CREATED)
     public VehicleResponse registerMine(@PathVariable UUID condominiumId,
                                         @Valid @RequestBody RegisterVehicleRequest r) {
         return VehicleResponse.from(service.registerMine(condominiumId, r.plate(), r.model(), r.color()));

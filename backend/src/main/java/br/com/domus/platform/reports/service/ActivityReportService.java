@@ -67,7 +67,6 @@ public class ActivityReportService {
         this.access = access;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Monta o resumo agregado da atividade do período (somente números, sem dado pessoal).
      *
@@ -75,6 +74,7 @@ public class ActivityReportService {
      * @param from início do período
      * @param to fim do período
      */
+    @Transactional(readOnly = true)
     public Report report(UUID condominiumId, Instant from, Instant to) {
         access.require(condominiumId, AccessLevel.READ, "report.activity");
         if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {

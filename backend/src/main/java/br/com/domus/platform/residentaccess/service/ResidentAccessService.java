@@ -96,7 +96,6 @@ public class ResidentAccessService implements ResidentPassageRecorder {
 
     // ---- administração das identidades (síndico ou administração) ----
 
-    @Transactional
     /**
      * Cadastra um meio de acesso do morador (cartão, QR, aplicativo ou referência do equipamento).
      *
@@ -105,6 +104,7 @@ public class ResidentAccessService implements ResidentPassageRecorder {
      * @param kind tipo
      * @param ref referência do meio de acesso
      */
+    @Transactional
     public AccessIdentity register(UUID condominiumId, UUID residentId, String kind, String ref) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "access.identity.register");
         if (!REGISTRABLE_KINDS.contains(kind)) {
@@ -126,7 +126,6 @@ public class ResidentAccessService implements ResidentPassageRecorder {
         return saved;
     }
 
-    @Transactional
     /**
      * Lista os meios de acesso do morador.
      *
@@ -134,6 +133,7 @@ public class ResidentAccessService implements ResidentPassageRecorder {
      * @param residentId morador
      * @return lista de resultados
      */
+    @Transactional
     public List<AccessIdentity> listIdentities(UUID condominiumId, UUID residentId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "access.identity.list");
         requireResident(condominiumId, residentId);
@@ -144,7 +144,6 @@ public class ResidentAccessService implements ResidentPassageRecorder {
         return list;
     }
 
-    @Transactional
     /**
      * Revoga um meio de acesso do morador.
      *
@@ -152,6 +151,7 @@ public class ResidentAccessService implements ResidentPassageRecorder {
      * @param residentId morador
      * @param identityId meio de acesso
      */
+    @Transactional
     public AccessIdentity revoke(UUID condominiumId, UUID residentId, UUID identityId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "access.identity.revoke");
         AccessIdentity identity = identities.findByIdAndCondominiumIdAndResidentId(identityId, condominiumId,
@@ -182,13 +182,13 @@ public class ResidentAccessService implements ResidentPassageRecorder {
         return result;
     }
 
-    @Transactional
     /**
      * Consulta a última passagem registrada do morador autenticado.
      *
      * @param condominiumId condomínio
      * @return resultado, se existir
      */
+    @Transactional
     public Optional<ResidentAccessEvent> myLast(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "access.history.view.self");
         Optional<ResidentAccessEvent> last = events.findFirstByCondominiumIdAndResidentIdOrderByOccurredAtDesc(

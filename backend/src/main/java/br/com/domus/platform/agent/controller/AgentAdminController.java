@@ -77,44 +77,43 @@ public class AgentAdminController {
         }
     }
 
-    @PostMapping("/agents")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/agents`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/agents")
+    @ResponseStatus(HttpStatus.CREATED)
     public EnrollResponse enroll(@PathVariable UUID condominiumId, @Valid @RequestBody EnrollRequest r) {
         AgentService.Enrollment e = agents.enroll(condominiumId, r.name());
         return new EnrollResponse(e.agent().getId(), e.agent().getName(), e.apiKey(), e.policySecret());
     }
 
-    @GetMapping("/agents")
     /**
      * Atende `GET /condominiums/{condominiumId}/agents`.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @GetMapping("/agents")
     public List<AgentResponse> list(@PathVariable UUID condominiumId) {
         return agents.list(condominiumId).stream().map(a -> new AgentResponse(a.getId(), a.getName(), a.getStatus(),
                 agents.isOnline(a), a.getLastSeenAt(), a.getLastPolicyVersion(), a.getBacklog())).toList();
     }
 
-    @PostMapping("/agents/{agentId}/revoke")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     /**
      * Atende `POST /condominiums/{condominiumId}/agents/{agentId}/revoke`.
      *
      * @param condominiumId condomínio
      * @param agentId agente
      */
+    @PostMapping("/agents/{agentId}/revoke")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void revoke(@PathVariable UUID condominiumId, @PathVariable UUID agentId) {
         agents.revoke(condominiumId, agentId);
     }
 
-    @GetMapping("/sync-conflicts")
     /**
      * Atende `GET /condominiums/{condominiumId}/sync-conflicts`.
      *
@@ -122,18 +121,19 @@ public class AgentAdminController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/sync-conflicts")
     public PageResponse<ConflictResponse> conflicts(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(conflicts.list(condominiumId, pageable), ConflictResponse::from);
     }
 
-    @PostMapping("/sync-conflicts/{conflictId}/resolve")
     /**
      * Atende `POST /condominiums/{condominiumId}/sync-conflicts/{conflictId}/resolve`.
      *
      * @param condominiumId condomínio
      * @param conflictId conflito
      */
+    @PostMapping("/sync-conflicts/{conflictId}/resolve")
     public ConflictResponse resolve(@PathVariable UUID condominiumId, @PathVariable UUID conflictId) {
         return ConflictResponse.from(conflicts.resolve(condominiumId, conflictId));
     }

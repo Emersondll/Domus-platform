@@ -63,7 +63,6 @@ public class DeviceService implements DeviceHealthLookup {
         this.notifications = notifications;
     }
 
-    @Transactional
     /**
      * Cadastra um dispositivo e, quando aplicável, devolve a chave gerada uma única vez.
      *
@@ -74,6 +73,7 @@ public class DeviceService implements DeviceHealthLookup {
      * @param entrance ponto de acesso
      * @param config config
      */
+    @Transactional
     public Registered register(UUID condominiumId, String name, String kind, String adapterType, String entrance,
                                Map<String, String> config) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.register");
@@ -198,7 +198,6 @@ public class DeviceService implements DeviceHealthLookup {
         return device;
     }
 
-    @Transactional
     /**
      * Gira a chave do dispositivo e devolve o novo valor em claro uma única vez.
      *
@@ -206,6 +205,7 @@ public class DeviceService implements DeviceHealthLookup {
      * @param deviceId dispositivo
      * @return texto resultante
      */
+    @Transactional
     public String rotateKey(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.rotate-key");
         Device device = find(condominiumId, deviceId);
@@ -216,7 +216,6 @@ public class DeviceService implements DeviceHealthLookup {
         return apiKey;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os dispositivos do condomínio.
      *
@@ -224,18 +223,19 @@ public class DeviceService implements DeviceHealthLookup {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<Device> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "device.list");
         return devices.findByCondominiumId(condominiumId, pageable);
     }
 
-    @Transactional
     /**
      * Consulta o equipamento e atualiza o estado do dispositivo.
      *
      * @param condominiumId condomínio
      * @param deviceId dispositivo
      */
+    @Transactional
     public Device refreshStatus(UUID condominiumId, UUID deviceId) {
         access.require(condominiumId, AccessLevel.OPERATE, "device.status");
         Device device = find(condominiumId, deviceId);

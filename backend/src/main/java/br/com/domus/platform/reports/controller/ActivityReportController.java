@@ -33,7 +33,6 @@ public class ActivityReportController {
         return service.report(condominiumId, from, to);
     }
 
-    @GetMapping("/activity.csv")
     /**
      * Atende `GET /condominiums/{condominiumId}/reports/activity.csv`.
      *
@@ -41,6 +40,7 @@ public class ActivityReportController {
      * @param from início do período
      * @param to fim do período
      */
+    @GetMapping("/activity.csv")
     public ResponseEntity<byte[]> activityCsv(@PathVariable UUID condominiumId, @RequestParam Instant from,
                                               @RequestParam Instant to) {
         byte[] body = service.csv(service.report(condominiumId, from, to)).getBytes(StandardCharsets.UTF_8);

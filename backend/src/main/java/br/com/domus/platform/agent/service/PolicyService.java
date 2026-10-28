@@ -58,12 +58,12 @@ public class PolicyService {
         return ttl;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Monta e assina o envelope de política para o agente.
      *
      * @param agent agente autenticado
      */
+    @Transactional(readOnly = true)
     public Envelope build(Agent agent) {
         Instant now = Instant.now(clock);
         long version = agents.currentVersion(agent.getCondominiumId());

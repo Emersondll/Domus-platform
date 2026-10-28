@@ -34,7 +34,6 @@ public class ResidentService {
         this.audit = audit;
     }
 
-    @Transactional
     /**
      * Cadastra um morador na unidade.
      *
@@ -45,6 +44,7 @@ public class ResidentService {
      * @param phone phone
      * @param type type
      */
+    @Transactional
     public Resident create(UUID condominiumId, UUID unitId, String fullName, String email, String phone,
                            ResidentType type) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.create");
@@ -55,7 +55,6 @@ public class ResidentService {
         return resident;
     }
 
-    @Transactional
     /**
      * Lista os moradores do condomínio.
      *
@@ -64,6 +63,7 @@ public class ResidentService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional
     public Page<Resident> list(UUID condominiumId, UUID unitId, Pageable pageable) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.list");
         audit.record(actor.userId(), null, condominiumId, "resident.list", "resident", null, AuditOutcome.SUCCESS);
@@ -84,13 +84,13 @@ public class ResidentService {
         return resident;
     }
 
-    @Transactional
     /**
      * Consulta um morador do condomínio.
      *
      * @param condominiumId condomínio
      * @param residentId morador
      */
+    @Transactional
     public Resident get(UUID condominiumId, UUID residentId) {
         Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.read");
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)

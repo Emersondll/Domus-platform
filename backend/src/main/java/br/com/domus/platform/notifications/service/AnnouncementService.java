@@ -35,7 +35,6 @@ public class AnnouncementService {
         this.clock = clock;
     }
 
-    @Transactional
     /**
      * Publica um comunicado e notifica os moradores.
      *
@@ -43,6 +42,7 @@ public class AnnouncementService {
      * @param title título
      * @param body texto
      */
+    @Transactional
     public Announcement publish(UUID condominiumId, String title, String body) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "announcement.publish");
         Announcement a = announcements.save(new Announcement(condominiumId, title, body, actor.userId(),

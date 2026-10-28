@@ -65,7 +65,6 @@ public class VisitRequestService {
         this.clock = clock;
     }
 
-    @Transactional
     /**
      * Registra o pedido de autorização de um visitante e avisa a unidade.
      *
@@ -76,6 +75,7 @@ public class VisitRequestService {
      * @param callId atendimento
      * @param snapshotId snapshot id
      */
+    @Transactional
     public VisitRequest request(UUID condominiumId, UUID unitId, String visitorName, String kind, UUID callId,
                                 UUID snapshotId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "visit.request");
@@ -96,7 +96,6 @@ public class VisitRequestService {
         return request;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os pedidos de visita do condomínio, opcionalmente de um atendimento.
      *
@@ -105,13 +104,13 @@ public class VisitRequestService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<VisitRequest> list(UUID condominiumId, UUID callId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "visit.list");
         return callId == null ? requests.findByCondominiumId(condominiumId, pageable)
                 : requests.findByCondominiumIdAndCallId(condominiumId, callId, pageable);
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os pedidos de visita da unidade do morador autenticado.
      *
@@ -119,12 +118,12 @@ public class VisitRequestService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<VisitRequest> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "visit.list.self");
         return requests.findByCondominiumIdAndUnitId(condominiumId, myUnit(me, condominiumId), pageable);
     }
 
-    @Transactional
     /**
      * Registra a autorização ou a negação do pedido pelo morador.
      *
@@ -132,6 +131,7 @@ public class VisitRequestService {
      * @param requestId pedido de visita
      * @param approve verdadeiro para autorizar, falso para negar
      */
+    @Transactional
     public VisitRequest decide(UUID condominiumId, UUID requestId, boolean approve) {
         String action = approve ? "visit.approve" : "visit.deny";
         ResidentContext me = access.requireResident(condominiumId, action);

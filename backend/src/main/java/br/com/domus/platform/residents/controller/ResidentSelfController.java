@@ -52,35 +52,35 @@ public class ResidentSelfController {
     public record UpdateContactRequest(@Email @Size(max = 190) String email, @Size(max = 30) String phone) {
     }
 
-    @GetMapping("/me/residencies")
     /**
      * Atende `GET /me/residencies`.
      *
      * @return lista de resultados
      */
+    @GetMapping("/me/residencies")
     public List<ResidencyResponse> residencies() {
         return service.residencies().stream().map(r -> new ResidencyResponse(r.condominiumId(),
                 r.condominiumName(), r.unitId(), r.unitNumber(), r.residentId())).toList();
     }
 
-    @GetMapping("/condominiums/{condominiumId}/me/profile")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/profile`.
      *
      * @param condominiumId condomínio
      */
+    @GetMapping("/condominiums/{condominiumId}/me/profile")
     public ProfileResponse profile(@PathVariable UUID condominiumId) {
         Resident r = service.profile(condominiumId);
         return new ProfileResponse(r.getFullName(), r.getEmail(), r.getPhone());
     }
 
-    @PutMapping("/condominiums/{condominiumId}/me/profile")
     /**
      * Atende `PUT /condominiums/{condominiumId}/me/profile`.
      *
      * @param condominiumId condomínio
      * @param request request
      */
+    @PutMapping("/condominiums/{condominiumId}/me/profile")
     public ProfileResponse updateContact(@PathVariable UUID condominiumId,
                                          @Valid @RequestBody UpdateContactRequest request) {
         Resident r = service.updateContact(condominiumId, request.email(), request.phone());

@@ -37,13 +37,13 @@ public class HouseholdService {
         this.audit = audit;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista os integrantes da unidade do morador.
      *
      * @param condominiumId condomínio
      * @return lista de resultados
      */
+    @Transactional(readOnly = true)
     public List<Resident> list(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "household.list");
         return residents.findByCondominiumIdAndUnitIdAndActiveTrueOrderByFullName(condominiumId, unitOf(me));
@@ -55,7 +55,6 @@ public class HouseholdService {
         return access.requireResident(condominiumId, "household.list").residentId();
     }
 
-    @Transactional
     /**
      * Cadastra um integrante da família.
      *
@@ -64,6 +63,7 @@ public class HouseholdService {
      * @param relationship relationship
      * @param phone phone
      */
+    @Transactional
     public Resident add(UUID condominiumId, String fullName, ResidentType relationship, String phone) {
         ResidentContext me = access.requireResident(condominiumId, "household.add");
         if (!SELF_MANAGED.contains(relationship)) {
@@ -81,13 +81,13 @@ public class HouseholdService {
         return member;
     }
 
-    @Transactional
     /**
      * Remove um integrante da família.
      *
      * @param condominiumId condomínio
      * @param residentId morador
      */
+    @Transactional
     public void remove(UUID condominiumId, UUID residentId) {
         ResidentContext me = access.requireResident(condominiumId, "household.remove");
         Resident member = residents.findByIdAndCondominiumId(residentId, condominiumId)

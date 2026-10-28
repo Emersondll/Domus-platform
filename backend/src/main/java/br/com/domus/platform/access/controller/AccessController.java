@@ -110,14 +110,14 @@ public class AccessController {
         }
     }
 
-    @PostMapping("/me/invitations")
-    @ResponseStatus(HttpStatus.CREATED)
     /**
      * Atende `POST /condominiums/{condominiumId}/me/invitations`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/me/invitations")
+    @ResponseStatus(HttpStatus.CREATED)
     public InvitationResponse createInvitation(@PathVariable UUID condominiumId,
                                                @Valid @RequestBody CreateInvitationRequest r) {
         CredentialService.Issued issued = service.issueInvitation(condominiumId, r.visitorName(), r.kind(),
@@ -125,7 +125,6 @@ public class AccessController {
         return toResponse(issued.credential(), issued.visitor().getFullName(), issued.token());
     }
 
-    @GetMapping("/me/invitations")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/invitations`.
      *
@@ -133,35 +132,35 @@ public class AccessController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/me/invitations")
     public PageResponse<InvitationResponse> listInvitations(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listMine(condominiumId, pageable), c -> toResponse(c, null, null));
     }
 
-    @PostMapping("/me/invitations/{credentialId}/revoke")
     /**
      * Atende `POST /condominiums/{condominiumId}/me/invitations/{credentialId}/revoke`.
      *
      * @param condominiumId condomínio
      * @param credentialId credencial
      */
+    @PostMapping("/me/invitations/{credentialId}/revoke")
     public InvitationResponse revokeInvitation(@PathVariable UUID condominiumId, @PathVariable UUID credentialId) {
         return toResponse(service.revokeMine(condominiumId, credentialId), null, null);
     }
 
-    @PostMapping("/access/validate")
     /**
      * Atende `POST /condominiums/{condominiumId}/access/validate`.
      *
      * @param condominiumId condomínio
      * @param r corpo da requisição (validado)
      */
+    @PostMapping("/access/validate")
     public ValidateResponse validate(@PathVariable UUID condominiumId, @Valid @RequestBody ValidateRequest r) {
         CredentialService.Validation v = service.validate(condominiumId, r.token(), r.entrance());
         return new ValidateResponse(v.granted(), v.reason(), v.unitId(), v.visitorName(), v.attemptId());
     }
 
-    @GetMapping("/access/attempts")
     /**
      * Atende `GET /condominiums/{condominiumId}/access/attempts`.
      *
@@ -169,12 +168,12 @@ public class AccessController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/access/attempts")
     public PageResponse<AttemptResponse> attempts(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "occurredAt") Pageable pageable) {
         return PageResponse.of(service.listAttempts(condominiumId, pageable), AttemptResponse::from);
     }
 
-    @GetMapping("/me/access-history")
     /**
      * Atende `GET /condominiums/{condominiumId}/me/access-history`.
      *
@@ -182,13 +181,13 @@ public class AccessController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/me/access-history")
     public PageResponse<AttemptResponse> myHistory(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "occurredAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             Pageable pageable) {
         return PageResponse.of(service.historyOfMyUnit(condominiumId, pageable), AttemptResponse::from);
     }
 
-    @GetMapping("/visitors")
     /**
      * Atende `GET /condominiums/{condominiumId}/visitors`.
      *
@@ -196,6 +195,7 @@ public class AccessController {
      * @param pageable paginação
      * @return página no formato da API
      */
+    @GetMapping("/visitors")
     public PageResponse<VisitorResponse> visitors(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listVisitors(condominiumId, pageable), VisitorResponse::from);

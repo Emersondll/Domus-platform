@@ -40,7 +40,6 @@ public class ShiftLogService {
         this.clock = clock;
     }
 
-    @Transactional
     /**
      * Registra uma anotação no livro de turno.
      *
@@ -48,6 +47,7 @@ public class ShiftLogService {
      * @param kind tipo
      * @param text texto
      */
+    @Transactional
     public ShiftLogEntry write(UUID condominiumId, String kind, String text) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "shiftlog.write");
         UUID shiftId = shifts.findByUserIdAndEndedAtIsNull(actor.userId()).map(Shift::getId).orElse(null);
@@ -58,7 +58,6 @@ public class ShiftLogService {
         return entry;
     }
 
-    @Transactional(readOnly = true)
     /**
      * Lista as anotações do livro de turno.
      *
@@ -66,6 +65,7 @@ public class ShiftLogService {
      * @param pageable paginação
      * @return página de resultados
      */
+    @Transactional(readOnly = true)
     public Page<ShiftLogEntry> list(UUID condominiumId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "shiftlog.list");
         return entries.findByCondominiumId(condominiumId, pageable);

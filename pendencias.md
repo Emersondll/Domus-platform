@@ -108,14 +108,14 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corrigidos** com teste.
 
 **Pendências que ainda posso fazer sem terceiros (pequenas):**
-1. Aplicar o `actions/checkout` 7 (PR #12; CI do PR verde, 7 jobs): atualização de ação do GitHub, baixo risco. **Aguardo seu aval**, pois mexe em `.github/workflows/ci.yml` e exige novo push.
+1. ~~`actions/checkout` 7 (PR #12)~~: aplicado em 2026-10-28 (CI do PR verde).
 2. Rodar `e2e-browser.py` de novo (não foi reexecutado depois do último commit de concorrência).
 3. Reavaliar "meus acessos" no teste de carga em banco limpo, comparando com o jar anterior (hoje não afirmo ausência de regressão).
 4. Revisar à mão os `@param` do Javadoc dos serviços centrais e documentar os 15 membros restantes.
 5. Regerar `docs/inventory/` (dependências e licenças) após as atualizações de 2026-10-28.
 6. Testes de integração por domínio (item 12 da seção 4) e relatório por unidade.
 
-**Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **Adiados:** #1 Grafana 13 (maior, AGPL), #7 Prometheus 3.15 (sem teste), #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Em avaliação:** #12 `actions/checkout` 7.
+**Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **Adiados:** #1 Grafana 13 (maior, AGPL), #7 Prometheus 3.15 (sem teste), #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Aplicado depois:** #12 `actions/checkout` 7.
 
 **Depende de você, equipamento ou terceiros (sem mudança):** documentos jurídicos em `docs/juridico/` (D1, D16–D21), D3–D8, provedor de notificação (D5), infraestrutura (D6), câmera/controladora/celular/Safari reais (B6, B17, MA1, MA3, Fase 3), busca de marca (L1), varredura de proveniência (L3), parecer Grafana/AGPL (L5), RIPD/DPO, saída automática de visitante esquecido (decisão de produto), Redis para limitador, locks distribuídos, mTLS, réplica/PITR e pentest.
 

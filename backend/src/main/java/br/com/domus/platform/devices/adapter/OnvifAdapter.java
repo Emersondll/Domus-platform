@@ -51,14 +51,15 @@ public class OnvifAdapter implements DeviceAdapter {
     public StatusReport getStatus(DeviceDescriptor device) {
         try {
             URI uri = hosts.requireAllowed(device.config().getOrDefault("baseUrl", ""), "/onvif/device_service");
-            HttpResponse<byte[]> response = client.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(3))
+            HttpResponse<java.io.InputStream> response = client.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(3))
                     .header("Content-Type", "application/soap+xml; charset=utf-8")
                     .POST(HttpRequest.BodyPublishers.ofString(ENVELOPE, StandardCharsets.UTF_8)).build(),
-                    HttpResponse.BodyHandlers.ofByteArray());
+                    HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() / 100 != 2) {
+                response.body().close();
                 return new StatusReport(Health.OFFLINE, "HTTP " + response.statusCode());
             }
-            return parse(response.body());
+            return parse(BoundedBody.read(response, BoundedBody.DEFAULT_MAX_BYTES));
         } catch (DeviceCommunicationException | IOException e) {
             return new StatusReport(Health.OFFLINE, e.getMessage());
         } catch (InterruptedException e) {

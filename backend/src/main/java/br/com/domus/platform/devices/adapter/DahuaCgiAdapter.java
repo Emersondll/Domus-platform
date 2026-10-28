@@ -91,10 +91,11 @@ public class DahuaCgiAdapter implements DeviceAdapter {
             throw new DeviceCommunicationException("Device credentials are not configured");
         }
         try {
-            HttpResponse<String> first = client.send(base(uri).build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<java.io.InputStream> first = client.send(base(uri).build(), HttpResponse.BodyHandlers.ofInputStream());
             if (first.statusCode() != 401) {
-                return new Response(first.statusCode(), first.body());
+                return new Response(first.statusCode(), text(first));
             }
+            first.body().close();
             String path = uri.getRawPath() + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
             Optional<String> auth = first.headers().allValues("WWW-Authenticate").stream()
                     .map(c -> DigestAuth.authorize(c, "GET", path, user, password))
@@ -102,15 +103,19 @@ public class DahuaCgiAdapter implements DeviceAdapter {
             if (auth.isEmpty()) {
                 throw new DeviceCommunicationException("Device did not offer Digest authentication");
             }
-            HttpResponse<String> second = client.send(base(uri).header("Authorization", auth.get()).build(),
-                    HttpResponse.BodyHandlers.ofString());
-            return new Response(second.statusCode(), second.body());
+            HttpResponse<java.io.InputStream> second = client.send(base(uri).header("Authorization", auth.get()).build(),
+                    HttpResponse.BodyHandlers.ofInputStream());
+            return new Response(second.statusCode(), text(second));
         } catch (IOException e) {
             throw new DeviceCommunicationException("Device unreachable", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new DeviceCommunicationException("Interrupted", e);
         }
+    }
+
+    private static String text(HttpResponse<java.io.InputStream> response) throws IOException {
+        return new String(BoundedBody.read(response, BoundedBody.DEFAULT_MAX_BYTES), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private HttpRequest.Builder base(URI uri) {

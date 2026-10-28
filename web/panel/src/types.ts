@@ -74,3 +74,5 @@ export type ActivityReport = {
   incidents: { opened: number; resolved: number; bySeverity: Record<string, number> };
   shiftLog: { notes: number; handovers: number };
 };
+
+export type UnitActivity = { unitId: string; label: string; parcelsReceived: number; calls: number };

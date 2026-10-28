@@ -3,6 +3,7 @@ package br.com.domus.platform.reports.controller;
 import br.com.domus.platform.reports.service.ActivityReportService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +32,38 @@ public class ActivityReportController {
     public ActivityReportService.Report activity(@PathVariable UUID condominiumId, @RequestParam Instant from,
                                                  @RequestParam Instant to) {
         return service.report(condominiumId, from, to);
+    }
+
+    /**
+     * Atende `GET /condominiums/{condominiumId}/reports/activity/by-unit` (síndico ou administração).
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período (exclusivo)
+     */
+    @GetMapping("/activity/by-unit")
+    public List<ActivityReportService.UnitActivity> byUnit(@PathVariable UUID condominiumId, @RequestParam Instant from,
+                                                           @RequestParam Instant to) {
+        return service.byUnit(condominiumId, from, to);
+    }
+
+    /**
+     * Atende `GET /condominiums/{condominiumId}/reports/activity/by-unit.csv` (síndico ou administração).
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período (exclusivo)
+     */
+    @GetMapping("/activity/by-unit.csv")
+    public ResponseEntity<byte[]> byUnitCsv(@PathVariable UUID condominiumId, @RequestParam Instant from,
+                                            @RequestParam Instant to) {
+        byte[] body = service.unitCsv(service.byUnit(condominiumId, from, to)).getBytes(StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("atividade-por-unidade.csv").build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(body);
     }
 
     /**

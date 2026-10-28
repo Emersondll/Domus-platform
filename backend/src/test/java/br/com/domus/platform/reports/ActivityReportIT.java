@@ -153,4 +153,26 @@ class ActivityReportIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/condominiums/" + condo + "/reports/activity?from=" + now.minus(40, ChronoUnit.DAYS) + "&to=" + now)
                 .with(as("rep-manager"))).andExpect(status().isBadRequest());
     }
+
+    @Test
+    void byUnitIsForTheManagerOnlyAndHasNoPersonalNames() throws Exception {
+        String url = "/api/v1/condominiums/" + condo + "/reports/activity/by-unit?" + period();
+        mvc.perform(get(url).with(as("rep-manager"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].label").value("A / 101"))
+                .andExpect(jsonPath("$[0].parcelsReceived").value(2))
+                .andExpect(jsonPath("$[0].calls").value(2))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Morador Rep"))));
+        // o operador vê o resumo do condomínio, mas não a rotina por unidade
+        mvc.perform(get(url).with(as("rep-operator"))).andExpect(status().isForbidden());
+        mvc.perform(get(url).with(as("rep-resident"))).andExpect(status().isNotFound());
+        mvc.perform(get(url).with(as("rep-manager-other"))).andExpect(status().isNotFound());
+        mvc.perform(get(url.replace("/by-unit?", "/by-unit.csv?")).with(as("rep-manager"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"A / 101\",2,2")));
+        mvc.perform(get("/api/v1/condominiums/" + condo + "/reports/activity/by-unit?from=" + Instant.now().minus(60, ChronoUnit.DAYS)
+                + "&to=" + Instant.now()).with(as("rep-manager"))).andExpect(status().isBadRequest());
+        Integer audited = jdbc.sql("SELECT count(*) FROM audit_log WHERE action = 'report.activity.by-unit' AND outcome = 'SUCCESS' AND condominium_id = :c")
+                .param("c", condo).query(Integer.class).single();
+        org.junit.jupiter.api.Assertions.assertTrue(audited >= 1, "a consulta por unidade deve ser auditada");
+    }
 }

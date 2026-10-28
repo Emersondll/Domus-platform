@@ -130,3 +130,13 @@ html[data-busy="1"]::before {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+/* Gráfico de barras do relatório de atividade (texto + barra; a barra é só reforço visual) */
+.barchart { margin: 12px 0; }
+.barchart figcaption { font-size: 13px; opacity: .8; margin-bottom: 4px; }
+.barchart ul { list-style: none; padding: 0; margin: 0; }
+.barchart li { display: grid; grid-template-columns: minmax(90px, 30%) 1fr 3ch; align-items: center; gap: 8px; padding: 2px 0; }
+.barchart-track { height: 10px; background: rgba(127, 127, 127, .2); border-radius: 999px; overflow: hidden; }
+.barchart-fill { display: block; height: 100%; background: var(--accent, #4aa3ff); border-radius: 999px; transition: width .3s ease; }
+.barchart-value { text-align: right; font-variant-numeric: tabular-nums; }
+@media print { .barchart-fill { background: #444; } }

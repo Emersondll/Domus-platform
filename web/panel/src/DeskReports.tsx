@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
-import type { AccessRow, ActivityReport } from "./types";
+import { BarChart } from "./BarChart";
+import type { AccessRow, ActivityReport, UnitActivity } from "./types";
 import { errorMessage } from "./useCondoList";
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 const OUTCOME_TEXT: Record<string, string> = { RESOLVED: "resolvidos", ENTRY_GRANTED: "entrada liberada", ENTRY_DENIED: "entrada negada",
   NO_ANSWER: "sem resposta", FALSE_ALARM: "alarme falso", OPEN: "em aberto" };
+const SEVERITY_TEXT: Record<string, string> = { LOW: "baixa", MEDIUM: "média", HIGH: "alta" };
 const RESULT_TEXT: Record<string, string> = { GRANTED: "liberada", DENIED: "negada" };
 
 /** Relatório de acessos por período, com exportação CSV. O período máximo é de 31 dias (limite da API). */
@@ -18,6 +20,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
   const [rows, setRows] = useState<AccessRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityReport | null>(null);
+  const [byUnit, setByUnit] = useState<UnitActivity[] | null>(null);
 
   // O fim é exclusivo na API: o dia final inteiro entra até 00:00 do dia seguinte.
   const query = () => {
@@ -44,6 +47,17 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
     } catch (e) {
       setActivity(null);
       setError(e instanceof ApiError && e.status === 400 ? "Período inválido: use no máximo 31 dias." : errorMessage(e));
+    }
+  }
+
+  async function loadByUnit() {
+    setError(null);
+    try {
+      setByUnit(await request<UnitActivity[]>(token, "GET", `/api/v1/condominiums/${condominiumId}/reports/activity/by-unit?${query()}`));
+    } catch (e) {
+      setByUnit(null);
+      setError(e instanceof ApiError && e.status === 403 ? "O relatório por unidade é do síndico ou da administração."
+        : e instanceof ApiError && e.status === 400 ? "Período inválido: use no máximo 31 dias." : errorMessage(e));
     }
   }
 
@@ -92,6 +106,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
       </select>
       <button onClick={search}>Consultar</button>
       <button onClick={loadActivity}>Resumo da atividade</button>
+      <button onClick={loadByUnit}>Atividade por unidade</button>
       <button onClick={exportCsv}>Exportar CSV</button>
       <p className="hint">A exportação contém nomes de visitantes (dado pessoal) e fica registrada na auditoria.</p>
       {error && <p role="alert" className="error">{error}</p>}
@@ -108,8 +123,20 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
             <li>Ocorrências: {activity.incidents.opened} abertas, {activity.incidents.resolved} resolvidas</li>
             <li>Livro de turno: {activity.shiftLog.notes} anotações, {activity.shiftLog.handovers} passagens de turno</li>
           </ul>
+          <BarChart title="Encomendas" bars={[{ label: "Recebidas", value: activity.parcels.received },
+            { label: "Retiradas", value: activity.parcels.pickedUp }, { label: "A retirar agora", value: activity.parcels.pendingNow }]} />
+          <BarChart title="Atendimentos por desfecho" bars={Object.entries(activity.calls.byOutcome).map(([k, v]) => ({ label: OUTCOME_TEXT[k] ?? k, value: v }))} />
+          <BarChart title="Ocorrências por gravidade" bars={Object.entries(activity.incidents.bySeverity).map(([k, v]) => ({ label: SEVERITY_TEXT[k] ?? k, value: v }))} />
           <button onClick={exportActivityCsv}>Exportar resumo (CSV)</button>
           <p className="hint">O resumo só tem números, sem nomes; o fim do período é exclusivo.</p>
+        </section>
+      )}
+      {byUnit && (
+        <section aria-label="Atividade por unidade">
+          <h4>Atividade por unidade</h4>
+          <BarChart title="Encomendas recebidas por unidade" bars={byUnit.slice(0, 10).map((u) => ({ label: u.label, value: u.parcelsReceived }))} />
+          <BarChart title="Atendimentos por unidade" bars={byUnit.slice(0, 10).map((u) => ({ label: u.label, value: u.calls }))} />
+          <p className="hint">Mostra as 10 unidades mais ativas (a API devolve até 500). Só números por unidade, sem nomes; é dado de rotina da família e fica restrito ao síndico e registrado na auditoria.</p>
         </section>
       )}
       {rows && (

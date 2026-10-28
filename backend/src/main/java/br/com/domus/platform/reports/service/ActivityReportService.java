@@ -1,11 +1,15 @@
 package br.com.domus.platform.reports.service;
 
+import br.com.domus.platform.shared.audit.AuditOutcome;
+import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
+import br.com.domus.platform.shared.tenant.Actor;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -59,13 +63,80 @@ public class ActivityReportService {
     public record Report(Instant from, Instant to, Parcels parcels, Calls calls, Incidents incidents, ShiftLog shiftLog) {
     }
 
+    /** Teto de unidades devolvidas no relatório por unidade (as mais ativas primeiro). */
+    static final int MAX_UNITS = 500;
+
+    /**
+     * Atividade de uma unidade no período. Só contagens e o rótulo "bloco / número": nenhum nome de morador.
+     *
+     * @param unitId         unidade
+     * @param label          rótulo "Bloco / número" da unidade
+     * @param parcelsReceived encomendas recebidas para a unidade no período
+     * @param calls          atendimentos abertos pela unidade no período
+     */
+    public record UnitActivity(UUID unitId, String label, long parcelsReceived, long calls) {
+    }
+
     private final JdbcClient jdbc;
     private final AccessService access;
+    private final AuditService audit;
 
     /** Construtor de ActivityReportService; recebe as dependências por injeção. */
-    public ActivityReportService(JdbcClient jdbc, AccessService access) {
+    public ActivityReportService(JdbcClient jdbc, AccessService access, AuditService audit) {
         this.jdbc = jdbc;
         this.access = access;
+        this.audit = audit;
+    }
+
+    /**
+     * Atividade por unidade no período (encomendas recebidas e atendimentos), das mais ativas para as menos, até
+     * {@value #MAX_UNITS} unidades. Exige nível MANAGE: o número por unidade descreve a rotina de uma família e fica
+     * restrito a quem administra o condomínio; cada consulta é auditada.
+     *
+     * @param condominiumId condomínio
+     * @param from início do período
+     * @param to fim do período (exclusivo)
+     * @return unidades com alguma atividade
+     */
+    @Transactional
+    public List<UnitActivity> byUnit(UUID condominiumId, Instant from, Instant to) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "report.activity.by-unit");
+        checkPeriod(from, to);
+        Timestamp f = Timestamp.from(from);
+        Timestamp t = Timestamp.from(to);
+        List<UnitActivity> rows = jdbc.sql("""
+                SELECT id, block, number, parcels, calls FROM (
+                    SELECT u.id, b.name AS block, u.number,
+                           (SELECT count(*) FROM parcel p WHERE p.unit_id = u.id AND p.condominium_id = u.condominium_id
+                               AND p.received_at >= :f AND p.received_at < :t) AS parcels,
+                           (SELECT count(*) FROM service_call c WHERE c.unit_id = u.id AND c.condominium_id = u.condominium_id
+                               AND c.created_at >= :f AND c.created_at < :t) AS calls
+                    FROM unit u JOIN block b ON b.id = u.block_id AND b.condominium_id = u.condominium_id
+                    WHERE u.condominium_id = :c) per_unit
+                WHERE parcels + calls > 0
+                ORDER BY parcels + calls DESC, block, number
+                LIMIT :max
+                """).param("c", condominiumId).param("f", f).param("t", t).param("max", MAX_UNITS)
+                .query((rs, n) -> new UnitActivity(rs.getObject("id", UUID.class), rs.getString("block") + " / " + rs.getString("number"),
+                        rs.getLong("parcels"), rs.getLong("calls"))).list();
+        audit.record(actor.userId(), null, condominiumId, "report.activity.by-unit", "report", null, AuditOutcome.SUCCESS);
+        return rows;
+    }
+
+    /** CSV "unidade,encomendas_recebidas,atendimentos" do relatório por unidade (sem nomes de pessoas). */
+    public String unitCsv(List<UnitActivity> units) {
+        StringBuilder out = new StringBuilder("unidade,encomendas_recebidas,atendimentos\r\n");
+        for (UnitActivity u : units) {
+            out.append('"').append(u.label().replace("\"", "\"\"")).append("\",").append(u.parcelsReceived()).append(',')
+                    .append(u.calls()).append("\r\n");
+        }
+        return out.toString();
+    }
+
+    private static void checkPeriod(Instant from, Instant to) {
+        if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {
+            throw new IllegalArgumentException("Period must be positive and at most 31 days");
+        }
     }
 
     /**
@@ -78,9 +149,7 @@ public class ActivityReportService {
     @Transactional(readOnly = true)
     public Report report(UUID condominiumId, Instant from, Instant to) {
         access.require(condominiumId, AccessLevel.READ, "report.activity");
-        if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {
-            throw new IllegalArgumentException("Period must be positive and at most 31 days");
-        }
+        checkPeriod(from, to);
         Timestamp f = Timestamp.from(from);
         Timestamp t = Timestamp.from(to);
         Parcels parcels = jdbc.sql("""

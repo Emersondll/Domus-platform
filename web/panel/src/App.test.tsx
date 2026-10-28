@@ -54,6 +54,7 @@ function fakeApi() {
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr8" });
     if (url.endsWith("/access/validate")) return json({ granted: true, reason: "OK", unitId: "un1", visitorName: "Dona Rosa", attemptId: "e9" });
     if (url.endsWith("/exit") && init?.method === "POST") return json({ attemptId: "e1" });
+    if (url.includes("/reports/activity/by-unit?")) return json([{ unitId: "un1", label: "A / 101", parcelsReceived: 4, calls: 2 }, { unitId: "un2", label: "B / 202", parcelsReceived: 1, calls: 0 }]);
     if (url.includes("/reports/activity?")) return json({ from: "2026-10-20T00:00:00Z", to: "2026-10-27T00:00:00Z",
       parcels: { received: 5, pickedUp: 3, pendingNow: 2, avgHoursToPickup: 6.5 },
       calls: { total: 9, byOutcome: { RESOLVED: 7, NO_ANSWER: 2 }, avgSecondsToAnswer: 42, avgMinutesHandling: 3.5 },
@@ -552,6 +553,21 @@ describe("operator panel", () => {
     expect(within(box).getByText(/1 abertas, 1 resolvidas/)).toBeInTheDocument();
     expect(within(box).getByText(/4 anotações, 2 passagens de turno/)).toBeInTheDocument();
     expect(within(box).getByRole("button", { name: "Exportar resumo (CSV)" })).toBeInTheDocument();
+  });
+
+  it("draws the activity bars as text too and shows the per-unit chart without any resident name", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Relatórios" }));
+    await user.click(screen.getByRole("button", { name: "Resumo da atividade" }));
+    const parcels = await screen.findByRole("list", { name: "Encomendas" });
+    expect(within(parcels).getByText("Recebidas").parentElement).toHaveTextContent("5");
+    expect(within(await screen.findByRole("list", { name: "Atendimentos por desfecho" })).getByText("resolvidos").parentElement).toHaveTextContent("7");
+    await user.click(screen.getByRole("button", { name: "Atividade por unidade" }));
+    const units = await screen.findByRole("region", { name: "Atividade por unidade" });
+    const perUnit = within(units).getByRole("list", { name: "Encomendas recebidas por unidade" });
+    expect(within(perUnit).getByText("A / 101").parentElement).toHaveTextContent("4");
+    expect(within(perUnit).getByText("B / 202")).toBeInTheDocument();
   });
 
   it("prints a parcel receipt through the browser", async () => {

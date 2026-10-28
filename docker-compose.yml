@@ -1,7 +1,7 @@
 # Infraestrutura local de desenvolvimento. Porta 5433 evita conflito com um Postgres local.
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: portaria
       POSTGRES_USER: portaria

@@ -52,11 +52,17 @@ Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com
   publique o conteúdo de `./release` na `PORTARIA_UPDATE_URL`.
 - **Provas:** `UpdateTest` (14 cenários), `scripts/test-agent-launcher.sh` e `scripts/e2e-agent-update.sh` (jars reais: 1.0.0 → 1.1.0 → reinício → confirmação; manifesto adulterado e de outra chave recusados).
 
-## Validado (teste automatizado: 36 no agente, 12 do lado central, mais `scripts/e2e-contingency.sh`)
+## Validado (teste automatizado: 43 no agente, 12 do lado central, mais `scripts/e2e-contingency.sh`)
 1 queda de internet; 2 API central indisponível (503); 3 reinicialização; 4 perda da controladora; 5 eventos/comandos
 duplicados; 6 credencial e política vencidas; 7 revogação antes e depois da queda; 8 retorno da conectividade;
 9 DNS indisponível; 10 arquivo corrompido e armazenamento esgotado. O script sobe central e agente reais, derruba a
 central com `kill -9`, valida offline e confere a reconciliação.
+
+## Publicação de vídeo de câmeras atrás de NAT (opcional, desligada por padrão)
+Com `PORTARIA_VIDEO_CAMERAS`, `PORTARIA_VIDEO_PUBLISH_URL` e `PORTARIA_VIDEO_PUBLISH_SECRET` definidos, o agente puxa o RTSP local de cada
+câmera e o publica no servidor de mídia da central com `ffmpeg` (precisa estar instalado; `PORTARIA_FFMPEG` muda o caminho). É sempre de
+dentro para fora. Detalhes, limites e prova em `docs/cameras.md`. `br.com.domus.agent.video.VideoRelayCli` roda só essa parte (diagnóstico).
+Testes: 7 de unidade (comando, configuração, supervisão) e `scripts/e2e-agent-video.py`.
 
 ## Limitações conhecidas (honestas)
 - **Atualização:** não há rotação da chave de lançamento (trocá-la exige reinstalar a chave pública nos agentes); não há instalador/pacote (.deb); só Linux/systemd; o jar

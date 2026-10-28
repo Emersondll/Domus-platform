@@ -7,7 +7,9 @@
 | Elevação de privilégio | papéis só em `membership` (nunca no token); `PLATFORM_ADMIN` não lê dados de moradores; operador só lê/opera | `TenantIsolationIT` |
 | Reuso de QR Code | token sem dado pessoal, HMAC amarrado ao condomínio, uso consumido por UPDATE atômico | `CondominialOperationsIT` (20 validações simultâneas → 1 autorização) |
 | Abrir porta sem base ou sem confirmação | base obrigatória (atendimento do operador ou validação recente), justificativa, idempotência, só `CONFIRMED` por evento | `DeviceCommandsIT`, `AgentSyncIT` |
-| SSRF por URL de dispositivo | lista permitida de hosts (`DEVICE_HTTP_ALLOWED_HOSTS`, vazia = nenhum) | `DeviceCommandsIT` |
+| SSRF por URL de dispositivo | lista permitida de hosts (`DEVICE_HTTP_ALLOWED_HOSTS`, vazia = nenhum) **mais** validação do endereço resolvido a cada pedido (bloqueia link-local/metadados de nuvem `169.254.x`, `fe80::`, `100.100.100.200`, `fd00:ec2::254`, `0.0.0.0`, multicast; privados e loopback continuam permitidos quando o host está na lista); URL com usuário/senha recusada; redirecionamentos nunca seguidos; resposta de equipamento limitada a 256 KB | `DeviceCommandsIT`, `SsrfDefenseTest` (8, inclui DNS que muda de resposta, redirecionamento e corpo gigante) |
+| Reuso de URL de vídeo (B12) | sessão de vídeo no banco, conferida a cada requisição do servidor de mídia; revogada ao desativar a câmera, retirar a liberação, encerrar o vínculo, ou passar de 12 sessões por usuário | `CameraSessionRevocationIT` (7, inclui concorrência) |
+| Senha da câmera exposta | cifrada em repouso (AES-GCM), API só de gravação, fora de log e auditoria; chaves de configuração com cara de segredo recusadas | `DeviceCredentialIT` (6) |
 | XXE (ONVIF) | DTD desabilitado | `OnvifAdapterTest` |
 | Força bruta em credenciais de máquina | bloqueio do IP após 10 falhas/5 min; limite de taxa por chave | `RateLimitIT` |
 | Força bruta em login de pessoas / MFA | Keycloak: bloqueio progressivo, política de senha (12+), TOTP obrigatório para papéis de equipe | `scripts/verify_keycloak.py` (login real: operador → configuração de OTP; morador → código) |
@@ -36,6 +38,13 @@ renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. I
 9. CI no GitHub Actions: 7 jobs verdes desde 2026-10-22 e nos pushes seguintes.
 10. **Vídeo ao vivo:** o endereço RTSP e a senha da câmera nunca vão ao navegador; a sessão usa token HMAC de 10 min preso ao caminho da câmera, validado pelo servidor de mídia em `/internal/media/auth` (bloqueado no proxy e restrito por IP). O MediaMTX precisa de TLS na frente e de `hlsAllowOrigin` restrito ao painel em produção.
 11. **"Meus acessos" e foto de cadastro:** o histórico pessoal de entradas e saídas é lido só pelo titular (outro morador da mesma unidade, equipe e outro condomínio recebem 404), cada consulta é auditada e a referência do cartão ou usuário fica cifrada com índice cego. A foto é cifrada (AES-GCM), sem URL pública, `no-store`, e o consentimento é registrado e revogável. **Limites:** o morador pode capturar a tela; sem detecção de rosto (a qualidade depende de quem envia); o evento do leitor é autenticado pela chave do dispositivo, então um dispositivo comprometido pode forjar passagens do próprio ponto de acesso; os campos do evento Dahua não foram confirmados em campo (B6).
+
+## Lacunas desta rodada (2026-10-28), sem esconder
+- **Anti-SSRF não é à prova de DNS rebinding:** a resolução é refeita a cada pedido, mas o cliente HTTP resolve de novo ao conectar. A defesa completa exige restringir o **egress do contêiner da API** na rede (firewall/NetworkPolicy), que não está configurado neste repositório.
+- **Credenciais de câmera não estão num cofre:** são cifradas no banco; quem tem o banco e a chave as lê (D3).
+- **Segredo de publicação de vídeo é único** para a instalação (não por agente) e aparece nos argumentos do ffmpeg do agente.
+- **Token de vídeo não está preso à pessoa**; é revogável, não vinculado.
+- **Relatório por unidade** (síndico, auditado, sem nomes) descreve a rotina de uma família: confirmar a base legal com o jurídico (D1/D16).
 
 ## Varredura das imagens de contêiner (2026-10-27)
 Trivy 0.58 (`--severity HIGH,CRITICAL --scanners vuln`), imagens baixadas no mesmo dia. **Achados reais; nenhum foi corrigido por atualização de versão** (cada troca exige reteste da pilha):

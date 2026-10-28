@@ -63,13 +63,44 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 - `scripts/e2e-browser.py` com `E2E_LIVE_VIDEO=1` (Chromium real): o player do painel chega ao estado **"Ao vivo"** usando o HLS do
   MediaMTX. Sem o servidor de mídia o mesmo passo exige o erro explícito. Testes de UI cobrem as duas situações (36 testes).
 
+## Sessões de vídeo revogáveis (B12, 2026-10-28)
+
+Cada abertura de vídeo cria uma **sessão no banco** (`camera_view_session`, V22) e o token passa a ser `sessão.expiração.assinatura`.
+O servidor de mídia chama `/internal/media/auth` a cada playlist e trecho; o backend confere a assinatura **e** se a sessão
+continua ativa para aquela câmera. Por isso o acesso acaba na hora (a próxima requisição do player falha) quando:
+a câmera é **desativada**; a liberação ao morador é **retirada** (só as sessões de morador caem); o **vínculo** da pessoa é revogado;
+ou ela passa do teto de **12 sessões ativas** (`MEDIA_MAX_SESSIONS_PER_USER`; a mais antiga cai). A abertura de sessões do mesmo
+usuário é serializada por um lock consultivo do Postgres (o teste de carga achou um deadlock e uma ultrapassagem do teto sem ele;
+há teste de concorrência que falha sem o lock). **Limite que continua:** o token não está preso à pessoa; quem receber a URL
+assiste até a sessão ser revogada ou vencer (3 minutos, renovados pelo player). Amarrar ao IP/cliente quebraria a rede móvel.
+
+## Credenciais da câmera pela tela (CR5, 2026-10-28)
+
+Na edição da câmera o síndico ou a administração cadastra **usuário e senha**. Eles são cifrados (AES-GCM, a chave fica fora do banco)
+em `device_credential` (V23), **nunca saem pela API** (só "configurada, trocada em…"), não vão a log nem à auditoria (só
+`device.credentials.set/clear`) e chegam apenas ao servidor de mídia, como `usuario:senha@` na fonte RTSP. Tem preferência sobre a
+variável de ambiente (`rtspCredentialsEnv`, que continua valendo). Trocar a senha é cadastrar de novo; remover apaga. A
+configuração comum da câmera recusa chaves que pareçam segredo (`password`, `token`, `secret`…), exceto as que terminam em `Env`.
+**Isto não é um cofre dedicado:** quem tiver o banco **e** a chave de criptografia lê as credenciais (decisão D3, KMS, continua em aberto).
+
+## Câmera atrás de NAT: o agente publica o vídeo (2026-10-28)
+
+Cadastre a câmera com a opção "Vídeo publicado pelo agente local" (`config.videoSource = AGENT`, sem `rtspUrl` na central). O agente
+puxa o RTSP **da rede local** e **empurra** o fluxo para o servidor de mídia da central (`ffmpeg -c copy`, conexão de dentro para
+fora, nenhuma porta aberta no condomínio). Variáveis do agente: `PORTARIA_VIDEO_CAMERAS` (`id-da-câmera=rtsp://…;…`),
+`PORTARIA_VIDEO_PUBLISH_URL`, `PORTARIA_VIDEO_PUBLISH_SECRET` (o `MEDIA_PUBLISH_SECRET` da central), `PORTARIA_FFMPEG`. Se o ffmpeg
+cair, o agente o reabre com espera 5, 10, 20, 30 s. **Limites:** o endereço da câmera e o segredo de publicação aparecem nos argumentos do
+processo ffmpeg (visíveis a quem lê os processos da máquina do agente; nunca vão a log); o segredo de publicação é **um só para toda
+a instalação** (o ideal é um por agente: pendente); o vídeo só vai cifrado até a central se o servidor de mídia aceitar `rtsps`
+(o `mediamtx.yml` de exemplo não liga TLS). Provado com `scripts/e2e-agent-video.py` (MediaMTX e ffmpeg reais, tudo em 127.0.0.1:
+publica, HLS 200, sem token 401, o ffmpeg morto volta, agente parado = vídeo some). **Nunca testado com câmera real nem pela internet.**
+
 ## Limites (não escondidos)
 
 - **Nenhuma câmera real foi testada.** Compatibilidade de codec (o HLS exige H.264; H.265 não toca na maioria dos navegadores) e
   caminhos RTSP variam por fabricante.
-- **Câmera atrás de NAT do condomínio:** a central na nuvem não alcança o RTSP da rede local. O modelo "puxar" só serve quando
-  o RTSP é alcançável (rede privada/VPN). Para o caso comum, o **agente local deveria publicar** o fluxo no MediaMTX (a autorização
-  de publicação já existe: `action=publish` com `MEDIA_PUBLISH_SECRET`), mas o agente **ainda não faz isso**.
+- **Câmera atrás de NAT do condomínio:** o modelo "puxar" só serve quando o RTSP é alcançável pela central (rede privada/VPN).
+  Para o caso comum, o **agente local publica** o fluxo (seção acima), provado só com fonte de teste.
 - **Sem gravação e sem histórico de vídeo.** Há **um quadro** por aviso de visita (câmera de entrada), cifrado e com retenção, desligado por padrão (`docs/plano-cameras-visitas.md`). Retenção e acesso a gravações são decisão LGPD (`docs/lgpd.md`).
   O vídeo é só ao vivo.
 - **Latência HLS** de alguns segundos; para baixa latência seria preciso WebRTC (não implementado).

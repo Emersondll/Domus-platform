@@ -1,6 +1,7 @@
 package br.com.domus.platform.devices.service;
 
 import br.com.domus.platform.devices.entity.Device;
+import br.com.domus.platform.devices.repository.CameraViewSessionStore;
 import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DeviceAdapter;
 import br.com.domus.platform.devices.adapter.DeviceAdapters;
@@ -50,10 +51,12 @@ public class DeviceService implements DeviceHealthLookup {
     private final AuditService audit;
     private final Clock clock;
     private final NotificationService notifications;
+    private final CameraViewSessionStore viewSessions;
 
     /** Construtor de DeviceService; recebe as dependências por injeção. */
     public DeviceService(DeviceRepository devices, DeviceAdapters adapters, HostPolicy hostPolicy,
-                         AccessService access, AuditService audit, Clock clock, NotificationService notifications) {
+                         AccessService access, AuditService audit, Clock clock, NotificationService notifications,
+                         CameraViewSessionStore viewSessions) {
         this.devices = devices;
         this.adapters = adapters;
         this.hostPolicy = hostPolicy;
@@ -61,6 +64,7 @@ public class DeviceService implements DeviceHealthLookup {
         this.audit = audit;
         this.clock = clock;
         this.notifications = notifications;
+        this.viewSessions = viewSessions;
     }
 
     /**
@@ -143,6 +147,9 @@ public class DeviceService implements DeviceHealthLookup {
             throw new ConflictException("Only cameras can be deactivated");
         }
         device.setActive(active);
+        if (!active) {
+            viewSessions.revokeByDevice(deviceId, false, "DEVICE_DEACTIVATED", clock.instant());
+        }
         audit.record(actor.userId(), null, condominiumId, active ? "device.activate" : "device.deactivate", "device",
                 deviceId.toString(), AuditOutcome.SUCCESS);
         return device;
@@ -189,8 +196,11 @@ public class DeviceService implements DeviceHealthLookup {
         }
         boolean changed = device.isResidentViewable() != enabled;
         device.setResidentViewable(enabled);
+        if (changed && !enabled) {
+            viewSessions.revokeByDevice(deviceId, true, "RESIDENT_RELEASE_REMOVED", clock.instant());
+        }
         if (changed && enabled) {
-            notifications.notifyCondominium(condominiumId, NotificationService.CAMERA_RELEASED, "Nova câmera disponível",
+            notifications.notifyAdultResidents(condominiumId, NotificationService.CAMERA_RELEASED, "Nova câmera disponível",
                     "A câmera \"" + device.getName() + "\" (" + device.getEntrance() + ") foi liberada em Câmeras da entrada.");
         }
         audit.record(actor.userId(), null, condominiumId, "device.resident-viewable." + enabled, "device",

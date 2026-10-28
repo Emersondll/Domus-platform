@@ -5,6 +5,9 @@ import br.com.domus.platform.devices.adapter.DeviceSecrets;
 import br.com.domus.platform.devices.adapter.HostPolicy;
 import br.com.domus.platform.devices.adapter.MediaServer;
 import br.com.domus.platform.devices.entity.Device;
+import br.com.domus.platform.devices.repository.CameraViewSessionStore;
+import br.com.domus.platform.shared.ResidentProfileLookup;
+import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ConflictException;
@@ -38,13 +41,19 @@ import org.springframework.transaction.annotation.Transactional;
  * Abrir a visualização não aciona nenhum equipamento de acesso; é só leitura de imagem e fica auditada.
  */
 @Service
-public class CameraStreamService {
+public class CameraStreamService implements ViewSessionRevoker {
 
     /** Sessão de visualização: URL HLS já com o token e o instante em que ela deixa de valer. */
     public record Session(String hlsUrl, Instant expiresAt) {
     }
 
+    /** Valor no lugar do identificador de sessão nos tokens internos de 60 s (o backend lendo o fluxo; não há pessoa). */
+    private static final String INTERNAL_SESSION = "internal";
+
     private final DeviceService devices;
+    private final CameraViewSessionStore sessions;
+    private final ResidentProfileLookup residents;
+    private final int maxSessionsPerUser;
     private final MediaServer media;
     private final HostPolicy hostPolicy;
     private final DeviceSecrets secrets;
@@ -59,7 +68,8 @@ public class CameraStreamService {
     private final Set<String> authAllowedIps;
     private final String internalRtspUrl;
 
-    public CameraStreamService(DeviceService devices, MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
+    public CameraStreamService(DeviceService devices, CameraViewSessionStore sessions, ResidentProfileLookup residents,
+                               MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
                                AccessService access, AuditService audit, Clock clock,
                                @Value("${portaria.media.enabled:false}") boolean enabled,
                                @Value("${portaria.media.token-secret:}") String tokenSecret,
@@ -67,11 +77,15 @@ public class CameraStreamService {
                                @Value("${portaria.media.public-hls-url:}") String publicHlsUrl,
                                @Value("${portaria.media.publish-secret:}") String publishSecret,
                                @Value("${portaria.media.auth-allowed-ips:127.0.0.1,::1,0:0:0:0:0:0:0:1}") String allowedIps,
-                               @Value("${portaria.media.rtsp-internal-url:rtsp://127.0.0.1:8554}") String internalRtspUrl) {
+                               @Value("${portaria.media.rtsp-internal-url:rtsp://127.0.0.1:8554}") String internalRtspUrl,
+                               @Value("${portaria.media.max-sessions-per-user:12}") int maxSessionsPerUser) {
         if (enabled && tokenSecret.length() < 32) {
             throw new IllegalStateException("portaria.media.token-secret must have at least 32 characters");
         }
         this.devices = devices;
+        this.sessions = sessions;
+        this.residents = residents;
+        this.maxSessionsPerUser = maxSessionsPerUser;
         this.media = media;
         this.hostPolicy = hostPolicy;
         this.secrets = secrets;
@@ -92,13 +106,19 @@ public class CameraStreamService {
     @Transactional
     public Session open(UUID condominiumId, UUID deviceId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "camera.view");
-        return start(actor.userId(), condominiumId, devices.find(condominiumId, deviceId), "camera.view");
+        return start(actor.userId(), condominiumId, devices.find(condominiumId, deviceId), "camera.view", "STAFF");
     }
 
-    /** Câmeras que o síndico liberou para o morador, com vídeo disponível. Só morador do condomínio; outro papel = 404. */
+    /**
+     * Câmeras que o síndico liberou para o morador, com vídeo disponível. Só morador do condomínio; outro papel = 404.
+     * Dependente não vê nenhuma (B19: a decisão sobre menores, D17/D21, está em aberto; até lá, o mais restritivo).
+     */
     @Transactional(readOnly = true)
     public List<Device> camerasForResident(UUID condominiumId) {
-        access.requireResident(condominiumId, "camera.list.resident");
+        ResidentContext me = access.requireResident(condominiumId, "camera.list.resident");
+        if (!residents.isAdult(condominiumId, me.residentId())) {
+            return List.of();
+        }
         return devices.residentViewable(condominiumId).stream()
                 .filter(d -> d.isActive() && d.getConfig().containsKey("rtspUrl")).toList();
     }
@@ -108,13 +128,13 @@ public class CameraStreamService {
     public Session openForResident(UUID condominiumId, UUID deviceId) {
         ResidentContext me = access.requireResident(condominiumId, "camera.view.resident");
         Device device = devices.find(condominiumId, deviceId);
-        if (!device.isResidentViewable()) {
+        if (!device.isResidentViewable() || !residents.isAdult(condominiumId, me.residentId())) {
             throw new NotFoundException("Camera not found");
         }
-        return start(me.actor().userId(), condominiumId, device, "camera.view.resident");
+        return start(me.actor().userId(), condominiumId, device, "camera.view.resident", "RESIDENT");
     }
 
-    private Session start(UUID userId, UUID condominiumId, Device device, String auditAction) {
+    private Session start(UUID userId, UUID condominiumId, Device device, String auditAction, String kind) {
         UUID deviceId = device.getId();
         String rtspUrl = device.getConfig().get("rtspUrl");
         if (!"CAMERA".equals(device.getKind()) || rtspUrl == null) {
@@ -132,10 +152,16 @@ public class CameraStreamService {
         } catch (DeviceAdapter.DeviceCommunicationException e) {
             throw new ConflictException("Media server unavailable");
         }
-        Instant expiresAt = clock.instant().plus(tokenTtl);
+        Instant now = clock.instant();
+        Instant expiresAt = now.plus(tokenTtl);
+        UUID sessionId = UUID.randomUUID();
+        // Abre espaço antes de gravar: o usuário fica com, no máximo, maxSessionsPerUser sessões ativas (a mais antiga cai).
+        sessions.enforceLimit(userId, Math.max(0, maxSessionsPerUser - 1), now);
+        sessions.create(sessionId, condominiumId, deviceId, userId, kind, now, expiresAt);
         audit.record(userId, null, condominiumId, auditAction, "device", deviceId.toString(),
                 AuditOutcome.SUCCESS);
-        return new Session(publicHlsUrl + "/" + path + "/index.m3u8?token=" + sign(path, expiresAt), expiresAt);
+        return new Session(publicHlsUrl + "/" + path + "/index.m3u8?token=" + sign(path, sessionId.toString(), expiresAt),
+                expiresAt);
     }
 
     /** A câmera tem fonte RTSP, está ativa e o servidor de mídia está ligado (o backend pode ler o fluxo dela). */
@@ -151,7 +177,7 @@ public class CameraStreamService {
     public String internalReadUrl(Device device) throws DeviceAdapter.DeviceCommunicationException {
         String path = pathOf(device.getId());
         media.ensurePath(path, sourceUrl(device, device.getConfig().get("rtspUrl")));
-        return internalRtspUrl + "/" + path + "?token=" + sign(path, clock.instant().plusSeconds(60));
+        return internalRtspUrl + "/" + path + "?token=" + sign(path, INTERNAL_SESSION, clock.instant().plusSeconds(60));
     }
 
     /**
@@ -187,24 +213,49 @@ public class CameraStreamService {
         return rtspUrl.substring(0, i) + credentials + "@" + rtspUrl.substring(i);
     }
 
-    private String sign(String path, Instant expiresAt) {
+    /** Token: {@code sessão.expiração.assinatura}. A assinatura cobre o caminho, a sessão e a expiração. */
+    private String sign(String path, String sessionId, Instant expiresAt) {
         long exp = expiresAt.getEpochSecond();
-        return exp + "." + mac(path + "|" + exp);
+        return sessionId + "." + exp + "." + mac(path + "|" + sessionId + "|" + exp);
     }
 
     private boolean valid(String path, String token) {
-        int dot = token.indexOf('.');
-        if (dot < 1) {
+        String[] parts = token.split("\\.", -1);
+        if (parts.length != 3) {
             return false;
         }
         long exp;
         try {
-            exp = Long.parseLong(token.substring(0, dot));
+            exp = Long.parseLong(parts[1]);
         } catch (NumberFormatException e) {
             return false;
         }
-        return exp > clock.instant().getEpochSecond()
-                && constantTimeEquals(mac(path + "|" + exp), token.substring(dot + 1));
+        Instant now = clock.instant();
+        if (exp <= now.getEpochSecond() || !constantTimeEquals(mac(path + "|" + parts[0] + "|" + exp), parts[2])) {
+            return false;
+        }
+        if (INTERNAL_SESSION.equals(parts[0])) {
+            return true;
+        }
+        try {
+            return sessions.isActive(UUID.fromString(parts[0]), deviceIdOf(path), now);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private static UUID deviceIdOf(String path) {
+        if (!path.startsWith("cam-")) {
+            throw new IllegalArgumentException("Not a camera path");
+        }
+        return UUID.fromString(path.substring(4));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public int revokeForUser(UUID userId, UUID condominiumId, String reason) {
+        return sessions.revokeByUser(userId, condominiumId, reason, clock.instant());
     }
 
     private String mac(String data) {

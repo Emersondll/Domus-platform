@@ -77,6 +77,15 @@ public class NotificationService {
         }
     }
 
+    /** Notifica só os moradores adultos do condomínio (sem dependentes), por exemplo para avisos de câmera. */
+    @Transactional
+    public void notifyAdultResidents(UUID condominiumId, String type, String title, String body) {
+        Instant now = Instant.now(clock);
+        for (UUID userId : residents.findAdultUserIdsOfCondominium(condominiumId)) {
+            notifications.save(new Notification(userId, condominiumId, type, title, body, now));
+        }
+    }
+
     /** Notifica um morador específico (resposta da portaria a uma mensagem). O texto da mensagem não é copiado. */
     @Transactional
     public void notifyUser(UUID condominiumId, UUID userId, String type, String title, String body) {

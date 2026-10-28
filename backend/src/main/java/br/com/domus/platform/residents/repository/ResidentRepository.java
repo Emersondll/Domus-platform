@@ -36,4 +36,12 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID> {
             WHERE m.active AND r.active AND m.role = 'RESIDENT' AND r.condominium_id = :condominiumId
             """, nativeQuery = true)
     List<UUID> findUserIdsOfCondominium(@Param("condominiumId") UUID condominiumId);
+
+    /** Como {@link #findUserIdsOfCondominium}, mas sem os dependentes (que não recebem avisos de câmera). */
+    @Query(value = """
+            SELECT DISTINCT m.user_id FROM membership m JOIN resident r ON r.id = m.resident_id
+            WHERE m.active AND r.active AND m.role = 'RESIDENT' AND r.resident_type <> 'DEPENDENT'
+              AND r.condominium_id = :condominiumId
+            """, nativeQuery = true)
+    List<UUID> findAdultUserIdsOfCondominium(@Param("condominiumId") UUID condominiumId);
 }

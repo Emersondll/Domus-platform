@@ -8,6 +8,7 @@ import br.com.domus.platform.identity.repository.MembershipRepository;
 import br.com.domus.platform.commercial.repository.OperatorCompanyRepository;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.repository.ResidentRepository;
+import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.crypto.FieldCipher;
@@ -37,11 +38,14 @@ public class MemberService {
     private final AccessService access;
     private final AuditService audit;
     private final FieldCipher cipher;
+    private final ViewSessionRevoker viewSessions;
 
     /** Construtor para criação de um(a) member service. */
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
-                         OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher) {
+                         OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher,
+                         ViewSessionRevoker viewSessions) {
         this.cipher = cipher;
+        this.viewSessions = viewSessions;
         this.users = users;
         this.memberships = memberships;
         this.residents = residents;
@@ -157,6 +161,8 @@ public class MemberService {
         Membership m = memberships.findByIdAndCondominiumId(membershipId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Membership not found"));
         m.revoke();
+        // O vínculo acabou: o vídeo que essa pessoa já tinha aberto também (o token sozinho não dá mais acesso).
+        viewSessions.revokeForUser(m.getUserId(), condominiumId, "MEMBERSHIP_REVOKED");
         audit.record(actor.userId(), null, condominiumId, "member.revoke", "membership", membershipId.toString(),
                 AuditOutcome.SUCCESS);
     }

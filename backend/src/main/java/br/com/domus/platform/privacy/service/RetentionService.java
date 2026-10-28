@@ -103,6 +103,9 @@ public class RetentionService {
             deleted.put("direct_message", jdbc.sql("DELETE FROM direct_message WHERE created_at < :cutoff")
                     .param("cutoff", cutoff(now, directMessageDays)).update());
         }
+        // Sessões de vídeo: o token vence em minutos; o registro fica um dia para diagnóstico e some.
+        deleted.put("camera_view_session", jdbc.sql("DELETE FROM camera_view_session WHERE expires_at < :cutoff")
+                .param("cutoff", cutoff(now, 1)).update());
         deleted.forEach((table, n) -> {
             if (n > 0) {
                 meters.counter("portaria.retention.deleted", "table", table).increment(n);

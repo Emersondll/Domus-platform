@@ -109,8 +109,8 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 
 **Pendências que ainda posso fazer sem terceiros (pequenas):**
 1. ~~`actions/checkout` 7 (PR #12)~~: aplicado em 2026-10-28 (CI do PR verde).
-2. Rodar `e2e-browser.py` de novo (não foi reexecutado depois do último commit de concorrência).
-3. Reavaliar "meus acessos" no teste de carga em banco limpo, comparando com o jar anterior (hoje não afirmo ausência de regressão).
+2. ~~Rodar `e2e-browser.py` de novo~~: feito em 2026-10-28 no jar atual, com vídeo ao vivo: 54 OK.
+3. ~~Reavaliar "meus acessos"~~: feito em 2026-10-28, A/B/A/B em banco novo por execução (jar de `14339c5` × `9183976`): "meus acessos" 956 e 1.176 req/s (anterior) contra 1.115 e 1.080 req/s (atual), p95 28–40 ms, 0 erros; **sem regressão além do ruído** (±20% entre execuções do mesmo jar). A queda para 400–650 req/s de 27/10 vinha do banco de desenvolvimento cheio e da máquina carregada. Mesma máquina, cliente Python: é piso, não capacidade de produção.
 4. Revisar à mão os `@param` do Javadoc dos serviços centrais e documentar os 15 membros restantes.
 5. Regerar `docs/inventory/` (dependências e licenças) após as atualizações de 2026-10-28.
 6. Testes de integração por domínio (item 12 da seção 4) e relatório por unidade.

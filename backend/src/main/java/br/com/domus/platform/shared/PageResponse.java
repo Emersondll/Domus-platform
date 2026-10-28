@@ -17,8 +17,8 @@ public record PageResponse<T>(List<T> items, int page, int size, long totalEleme
     /**
      * Converte uma página de entidades em página da API usando o mapeador informado.
      *
-     * @param page page
-     * @param mapper mapper
+     * @param page página de resultados
+     * @param mapper conversor JSON
      * @return página no formato da API
      */
     public static <E, T> PageResponse<T> of(Page<E> page, Function<E, T> mapper) {

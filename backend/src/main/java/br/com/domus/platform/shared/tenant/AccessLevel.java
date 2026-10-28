@@ -7,7 +7,7 @@ public enum AccessLevel {
     /**
      * Indica se este nível cobre o nível exigido.
      *
-     * @param required required
+     * @param required indica se o campo é obrigatório
      * @return verdadeiro ou falso
      */
     public boolean atLeast(AccessLevel required) {

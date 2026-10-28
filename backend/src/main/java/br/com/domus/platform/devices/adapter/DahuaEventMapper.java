@@ -21,6 +21,7 @@ public final class DahuaEventMapper {
 
     /** Resultado da tradução. */
     public record Mapped(String type, UUID commandId, String identityRef, String method) {
+        /** Evento já traduzido: tipo da plataforma e, quando houver, o comando que ele confirma. */
         public Mapped(String type, UUID commandId) {
             this(type, commandId, null, null);
         }
@@ -36,7 +37,7 @@ public final class DahuaEventMapper {
     /**
      * Converte um evento do equipamento no evento interno; devolve nulo se o texto não puder ser interpretado.
      *
-     * @param event event
+     * @param event evento recebido
      * @return resultado, se existir
      */
     public static Optional<Mapped> map(DahuaEventStream.Event event) {

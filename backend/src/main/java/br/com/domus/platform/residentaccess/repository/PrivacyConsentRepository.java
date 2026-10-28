@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/** Consentimentos registrados (texto, versão e revogação). */
 public interface PrivacyConsentRepository extends JpaRepository<PrivacyConsent, UUID> {
 
     Optional<PrivacyConsent> findFirstByResidentIdAndPurposeAndRevokedAtIsNull(UUID residentId, String purpose);

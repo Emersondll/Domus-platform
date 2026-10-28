@@ -81,7 +81,7 @@ public class Resident {
      * Atualiza os dados de contato do morador.
      *
      * @param email e-mail
-     * @param phone phone
+     * @param phone telefone de contato
      */
     public void updateContact(String email, String phone) {
         this.email = email;

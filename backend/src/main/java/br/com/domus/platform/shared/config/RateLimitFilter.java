@@ -49,6 +49,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Instante da última varredura de entradas vencidas; só otimiza a frequência, então a corrida entre threads é inofensiva. */
     private volatile long lastSweep;
 
+    /** Cria o filtro com o relógio e os limites por minuto lidos da configuração. */
     public RateLimitFilter(Clock clock,
             @Value("${portaria.rate-limit.enabled:true}") boolean enabled,
             @Value("${portaria.rate-limit.trust-forwarded-for:false}") boolean trustForwardedFor,

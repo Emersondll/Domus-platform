@@ -123,7 +123,7 @@ public class AgentController {
      * @param id identificador
      * @param key chave
      * @param backlog eventos pendentes no agente
-     * @param batch batch
+     * @param batch lote de eventos
      */
     @PostMapping("/events")
     public Map<String, List<EventResult>> events(@RequestHeader("X-Agent-Id") UUID id,

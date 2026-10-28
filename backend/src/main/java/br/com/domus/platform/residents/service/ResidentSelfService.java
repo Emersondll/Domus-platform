@@ -68,7 +68,7 @@ public class ResidentSelfService {
      *
      * @param condominiumId condomínio
      * @param email e-mail
-     * @param phone phone
+     * @param phone telefone de contato
      */
     @Transactional
     public Resident updateContact(UUID condominiumId, String email, String phone) {

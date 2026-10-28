@@ -39,6 +39,7 @@ public class FieldCipher {
     private final byte[] blindKey;
     private final SecureRandom random = new SecureRandom();
 
+    /** Cria a cifra de campos com as chaves AES-GCM (a primeira é a ativa) e a chave do índice cego. */
     public FieldCipher(@Value("${portaria.crypto.keys:}") String keysConfig,
                        @Value("${portaria.crypto.active-key-id:}") String activeId,
                        @Value("${portaria.crypto.blind-index-key:}") String blindIndexKey) {

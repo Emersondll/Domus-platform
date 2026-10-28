@@ -126,7 +126,7 @@ public class CommercialController {
     /**
      * Atende `POST /companies`.
      *
-     * @param request request
+     * @param request corpo da requisição
      */
     @PostMapping("/companies")
     @ResponseStatus(HttpStatus.CREATED)
@@ -148,7 +148,7 @@ public class CommercialController {
     /**
      * Atende `POST /condominiums`.
      *
-     * @param request request
+     * @param request corpo da requisição
      */
     @PostMapping("/condominiums")
     @ResponseStatus(HttpStatus.CREATED)
@@ -183,7 +183,7 @@ public class CommercialController {
      * Atende `POST /condominiums/{condominiumId}/blocks`.
      *
      * @param condominiumId condomínio
-     * @param request request
+     * @param request corpo da requisição
      */
     @PostMapping("/condominiums/{condominiumId}/blocks")
     @ResponseStatus(HttpStatus.CREATED)
@@ -208,7 +208,7 @@ public class CommercialController {
      * Atende `POST /condominiums/{condominiumId}/units`.
      *
      * @param condominiumId condomínio
-     * @param request request
+     * @param request corpo da requisição
      */
     @PostMapping("/condominiums/{condominiumId}/units")
     @ResponseStatus(HttpStatus.CREATED)

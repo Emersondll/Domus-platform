@@ -75,7 +75,7 @@ public class DeviceService implements DeviceHealthLookup {
      * @param kind tipo
      * @param adapterType tipo de adaptador
      * @param entrance ponto de acesso
-     * @param config config
+     * @param config configuração do dispositivo
      */
     @Transactional
     public Registered register(UUID condominiumId, String name, String kind, String adapterType, String entrance,

@@ -49,6 +49,7 @@ public class DahuaEventSubscriber {
     private final Map<UUID, Worker> workers = new ConcurrentHashMap<>();
     private volatile boolean running = true;
 
+    /** Cria o assinante de eventos Dahua com a posse por dispositivo e a política de hosts. */
     public DahuaEventSubscriber(DeviceRepository devices, DeviceEventService events, HostPolicy hosts, DeviceSecrets secrets,
                                 DeviceEventLeaseStore leases,
                                 @Value("${portaria.devices.dahua-events.enabled:true}") boolean enabled,

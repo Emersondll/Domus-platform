@@ -41,8 +41,8 @@ public class ResidentService {
      * @param unitId unidade
      * @param fullName full name
      * @param email e-mail
-     * @param phone phone
-     * @param type type
+     * @param phone telefone de contato
+     * @param type tipo
      */
     @Transactional
     public Resident create(UUID condominiumId, UUID unitId, String fullName, String email, String phone,

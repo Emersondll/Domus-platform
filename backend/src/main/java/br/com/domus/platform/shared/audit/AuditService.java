@@ -37,6 +37,7 @@ public class AuditService {
     private final HikariDataSource isolatedPool;
     private final JdbcClient isolated;
 
+    /** Cria o serviço de auditoria com o pool principal (sucesso) e o pool dedicado (negação e falha). */
     public AuditService(DataSource mainDataSource,
             @Value("${spring.datasource.url}") String url,
             @Value("${spring.datasource.username}") String username,
@@ -61,7 +62,7 @@ public class AuditService {
      * @param actorUserId actor user id
      * @param operatorCompanyId operator company id
      * @param condominiumId condomínio
-     * @param action action
+     * @param action ação registrada na auditoria
      * @param resourceType resource type
      * @param resourceId resource id
      * @param outcome desfecho

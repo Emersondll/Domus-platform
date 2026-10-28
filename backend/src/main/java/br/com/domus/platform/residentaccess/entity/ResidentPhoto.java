@@ -52,7 +52,7 @@ public class ResidentPhoto {
     /**
      * Substitui a imagem armazenada.
      *
-     * @param jpeg jpeg
+     * @param jpeg imagem em JPEG
      * @param capturedAt captured at
      * @param uploadedByUserId uploaded by user id
      * @param consentId consent id

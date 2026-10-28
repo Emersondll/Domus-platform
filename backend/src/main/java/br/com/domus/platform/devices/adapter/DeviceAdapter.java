@@ -63,10 +63,12 @@ public interface DeviceAdapter {
 
     /** Falha de comunicação ou operação não suportada. */
     class DeviceCommunicationException extends Exception {
+        /** Falha de comunicação com o equipamento, sem causa interna. */
         public DeviceCommunicationException(String message) {
             super(message);
         }
 
+        /** Falha de comunicação com o equipamento, preservando a causa para o diagnóstico. */
         public DeviceCommunicationException(String message, Throwable cause) {
             super(message, cause);
         }

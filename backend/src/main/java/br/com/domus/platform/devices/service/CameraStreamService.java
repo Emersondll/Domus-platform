@@ -68,6 +68,7 @@ public class CameraStreamService implements ViewSessionRevoker {
     private final Set<String> authAllowedIps;
     private final String internalRtspUrl;
 
+    /** Cria o serviço de vídeo ao vivo com o servidor de mídia, o armazenamento de sessões e o teto por usuário. */
     public CameraStreamService(DeviceService devices, CameraViewSessionStore sessions, ResidentProfileLookup residents,
                                MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
                                AccessService access, AuditService audit, Clock clock,

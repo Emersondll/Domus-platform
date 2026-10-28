@@ -60,8 +60,8 @@ public class HouseholdService {
      *
      * @param condominiumId condomínio
      * @param fullName full name
-     * @param relationship relationship
-     * @param phone phone
+     * @param relationship parentesco com o titular
+     * @param phone telefone de contato
      */
     @Transactional
     public Resident add(UUID condominiumId, String fullName, ResidentType relationship, String phone) {

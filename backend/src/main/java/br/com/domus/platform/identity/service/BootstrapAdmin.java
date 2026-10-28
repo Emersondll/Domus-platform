@@ -30,6 +30,7 @@ public class BootstrapAdmin implements ApplicationRunner {
     private final String email;
     private final FieldCipher cipher;
 
+    /** Cria o inicializador do primeiro administrador da plataforma. */
     public BootstrapAdmin(AppUserRepository users, MembershipRepository memberships, FieldCipher cipher,
             @Value("${portaria.bootstrap.platform-admin-subject:}") String subject,
             @Value("${portaria.bootstrap.platform-admin-email:}") String email) {

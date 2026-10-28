@@ -58,7 +58,7 @@ public class AccessService {
     /**
      * Calcula o nível de acesso do usuário no condomínio.
      *
-     * @param actor actor
+     * @param actor usuário autenticado
      * @param condominiumId condomínio
      */
     public AccessLevel levelFor(Actor actor, UUID condominiumId) {
@@ -142,7 +142,7 @@ public class AccessService {
     /**
      * Exige que o usuário seja administrador da plataforma.
      *
-     * @param action action
+     * @param action ação registrada na auditoria
      */
     public Actor requirePlatformAdmin(String action) {
         Actor actor = currentActor();

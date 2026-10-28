@@ -10,7 +10,7 @@ public class PlatformApplication {
     /**
      * Inicia a aplicação Spring Boot.
      *
-     * @param args args
+     * @param args argumentos de inicialização
      */
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);

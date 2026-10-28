@@ -21,7 +21,7 @@ public class DeviceAdapters {
     /**
      * Localiza o adaptador registrado para o tipo informado.
      *
-     * @param type type
+     * @param type tipo
      * @return resultado, se existir
      */
     public Optional<DeviceAdapter> find(String type) {

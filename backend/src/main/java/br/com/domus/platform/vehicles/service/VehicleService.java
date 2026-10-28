@@ -86,8 +86,8 @@ public class VehicleService {
      *
      * @param condominiumId condomínio
      * @param plate placa
-     * @param model model
-     * @param color color
+     * @param model modelo do equipamento
+     * @param color cor
      */
     @Transactional
     public Vehicle registerMine(UUID condominiumId, String plate, String model, String color) {

@@ -55,6 +55,7 @@ public class ActivityReportService {
     public record ShiftLog(long notes, long handovers) {
     }
 
+    /** Resumo da atividade do período: só números, sem dado pessoal. */
     public record Report(Instant from, Instant to, Parcels parcels, Calls calls, Incidents incidents, ShiftLog shiftLog) {
     }
 

@@ -104,7 +104,7 @@ public class ResidentPhotoController {
      * Atende `PUT /condominiums/{condominiumId}/me/photo`.
      *
      * @param condominiumId condomínio
-     * @param image image
+     * @param image bytes da imagem enviada
      */
     @PutMapping(value = "/me/photo", consumes = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE,
             MediaType.APPLICATION_OCTET_STREAM_VALUE})

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/** Histórico de passagens do morador (entrada e saída), com retenção curta. */
 public interface ResidentAccessEventRepository extends JpaRepository<ResidentAccessEvent, UUID> {
 
     Page<ResidentAccessEvent> findByCondominiumIdAndResidentIdAndOccurredAtBetweenOrderByOccurredAtDesc(

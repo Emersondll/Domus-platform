@@ -77,6 +77,7 @@ public class DeviceController {
                                  Instant lastSeenAt, String apiKey, boolean residentOpenable, boolean liveVideo,
                                  boolean active, boolean visitorEntrance, boolean residentViewable,
                                  Map<String, String> config) {
+        /** Converte o dispositivo na resposta da API; a chave de API só vai quando acabou de ser gerada. */
         public static DeviceResponse from(Device d, String apiKey) {
             return new DeviceResponse(d.getId(), d.getName(), d.getKind(), d.getAdapter(), d.getEntrance(),
                     d.getStatus(), d.getLastSeenAt(), apiKey, d.isResidentOpenable(),
@@ -107,6 +108,7 @@ public class DeviceController {
      */
     public record CommandResponse(UUID id, UUID deviceId, String state, String failureReason, String evidence,
                                   Instant requestedAt, Instant sentAt, Instant resolvedAt) {
+        /** Converte o comando de acesso na resposta da API. */
         public static CommandResponse from(AccessCommand c) {
             return new CommandResponse(c.getId(), c.getDeviceId(), c.getState(), c.getFailureReason(),
                     c.getEvidence(), c.getRequestedAt(), c.getSentAt(), c.getResolvedAt());
@@ -172,6 +174,7 @@ public class DeviceController {
     public record ResidentViewableRequest(boolean enabled) {
     }
 
+    /** Pedido para marcar ou desmarcar a câmera de entrada de visitas. */
     public record VisitorEntranceRequest(boolean enabled) {
     }
 

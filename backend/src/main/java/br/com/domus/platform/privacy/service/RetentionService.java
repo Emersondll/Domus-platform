@@ -38,6 +38,7 @@ public class RetentionService {
     private final int directMessageDays;
     private final boolean enabled;
 
+    /** Cria o serviço de retenção com os prazos de cada tabela, lidos da configuração. */
     public RetentionService(JdbcClient jdbc, Clock clock, MeterRegistry meters,
             @Value("${portaria.retention.enabled:true}") boolean enabled,
             @Value("${portaria.retention.notifications-days:90}") int notificationsDays,

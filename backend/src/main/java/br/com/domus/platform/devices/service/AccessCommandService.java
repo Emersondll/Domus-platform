@@ -62,6 +62,7 @@ public class AccessCommandService {
     private final Duration confirmationTimeout;
     private final MeterRegistry meters;
 
+    /** Cria o serviço de comandos de acesso com os adaptadores e a política de confirmação. */
     public AccessCommandService(AccessCommandRepository commands, DeviceService devices, DeviceAdapters adapters,
                                 OperationsService operations, CredentialService credentials, RemoteOpenService remoteOpen,
                                 AccessService access,

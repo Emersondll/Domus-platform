@@ -45,6 +45,7 @@ public class VisitSnapshotService {
     private final boolean enabled;
     private final Duration tempTtl;
 
+    /** Cria o serviço de imagem da câmera de entrada vinculada a um aviso de visita. */
     public VisitSnapshotService(VisitSnapshotRepository snapshots, VisitRequestRepository requests,
                                 EntranceCameraLookup cameras, AccessService access, AuditService audit, Clock clock,
                                 @Value("${portaria.snapshots.enabled:false}") boolean enabled,

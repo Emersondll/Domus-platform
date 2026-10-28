@@ -53,9 +53,9 @@ public class PetService {
      * @param condominiumId condomínio
      * @param unitId unidade
      * @param name nome
-     * @param species species
-     * @param breed breed
-     * @param notes notes
+     * @param species espécie do animal
+     * @param breed raça do animal
+     * @param notes observações livres
      */
     @Transactional
     public Pet register(UUID condominiumId, UUID unitId, String name, String species, String breed, String notes) {
@@ -85,9 +85,9 @@ public class PetService {
      * @param condominiumId condomínio
      * @param petId pet id
      * @param name nome
-     * @param species species
-     * @param breed breed
-     * @param notes notes
+     * @param species espécie do animal
+     * @param breed raça do animal
+     * @param notes observações livres
      */
     @Transactional
     public Pet update(UUID condominiumId, UUID petId, String name, String species, String breed, String notes) {
@@ -128,9 +128,9 @@ public class PetService {
      *
      * @param condominiumId condomínio
      * @param name nome
-     * @param species species
-     * @param breed breed
-     * @param notes notes
+     * @param species espécie do animal
+     * @param breed raça do animal
+     * @param notes observações livres
      */
     @Transactional
     public Pet registerMine(UUID condominiumId, String name, String species, String breed, String notes) {

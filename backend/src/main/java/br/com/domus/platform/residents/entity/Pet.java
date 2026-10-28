@@ -57,9 +57,9 @@ public class Pet {
      * Atualiza os dados do animal.
      *
      * @param name nome
-     * @param species species
-     * @param breed breed
-     * @param notes notes
+     * @param species espécie do animal
+     * @param breed raça do animal
+     * @param notes observações livres
      */
     public void update(String name, String species, String breed, String notes) {
         this.name = name;

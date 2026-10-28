@@ -78,7 +78,7 @@ public class ResidentSelfController {
      * Atende `PUT /condominiums/{condominiumId}/me/profile`.
      *
      * @param condominiumId condomínio
-     * @param request request
+     * @param request corpo da requisição
      */
     @PutMapping("/condominiums/{condominiumId}/me/profile")
     public ProfileResponse updateContact(@PathVariable UUID condominiumId,

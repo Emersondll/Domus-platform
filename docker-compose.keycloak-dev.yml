@@ -2,7 +2,7 @@
 # (ver deploy/docker-compose.prod.yml). Uso: docker compose -f docker-compose.keycloak-dev.yml up -d
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4
+    image: quay.io/keycloak/keycloak:26.8
     command: ["start-dev", "--import-realm"]
     environment:
       KEYCLOAK_ADMIN: admin

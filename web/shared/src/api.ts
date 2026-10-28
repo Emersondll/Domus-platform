@@ -29,8 +29,40 @@ export async function devLogin(subject: string): Promise<string> {
   return (await res.json()).access_token as string;
 }
 
+let busy = 0;
+
+/** Liga/desliga o indicador global de "trabalhando" (barra fina no topo, só CSS) enquanto houver gravação em andamento. */
+function trackBusy(delta: 1 | -1): void {
+  busy += delta;
+  if (typeof document !== "undefined") {
+    if (busy > 0) document.documentElement.dataset.busy = "1";
+    else delete document.documentElement.dataset.busy;
+  }
+}
+
+const inFlightWrites = new Map<string, Promise<unknown>>();
+
+/**
+ * Chamada à API. Gravações (qualquer método diferente de GET) mostram o indicador de atividade e, se a MESMA gravação
+ * (método, caminho e corpo) já estiver em andamento, reaproveitam a requisição em vez de enviar outra: um duplo clique
+ * em "Registrar" não cria dois registros.
+ */
 export async function request<T>(token: string, method: string, path: string, body?: unknown,
                                  retried = false): Promise<T | null> {
+  if (method === "GET") return send<T>(token, method, path, body, retried);
+  const key = `${method} ${path} ${body === undefined ? "" : JSON.stringify(body)}`;
+  const running = inFlightWrites.get(key);
+  if (running) return running as Promise<T | null>;
+  trackBusy(1);
+  const call = send<T>(token, method, path, body, retried).finally(() => {
+    inFlightWrites.delete(key);
+    trackBusy(-1);
+  });
+  inFlightWrites.set(key, call);
+  return call;
+}
+
+async function send<T>(token: string, method: string, path: string, body: unknown, retried: boolean): Promise<T | null> {
   const res = await fetch(path, {
     method,
     headers: {
@@ -42,7 +74,7 @@ export async function request<T>(token: string, method: string, path: string, bo
   if (res.status === 204) return null;
   if (res.status === 401 && !retried && refresher) {
     const renewed = await refresher();
-    if (renewed) return request<T>(renewed, method, path, body, true);
+    if (renewed) return send<T>(renewed, method, path, body, true);
   }
   if (res.status === 401) onUnauthorized?.();
   if (!res.ok) {

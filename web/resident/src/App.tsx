@@ -70,7 +70,7 @@ export function App() {
   }, [token]);
 
   if (oidc === undefined) {
-    return <main className="login"><p>Carregando…</p></main>;
+    return <main className="login" aria-busy="true"><span className="skeleton line" role="status" aria-label="Carregando" /><span className="skeleton line" /></main>;
   }
   if (!token) {
     return (

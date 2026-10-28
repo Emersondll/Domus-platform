@@ -95,3 +95,38 @@ section li button { margin-top: 8px; padding: 7px 16px; font-size: 13px; }
 .qr img { padding: 14px; background: #fff; border-radius: 20px; }
 li.unread { font-weight: 700; }
 a { color: var(--accent); }
+
+/* ---- Fluidez: transições curtas, entrada suave, feedback de toque e de gravação. Tudo respeita "reduzir movimento". ---- */
+html { -webkit-text-size-adjust: 100%; }
+button, a, input, select, textarea, .card, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button, .card, input, select, textarea, section li {
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, filter .15s ease, transform .12s ease, opacity .15s ease;
+}
+button:active:not(:disabled), .card:active { transform: scale(.97); }
+a:focus-visible, summary:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+section, .message, .login { animation: domus-rise .22s ease-out both; }
+section li { animation: domus-fade .18s ease-out both; }
+@keyframes domus-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes domus-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Barra fina no topo enquanto uma gravação está em andamento (aparece só se demorar mais de ~0,2 s, sem piscar). */
+html[data-busy="1"]::before {
+  content: ""; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 2000; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 40% 100%; background-repeat: no-repeat;
+  opacity: 0; animation: domus-bar 1.1s linear infinite, domus-show 0s .2s forwards;
+}
+@keyframes domus-bar { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+@keyframes domus-show { to { opacity: 1; } }
+
+/* Esqueleto de carregamento: ocupa o lugar do conteúdo para a tela não "pular" quando os dados chegam. */
+.skeleton { display: block; min-height: 1.2em; border-radius: 10px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: domus-shimmer 1.3s ease-in-out infinite; }
+.skeleton.line { height: 14px; margin: 8px 0; max-width: 320px; }
+@keyframes domus-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Alvos de toque confortáveis em celular e tablet. */
+@media (pointer: coarse) { button { min-height: 44px; } input, select { min-height: 44px; } }
+
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}

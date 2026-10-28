@@ -126,7 +126,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       <button className="card" onClick={() => onNavigate("Meus acessos")} aria-label="Último acesso">
         <strong>Último acesso</strong>
         <span>
-          {lastAccess === undefined ? "Carregando…" : lastAccess === null ? "Ainda sem registros" :
+          {lastAccess === undefined ? <span className="skeleton line" role="status" aria-label="Carregando último acesso" /> : lastAccess === null ? "Ainda sem registros" :
             `${DIRECTION_LABEL[lastAccess.direction]} · ${new Date(lastAccess.occurredAt).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${lastAccess.entrance}`}
         </span>
       </button>

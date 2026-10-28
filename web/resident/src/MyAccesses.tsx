@@ -67,7 +67,11 @@ export function MyAccesses({ token, condo }: { token: string; condo: string }) {
         ))}
       </div>
       {error && <p role="alert" className="error">{error}</p>}
-      {items === null && !error && <p>Carregando…</p>}
+      {items === null && !error && (
+        <div role="status" aria-label="Carregando acessos">
+          <span className="skeleton line" /><span className="skeleton line" /><span className="skeleton line" />
+        </div>
+      )}
       {items !== null && items.length === 0 && (
         <p>Nenhum acesso registrado neste período. Os registros dependem de você ter um cartão ou usuário cadastrado pela administração.</p>
       )}

@@ -144,6 +144,6 @@ jobs:
             --sbom=backend/target/bom.json
             --sbom=agent/target/bom.json
       - name: Segredos versionados
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

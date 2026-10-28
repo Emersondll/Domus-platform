@@ -52,6 +52,7 @@ public class CameraStreamService implements ViewSessionRevoker {
 
     private final DeviceService devices;
     private final CameraViewSessionStore sessions;
+    private final DeviceCredentialService credentials;
     private final ResidentProfileLookup residents;
     private final int maxSessionsPerUser;
     private final MediaServer media;
@@ -69,7 +70,8 @@ public class CameraStreamService implements ViewSessionRevoker {
     private final String internalRtspUrl;
 
     /** Cria o serviço de vídeo ao vivo com o servidor de mídia, o armazenamento de sessões e o teto por usuário. */
-    public CameraStreamService(DeviceService devices, CameraViewSessionStore sessions, ResidentProfileLookup residents,
+    public CameraStreamService(DeviceService devices, DeviceCredentialService credentials, CameraViewSessionStore sessions,
+                               ResidentProfileLookup residents,
                                MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
                                AccessService access, AuditService audit, Clock clock,
                                @Value("${portaria.media.enabled:false}") boolean enabled,
@@ -85,6 +87,7 @@ public class CameraStreamService implements ViewSessionRevoker {
         }
         this.devices = devices;
         this.sessions = sessions;
+        this.credentials = credentials;
         this.residents = residents;
         this.maxSessionsPerUser = maxSessionsPerUser;
         this.media = media;
@@ -203,15 +206,22 @@ public class CameraStreamService implements ViewSessionRevoker {
         return "cam-" + deviceId;
     }
 
+    /**
+     * Fonte que o servidor de mídia lê. Credencial cadastrada pela tela (cifrada no banco) tem preferência sobre a variável de
+     * ambiente; sem nenhuma das duas, a URL segue sem login. O resultado nunca vai ao navegador nem a log.
+     */
     private String sourceUrl(Device device, String rtspUrl) {
         hostPolicy.requireAllowedRtsp(rtspUrl);
-        String envName = device.getConfig().get("rtspCredentialsEnv");
-        String credentials = envName == null ? null : secrets.get(envName);
-        if (credentials == null || credentials.isBlank()) {
+        String credential = credentials.userInfo(device.getId()).orElseGet(() -> {
+            String envName = device.getConfig().get("rtspCredentialsEnv");
+            String fromEnv = envName == null ? null : secrets.get(envName);
+            return fromEnv == null || fromEnv.isBlank() ? null : fromEnv;
+        });
+        if (credential == null) {
             return rtspUrl;
         }
         int i = rtspUrl.indexOf("://") + 3;
-        return rtspUrl.substring(0, i) + credentials + "@" + rtspUrl.substring(i);
+        return rtspUrl.substring(0, i) + credential + "@" + rtspUrl.substring(i);
     }
 
     /** Token: {@code sessão.expiração.assinatura}. A assinatura cobre o caminho, a sessão e a expiração. */

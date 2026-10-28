@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CameraCredentials } from "./CameraCredentials";
 import { request } from "../../shared/src/api";
 import type { DeviceFull } from "./types";
 import { CameraPlayer } from "../../shared/src/CameraPlayer";
@@ -181,6 +182,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
           <input id="edit-rtsp" maxLength={200} value={editRtsp} onChange={(e) => setEditRtsp(e.target.value)} />
           <label htmlFor="edit-env">Variável de ambiente com usuário:senha</label>
           <input id="edit-env" maxLength={80} value={editEnv} onChange={(e) => setEditEnv(e.target.value)} />
+          <CameraCredentials token={token} base={base} cameraId={editing.id} cameraName={editing.name} />
           <button disabled={!editName.trim() || !editEntrance.trim()} onClick={saveEdit}>Salvar alterações</button>{" "}
           <button onClick={() => setEditing(null)}>Cancelar</button>
         </section>
@@ -188,7 +190,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
       {canManage && (
         <>
       <h3>Cadastrar câmera</h3>
-      <p className="hint">Só o síndico ou a administração cadastra equipamentos. Segredos de acesso ficam em variáveis de ambiente, não aqui.</p>
+      <p className="hint">Só o síndico ou a administração cadastra equipamentos. O usuário e a senha da câmera são cadastrados ao editá-la (ficam cifrados no servidor); a variável de ambiente abaixo é a alternativa.</p>
       <label htmlFor="cam-name">Nome</label>
       <input id="cam-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <label htmlFor="cam-entrance">Entrada</label>

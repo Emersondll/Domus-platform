@@ -26,6 +26,7 @@ const overview = [
 let commandState = "SENT";
 let parcelList: unknown[] = [];
 let posted: { url: string; body: unknown }[] = [];
+let credsConfigured = false;
 let visitStatus = "PENDING";
 let remoteEnabled = false;
 let videoDown = false;
@@ -70,6 +71,9 @@ function fakeApi() {
     if (url.endsWith("/devices/permissions")) { if (permsGate) await permsGate; return json({ level: devicePerms, canManage: devicePerms === "MANAGE" }); }
     if (/\/devices\/d\d$/.test(url) && init?.method === "PUT") return json({ id: "d2" });
     if (url.endsWith("/active") || url.endsWith("/visitor-entrance") || url.endsWith("/resident-viewable")) return json({ id: "d2" });
+    if (url.endsWith("/devices/d2/credentials") && init?.method === "PUT") { credsConfigured = true; return json({ configured: true, updatedAt: new Date().toISOString() }); }
+    if (url.endsWith("/devices/d2/credentials") && init?.method === "DELETE") { credsConfigured = false; return json({ configured: false, updatedAt: null }); }
+    if (url.endsWith("/devices/d2/credentials")) return json({ configured: credsConfigured, updatedAt: credsConfigured ? new Date().toISOString() : null });
     if (url.endsWith("/devices/d3/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d3/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
     if (url.endsWith("/devices/d2/stream-session") && videoDown) return new Response(JSON.stringify({ detail: "Media server unavailable" }), { status: 409 });
     if (url.endsWith("/devices/d2/stream-session")) return json({ hlsUrl: "http://media.test:8888/cam-d2/index.m3u8?token=9999999999.sig", expiresAt: new Date(Date.now() + 600000).toISOString() });
@@ -142,7 +146,7 @@ async function login() {
 describe("operator panel", () => {
   beforeEach(() => {
     commandState = "SENT";
-    posted = [];
+    posted = []; credsConfigured = false;
     visitStatus = "PENDING";
     videoDown = false;
     devicePerms = "MANAGE";
@@ -648,6 +652,19 @@ describe("operator panel", () => {
     expect(within(grid).queryByRole("region", { name: "Vídeo de Câmera hall" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Editar Câmera garagem" }));
+    // credenciais: só de gravação; depois de salvar os campos ficam vazios e nada sobre a senha aparece
+    const creds = await screen.findByRole("region", { name: "Credenciais de Câmera garagem" });
+    expect(within(creds).getByText("Nenhuma credencial cadastrada.")).toBeInTheDocument();
+    expect(within(creds).getByLabelText("Senha da câmera")).toHaveAttribute("type", "password");
+    await user.type(within(creds).getByLabelText("Usuário da câmera"), "admin");
+    await user.type(within(creds).getByLabelText("Senha da câmera"), "S3nha-Teste-Zz");
+    await user.click(within(creds).getByRole("button", { name: "Salvar credenciais" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/devices/d2/credentials"))?.body).toEqual({ username: "admin", password: "S3nha-Teste-Zz" }));
+    expect(await within(creds).findByText(/Credenciais cadastradas/)).toBeInTheDocument();
+    expect(within(creds).getByLabelText("Senha da câmera")).toHaveValue("");
+    expect(creds.textContent).not.toContain("S3nha-Teste-Zz");
+    await user.click(within(creds).getByRole("button", { name: "Remover credenciais" }));
+    expect(await within(creds).findByText("Nenhuma credencial cadastrada.")).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Novo nome"));
     await user.type(screen.getByLabelText("Novo nome"), "Garagem 2");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));

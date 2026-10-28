@@ -93,6 +93,7 @@ public class DeviceService implements DeviceHealthLookup {
             hostPolicy.requireAllowedRtsp(config.get("rtspUrl"));
         }
         requireValidDirection(config);
+        requireNoSecretValues(config);
         if (devices.existsByCondominiumIdAndName(condominiumId, name)) {
             throw new ConflictException("Device name already in use");
         }
@@ -102,6 +103,22 @@ public class DeviceService implements DeviceHealthLookup {
         audit.record(actor.userId(), null, condominiumId, "device.register", "device", device.getId().toString(),
                 AuditOutcome.SUCCESS);
         return new Registered(device, apiKey);
+    }
+
+    /**
+     * A configuração é visível na API e no banco em texto claro: segredo não entra nela. Chaves que terminam em {@code Env}
+     * guardam só o <b>nome</b> de uma variável de ambiente e são permitidas; qualquer outra chave que pareça senha, token
+     * ou segredo é recusada (a senha da câmera tem endpoint próprio e vai cifrada).
+     */
+    private static void requireNoSecretValues(Map<String, String> config) {
+        if (config == null) {
+            return;
+        }
+        for (String key : config.keySet()) {
+            if (!key.endsWith("Env") && key.toLowerCase(java.util.Locale.ROOT).matches(".*(pass|secret|token|credential|apikey).*")) {
+                throw new IllegalArgumentException("Secrets do not belong in the device config; use the credentials endpoint");
+            }
+        }
     }
 
     /** O sentido do ponto de acesso, quando informado, é IN (entrada) ou OUT (saída). */
@@ -125,6 +142,7 @@ public class DeviceService implements DeviceHealthLookup {
             hostPolicy.requireAllowedRtsp(next.get("rtspUrl"));
         }
         requireValidDirection(next);
+        requireNoSecretValues(next);
         if (devices.existsByCondominiumIdAndNameAndIdNot(condominiumId, name, deviceId)) {
             throw new ConflictException("Device name already in use");
         }

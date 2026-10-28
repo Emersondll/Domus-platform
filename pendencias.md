@@ -75,14 +75,14 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | # | Achado | Gravidade | Estado |
 |---|---|---|---|
 | B11 | Teste do painel com erro de tipo quebrava o `npm run build` e passou despercebido por eu ler só o fim da saída | média (o CI teria falhado) | **corrigido**; processo na Fase 1, item 7 |
-| B12 | **Token do vídeo preso só ao caminho da câmera:** a URL HLS pode ser repassada e funciona até vencer (10 min) | média | parcial: 3 min (era 10); o token continua sem ligação com a pessoa |
+| B12 | **Token do vídeo preso só ao caminho da câmera:** a URL HLS pode ser repassada e funciona até vencer | média | **mitigado (2026-10-28):** sessão no banco conferida a cada requisição; revogada ao desativar a câmera, retirar a liberação ou encerrar o vínculo; teto de 12 sessões por usuário. **Continua:** o token não é preso à pessoa (quem recebe a URL assiste até revogar ou vencer, 3 min). O teste de carga achou um deadlock meu nessa mudança (corrigido, com teste que falha sem o lock) |
 | B13 | Limitador de taxa devolve 429 ao `api-smoke` logo depois do e2e/carga (falso negativo da prova) | baixa | **corrigido** (smoke repete em 429; load-test avisa e aborta) |
 | B14 | A configuração do servidor de mídia usada nos testes (`/tmp/domus-run/mtx-test.yml`) e as fontes de vídeo não estão no repositório; outra máquina não reproduz o e2e de vídeo | média (reprodutibilidade) | **corrigido** (`scripts/dev-media.sh up|down|status`, config gerada de `deploy/media/mediamtx.yml`) |
 | B15 | Painel: os botões de administração aparecem só depois da consulta de permissões (piscada) | baixa | **corrigido** ("Carregando permissões…") |
 | B16 | App do morador: 4 vídeos empilhados formam uma página muito longa no celular | baixa (estética) | **corrigido** (grade 2×2 no celular, não testado em aparelho real) |
 | B17 | HLS no iPhone/Safari (reprodução nativa) e reprodução automática **não foram testados**; só Chromium | média | aberto |
 | B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
-| B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | depende de D17/D21 |
+| B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | **mitigado (2026-10-28), escolha minha enquanto D17/D21 estão abertas:** dependente não recebe o aviso e não vê nenhuma câmera liberada (404 ao abrir). Se o jurídico permitir, relaxar |
 | CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
 | B21 | `BootstrapAdmin` criava o administrador inicial sem `email_hash` | baixa | **corrigido (2026-10-27)** (recebe o `FieldCipher`; teste unitário confere o hash) |
 | B22 | `scripts/dev-media.sh` não reiniciava uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | **corrigido (2026-10-27)**: cada fonte reabre o ffmpeg sozinha (testado matando o processo) e há `dev-media.sh repair` |
@@ -101,19 +101,24 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B6 | Campos do evento Dahua/Intelbras não confirmados em equipamento real — **depende de controladora** |
 | B8, B9 | Riscos aceitos (revogação offline até 6 h; cota offline por agente) |
 | B10 | Passo documentado para Keycloak já existente |
-| B12 | Token de vídeo sem ligação com a pessoa (3 min) — **parcial, risco aceito** até haver sessão por pessoa |
+| B12 | Token de vídeo revogável, mas sem ligação com a pessoa (3 min) — **mitigado; o que resta é risco aceito** |
 | B17 | HLS em iPhone/Safari **nunca testado** — depende de aparelho |
-| B19 | Notificação de câmera liberada chega a dependentes — depende de D17/D21 |
+| B19 | Dependentes fora do aviso e do vídeo liberado — **mitigado**; relaxar depende de D17/D21 |
 
 Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corrigidos** com teste.
 
-**Pendências que ainda posso fazer sem terceiros (pequenas):**
-1. ~~`actions/checkout` 7 (PR #12)~~: aplicado em 2026-10-28 (CI do PR verde).
-2. ~~Rodar `e2e-browser.py` de novo~~: feito em 2026-10-28 no jar atual, com vídeo ao vivo: 54 OK.
-3. ~~Reavaliar "meus acessos"~~: feito em 2026-10-28, A/B/A/B em banco novo por execução (jar de `14339c5` × `9183976`): "meus acessos" 956 e 1.176 req/s (anterior) contra 1.115 e 1.080 req/s (atual), p95 28–40 ms, 0 erros; **sem regressão além do ruído** (±20% entre execuções do mesmo jar). A queda para 400–650 req/s de 27/10 vinha do banco de desenvolvimento cheio e da máquina carregada. Mesma máquina, cliente Python: é piso, não capacidade de produção.
-4. Revisar à mão os `@param` do Javadoc dos serviços centrais e documentar os 15 membros restantes.
-5. Regerar `docs/inventory/` (dependências e licenças) após as atualizações de 2026-10-28.
-6. Testes de integração por domínio (item 12 da seção 4) e relatório por unidade.
+**Os 9 itens "que posso fazer sozinho" — rodada de 2026-10-28:**
+1. **B12:** feito (sessões revogáveis, teto, lock por usuário). Evidência: `CameraSessionRevocationIT` (7).
+2. **Anti-SSRF:** feito em camadas (endereço resolvido, metadados, credenciais na URL, redirecionamento, corpo limitado). `SsrfDefenseTest` (8). **Falta** restringir o egress do contêiner na rede (não é código).
+3. **Javadoc:** 20 membros documentados e 38 `@param` de placeholder substituídos; não sobrou membro público sem documentação, exceto os `@Override` (herdam da interface). A revisão dos demais `@param` gerados continua sendo texto de qualidade média.
+4. **`docs/inventory/`:** Maven (154 + 6) e npm (35) regerados; textos de licença e a lista de jars sem arquivo de licença **não** foram regerados.
+5. **Testes por domínio:** 40 classes movidas para pacotes por domínio; mesma contagem de testes, 0 falhas.
+6. **Relatório por unidade e gráficos:** `GET …/reports/activity/by-unit` (+ CSV), só síndico/administração, auditado, sem nomes; gráficos de barras com o número também em texto. **Decisão minha** a confirmar com o jurídico (D1/D16): é dado de rotina por família.
+7. **Credenciais de câmera (CR5):** cadastro pela tela, cifrado, só de gravação. **Não é cofre** (D3).
+8. **Agente publica vídeo (NAT):** feito e provado com MediaMTX e ffmpeg reais (`scripts/e2e-agent-video.py`). **Nunca com câmera real.** Segredo de publicação único por instalação.
+9. API e painéis de desenvolvimento no ar de novo.
+
+**Ainda posso fazer sozinho:** onde a pessoa vê o estado de cada câmera publicada pelo agente (hoje só "sem vídeo" via 404); segredo de publicação por agente; o egress de rede do contêiner na stack de produção; atualização do Grafana/Prometheus com retestes; testes de integração do agente publicando para um MediaMTX no CI (hoje só local).
 
 **Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **Adiados:** #1 Grafana 13 (maior, AGPL), #7 Prometheus 3.15 (sem teste), #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Aplicado depois:** #12 `actions/checkout` 7.
 

@@ -82,8 +82,10 @@ public class ResidentService {
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Resident not found"));
         boolean deactivated = resident.isActive() && !active;
+        // decisão do titular: só adultos usam o app; quem passa a dependente perde o acesso que tinha
+        boolean becameDependent = type == ResidentType.DEPENDENT && resident.getResidentType() != ResidentType.DEPENDENT;
         resident.update(fullName.trim(), email, phone, type, active);
-        if (deactivated) {
+        if (deactivated || becameDependent) {
             accessRevoker.revokeResidentAccess(actor.userId(), condominiumId, residentId);
         }
         audit.record(actor.userId(), null, condominiumId, "resident.update", "resident",

@@ -82,7 +82,7 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B16 | App do morador: 4 vídeos empilhados formam uma página muito longa no celular | baixa (estética) | **corrigido** (grade 2×2 no celular, não testado em aparelho real) |
 | B17 | HLS no iPhone/Safari (reprodução nativa) e reprodução automática **não foram testados**; só Chromium | média | aberto |
 | B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
-| B19 | Liberar câmera notifica todos os moradores, inclusive dependentes (CR2) | baixa | **mitigado (2026-10-28), escolha minha enquanto D17/D21 estão abertas:** dependente não recebe o aviso e não vê nenhuma câmera liberada (404 ao abrir). Se o jurídico permitir, relaxar |
+| ~~B19~~ | Liberar câmera notificava dependentes (CR2) | — | **resolvido (2026-10-29):** dependentes não têm conta no app (V1); o horário e a restrição por unidade das câmeras seguem em D21 |
 | CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
 | B21 | `BootstrapAdmin` criava o administrador inicial sem `email_hash` | baixa | **corrigido (2026-10-27)** (recebe o `FieldCipher`; teste unitário confere o hash) |
 | B22 | `scripts/dev-media.sh` não reiniciava uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | **corrigido (2026-10-27)**: cada fonte reabre o ffmpeg sozinha (testado matando o processo) e há `dev-media.sh repair` |
@@ -103,7 +103,7 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B10 | Passo documentado para Keycloak já existente |
 | B12 | Token de vídeo revogável, mas sem ligação com a pessoa (3 min) — **mitigado; o que resta é risco aceito** |
 | B17 | HLS em iPhone/Safari **nunca testado** — depende de aparelho |
-| B19 | Dependentes fora do aviso e do vídeo liberado — **mitigado**; relaxar depende de D17/D21 |
+| B19 | Dependentes fora do aviso e do vídeo liberado — **resolvido pela decisão de 2026-10-29: dependentes não têm conta no app** |
 
 Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corrigidos** com teste.
 
@@ -188,10 +188,10 @@ Visibilidade por perfil (percurso real na API, 11 perfis × todas as rotas de le
 **Pontos que dependem de decisão ou melhoria (novos):**
 | # | Item | Impacto | Como tratar |
 |---|---|---|---|
-| V1 | **Dependente (DEPENDENT) pode abrir o portão pelo app, chamar a central, acionar pânico, convidar e aprovar visitas**, mas não vê câmeras (decisão minha) nem consente foto ("dependentes ainda não suportados") | Criança com poder de liberar visitante e abrir portão; regra inconsistente entre recursos | **Decisão do titular/jurídico (D17/D21):** definir o que o dependente pode (ex.: só chamar a central e pânico) e aplicar numa regra única, não recurso a recurso |
+| ~~V1~~ | Dependente podia abrir o portão, chamar a central, acionar o pânico, convidar e aprovar visitas | — | **RESOLVIDO (2026-10-29), decisão do titular: só adultos usam o app; não se considera criança como usuária.** Dependente fica no cadastro, **sem conta**: vincular conta a `DEPENDENT` = 400; quem passa a dependente perde o vínculo na hora; migração V25 desativou os vínculos que já existiam. `AdultsOnlyAppIT` (2). Fecha CR2, MA6 e B19 quanto a menores. As travas antigas por tipo (câmera, foto) ficam como defesa extra |
 | ~~V2~~ | Sem teto de convites ativos por unidade | — | **RESOLVIDO (2026-10-29), decisão do titular: teto de 30 convites ativos por unidade** (ativo = não revogado, não vencido, com uso restante). 31º = 409; trava por unidade para pedidos simultâneos. `InvitationLimitIT` (2: sequencial e 40 pedidos juntos de dois moradores → exatamente 30) |
 | ~~V3~~ | Relatórios recusavam intervalo acima de 31 dias com mensagem genérica | — | **RESOLVIDO (2026-10-29):** `InvalidRequestException` devolve 400 com "Period must end after it starts and span at most 31 days" |
-| V4 | **(em aberto — aguardando decisão)** Listagem de equipe (`GET /members`) não traz nome | A tela mostra só papel; impossível saber quem é quem | Decidir se o nome (cifrado) entra na resposta para MANAGE |
+| ~~V4~~ | Listagem de equipe sem nome | — | **RESOLVIDO (2026-10-29), decisão do titular: mostrar o nome.** `GET /members` devolve `displayName` (só nível MANAGE; operador 403, morador 404) e a leitura passou a ser auditada (`member.list`). A tela de Equipe mostra o nome. Nota: o nome do usuário não é o campo cifrado do cadastro do morador; o e-mail continua fora da resposta |
 | ~~V5~~ | Limite de aberturas do portão por morador | — | **RESOLVIDO (2026-10-29), decisão do titular: 5 aberturas por minuto por morador** (antes: intervalo mínimo de 30 s entre aberturas). A 6ª dentro de 1 minuto = 429 + auditoria `door.open.resident.throttled`; mesma chave de idempotência continua devolvendo o mesmo comando. `RemoteOpenAndShiftLogIT` ajustado. *O titular escreveu "v4" ao decidir este valor; tratei como V5, que é o item do portão* |
 | ~~V6~~ | Chamada repetida devolve a chamada aberta da unidade (201 com o mesmo `id`) | — | **CONFIRMADO pelo titular (2026-10-29)** |
 
@@ -232,7 +232,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | MA3 | **Contingência:** o agente local não lê o histórico da controladora, então as passagens de moradores durante uma queda da central **não** chegam ao "Meus acessos" | agente passar a enviar passagens (idempotente) |
 | MA4 | **Retenção de 90 dias é recomendação**, não decisão. Decisão **D19** | confirmar com o jurídico; configurável (`RESIDENT_ACCESS_RETENTION_DAYS`) |
 | MA5 | **Só o titular vê o histórico:** moradores da mesma unidade não veem os dos outros, nem síndico, nem portaria; sem fluxo de acesso excepcional (ordem judicial, apuração de incidente) | decidir o fluxo e o registro dele (D17) |
-| MA6 | **Dependentes e menores** ficam fora da foto e do histórico (a foto de dependente é recusada; dependente sem conta de app não vê nada) | D17 |
+| ~~MA6~~ | Dependentes e menores fora da foto e do histórico | **resolvido (2026-10-29):** dependente não tem conta no app; só adultos usam |
 | MA7 | **Foto sem detecção de rosto:** só valida formato, tamanho (≤ 2 MB), dimensão mínima (160 px) e proporção (≤ 3:1); a qualidade depende de quem envia; a tela diz isso | decidir e licenciar uma biblioteca de visão computacional, se for necessário (a fase de reconhecimento facial vai exigir) |
 | MA8 | **Foto desligada por padrão** (`RESIDENT_PHOTO_ENABLED=false`); ligar em produção depende de **D16** (base legal e consentimento) e do parecer jurídico | parecer jurídico; revisar o texto do consentimento (versão `2026-10-v1`) |
 | MA9 | **Cadastro do meio de acesso só pelo síndico/administração:** o morador não cadastra o próprio QR/app; a portaria (operador) não cadastra | decidir se o morador pode cadastrar QR/app |
@@ -246,7 +246,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | # | Limite | O que falta |
 |---|---|---|
 | CR1 | ~~O teto de 4 câmeras liberadas era verificado sem trava~~ — resolvido em 2026-10-26 (trava por condomínio e teste de concorrência) | — |
-| CR2 | Qualquer morador vinculado ao condomínio (inclusive dependente) vê as câmeras liberadas; não há horário nem restrição por unidade | decisão D21 |
+| CR2 | Qualquer morador adulto vinculado ao condomínio vê as câmeras liberadas (dependentes não têm conta desde 2026-10-29); não há horário nem restrição por unidade | decisão D21 |
 | CR3 | Mesmos limites do vídeo da portaria: nenhuma câmera real testada, H.264 apenas, câmera atrás de NAT depende do agente publicar o fluxo | `docs/cameras.md` |
 | CR4 | O app não impede captura de tela nem gravação do celular | só aviso na tela |
 | CR5 | **Cadastro guiado de câmeras (usuário e senha cifrados no banco, hoje só o nome de uma variável de ambiente) e leitura do endereço pelo ONVIF `GetStreamUri`:** não feitos; mudam o modelo de segredos (decisão D4) e dependem de câmera real | decidir D4; testar com câmera real |

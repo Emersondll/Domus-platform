@@ -34,8 +34,8 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
       <ul>
         {(members ?? []).filter((m) => m.role !== "RESIDENT").map((m) => (
           <li key={m.id}>
-            {ROLE_TEXT[m.role] ?? m.role} · {m.userId.slice(0, 8)}{" "}
-            <button aria-label={`Revogar ${m.userId.slice(0, 8)}`} onClick={async () => {
+            {m.displayName || m.userId.slice(0, 8)} · {ROLE_TEXT[m.role] ?? m.role}{" "}
+            <button aria-label={`Revogar ${m.displayName || m.userId.slice(0, 8)}`} onClick={async () => {
               try {
                 await request(token, "POST", `${base}/${m.id}/revoke`);
                 await load();

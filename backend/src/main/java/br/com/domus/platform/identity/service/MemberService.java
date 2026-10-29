@@ -8,6 +8,7 @@ import br.com.domus.platform.identity.repository.AppUserRepository;
 import br.com.domus.platform.identity.repository.MembershipRepository;
 import br.com.domus.platform.commercial.repository.OperatorCompanyRepository;
 import br.com.domus.platform.residents.entity.Resident;
+import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.ViewSessionRevoker;
@@ -84,7 +85,7 @@ public class MemberService implements ResidentAccessRevoker {
      * @param membership associação de administrador
      * @param displayName nome de exibição do usuário
      */
-    public record CompanyAdmin(Membership membership, String displayName) {
+    public record NamedMembership(Membership membership, String displayName) {
     }
 
     /**
@@ -93,13 +94,13 @@ public class MemberService implements ResidentAccessRevoker {
      * @param companyId empresa operadora
      */
     @Transactional(readOnly = true)
-    public List<CompanyAdmin> listCompanyAdmins(UUID companyId) {
+    public List<NamedMembership> listCompanyAdmins(UUID companyId) {
         access.requirePlatformAdmin("member.company-admin.list");
         if (!companies.existsById(companyId)) {
             throw new NotFoundException("Company not found");
         }
         return memberships.findByOperatorCompanyIdAndRoleAndActiveTrue(companyId, Role.COMPANY_ADMIN).stream()
-                .map(m -> new CompanyAdmin(m, users.findById(m.getUserId()).map(AppUser::getDisplayName).orElse("")))
+                .map(m -> new NamedMembership(m, users.findById(m.getUserId()).map(AppUser::getDisplayName).orElse("")))
                 .toList();
     }
 
@@ -163,6 +164,10 @@ public class MemberService implements ResidentAccessRevoker {
         if (!resident.isActive()) {
             throw new ConflictException("Resident is inactive");
         }
+        // decisão do titular: só adultos usam o app; dependentes ficam no cadastro, sem conta
+        if (resident.getResidentType() == ResidentType.DEPENDENT) {
+            throw new InvalidRequestException("Dependents do not have an app account; only adults use the app");
+        }
         if (memberships.findByResidentId(residentId).stream().anyMatch(Membership::isActive)) {
             throw new ConflictException("Resident already has an app account");
         }
@@ -180,9 +185,23 @@ public class MemberService implements ResidentAccessRevoker {
      * @param email e-mail
      * @return lista de resultados
      */
-    @Transactional(readOnly = true)
-    public List<Membership> list(UUID condominiumId, String email) {
-        access.require(condominiumId, AccessLevel.MANAGE, "member.list");
+    @Transactional
+    public List<NamedMembership> list(UUID condominiumId, String email) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "member.list");
+        List<NamedMembership> result = withNames(listMemberships(condominiumId, email));
+        // a listagem devolve nomes de pessoas: leitura de dado pessoal fica na auditoria (por isso não é readOnly)
+        audit.record(actor.userId(), null, condominiumId, "member.list", "membership", null, AuditOutcome.SUCCESS);
+        return result;
+    }
+
+    private List<NamedMembership> withNames(List<Membership> found) {
+        java.util.Map<UUID, String> names = new java.util.HashMap<>();
+        users.findAllById(found.stream().map(Membership::getUserId).distinct().toList())
+                .forEach(u -> names.put(u.getId(), u.getDisplayName()));
+        return found.stream().map(m -> new NamedMembership(m, names.getOrDefault(m.getUserId(), ""))).toList();
+    }
+
+    private List<Membership> listMemberships(UUID condominiumId, String email) {
         List<Membership> all = memberships.findByCondominiumIdAndActiveTrue(condominiumId);
         if (email == null || email.isBlank()) {
             return all;

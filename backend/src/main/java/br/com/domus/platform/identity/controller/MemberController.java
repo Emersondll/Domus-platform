@@ -56,12 +56,17 @@ public class MemberController {
      * @param condominiumId  condomínio, quando aplicável
      * @param companyId      empresa, quando aplicável
      * @param residentId     cadastro de morador, quando aplicável
+     * @param displayName    nome de exibição do usuário (só na listagem de equipe; nulo nas demais respostas)
      */
     public record MembershipResponse(UUID id, UUID userId, Role role, UUID condominiumId, UUID companyId,
-                                     UUID residentId) {
+                                     UUID residentId, String displayName) {
         static MembershipResponse from(Membership m) {
+            return from(m, null);
+        }
+
+        static MembershipResponse from(Membership m, String displayName) {
             return new MembershipResponse(m.getId(), m.getUserId(), m.getRole(), m.getCondominiumId(),
-                    m.getOperatorCompanyId(), m.getResidentId());
+                    m.getOperatorCompanyId(), m.getResidentId(), displayName);
         }
     }
 
@@ -131,7 +136,8 @@ public class MemberController {
      */
     @GetMapping("/condominiums/{condominiumId}/members")
     public List<MembershipResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String email) {
-        return service.list(condominiumId, email).stream().map(MembershipResponse::from).toList();
+        return service.list(condominiumId, email).stream()
+                .map(a -> MembershipResponse.from(a.membership(), a.displayName())).toList();
     }
 
     /**

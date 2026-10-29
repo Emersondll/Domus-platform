@@ -94,6 +94,7 @@ function fakeApi() {
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
     if (url.endsWith("/residents/r1") && init?.method === "PUT") return json({ id: "r1" });
+    if (url.endsWith("/members") && init?.method !== "POST") return json([{ id: "mb1", userId: "11111111-aaaa", role: "OPERATOR", condominiumId: "c1", companyId: null, residentId: null, displayName: "Operador Teste" }]);
     if (url.includes("/common-areas?")) return pg([{ id: "ca1", name: "Salão de festas", capacity: 40 }]);
     if (url.endsWith("/common-areas") && init?.method === "POST") return json({ id: "ca2" });
     if (url.includes("/reservations?")) return pg([{ id: "rv1", areaId: "ca1", unitId: "un1", startAt: "2030-01-01T18:00:00Z", endAt: "2030-01-01T22:00:00Z", status: "CONFIRMED" }]);
@@ -537,6 +538,16 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/common-areas"))?.body).toEqual({ name: "Churrasqueira", capacity: 12 }));
     await user.click(await screen.findByRole("button", { name: /Cancelar reserva de Salão de festas/ }));
     await waitFor(() => expect(posted.some((p) => p.url.endsWith("/reservations/rv1/cancel"))).toBe(true));
+  });
+
+  it("shows the staff by name, not by identifier", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(screen.getByRole("button", { name: "Equipe" }));
+    await user.click(screen.getByRole("button", { name: "Carregar equipe" }));
+    expect(await screen.findByText(/Operador Teste · operador/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revogar Operador Teste" })).toBeInTheDocument();
   });
 
   it("groups the sections and lets the manager register a camera", async () => {

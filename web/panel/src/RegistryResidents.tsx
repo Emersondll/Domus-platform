@@ -57,7 +57,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
                 {r.phone ? ` · ${r.phone}` : ""} {!r.active && <span className="badge warn">inativo</span>}{" "}
                 {r.active ? <button onClick={() => setActive(r, false)} aria-label={`Desativar ${r.fullName}`}>Desativar</button>
                   : <button onClick={() => setActive(r, true)} aria-label={`Reativar ${r.fullName}`}>Reativar</button>}{" "}
-                {r.active && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
+                {r.active && r.residentType !== "DEPENDENT" && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
                 {r.active && <button onClick={() => setIdentitiesFor(r.id)} aria-label={`Meios de acesso de ${r.fullName}`}>Meios de acesso</button>}{" "}
                 <button onClick={async () => {
                   const data = await request<unknown>(token, "GET", `${base}/residents/${r.id}/export`);

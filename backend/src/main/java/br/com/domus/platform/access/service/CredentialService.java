@@ -121,16 +121,28 @@ public class CredentialService {
     }
 
     /**
-     * Lista os convites emitidos pelo morador autenticado.
+     * @param credential  credencial do convite
+     * @param visitorName nome do visitante informado pelo morador (nulo se o cadastro do visitante não existir mais)
+     */
+    public record MyInvitation(AccessCredential credential, String visitorName) {
+    }
+
+    /**
+     * Lista os convites emitidos pelo morador autenticado, com o nome do visitante de cada um.
      *
      * @param condominiumId condomínio
      * @param pageable paginação
      * @return página de resultados
      */
     @Transactional(readOnly = true)
-    public Page<AccessCredential> listMine(UUID condominiumId, Pageable pageable) {
+    public Page<MyInvitation> listMine(UUID condominiumId, Pageable pageable) {
         ResidentContext me = access.requireResident(condominiumId, "invitation.list");
-        return credentials.findByCondominiumIdAndUnitId(condominiumId, unitOf(me), pageable);
+        Page<AccessCredential> page = credentials.findByCondominiumIdAndUnitId(condominiumId, unitOf(me), pageable);
+        java.util.Map<UUID, String> names = new java.util.HashMap<>();
+        visitors.findAllById(page.stream().map(AccessCredential::getVisitorId).distinct().toList()).stream()
+                .filter(v -> v.getCondominiumId().equals(condominiumId))
+                .forEach(v -> names.put(v.getId(), v.getFullName()));
+        return page.map(c -> new MyInvitation(c, names.get(c.getVisitorId())));
     }
 
     /**

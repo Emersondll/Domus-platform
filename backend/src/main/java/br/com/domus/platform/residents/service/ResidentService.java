@@ -4,6 +4,7 @@ import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.commercial.service.CommercialService;
+import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.NotFoundException;
@@ -24,10 +25,12 @@ public class ResidentService {
     private final CommercialService commercial;
     private final AccessService access;
     private final AuditService audit;
+    private final ResidentAccessRevoker accessRevoker;
 
     /** Construtor de ResidentService; recebe as dependências por injeção. */
     public ResidentService(ResidentRepository residents, CommercialService commercial, AccessService access,
-                           AuditService audit) {
+                           AuditService audit, ResidentAccessRevoker accessRevoker) {
+        this.accessRevoker = accessRevoker;
         this.residents = residents;
         this.commercial = commercial;
         this.access = access;
@@ -78,7 +81,11 @@ public class ResidentService {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.update");
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Resident not found"));
+        boolean deactivated = resident.isActive() && !active;
         resident.update(fullName.trim(), email, phone, type, active);
+        if (deactivated) {
+            accessRevoker.revokeResidentAccess(actor.userId(), condominiumId, residentId);
+        }
         audit.record(actor.userId(), null, condominiumId, "resident.update", "resident",
                 residentId.toString(), AuditOutcome.SUCCESS);
         return resident;

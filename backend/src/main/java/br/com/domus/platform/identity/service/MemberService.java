@@ -8,6 +8,7 @@ import br.com.domus.platform.identity.repository.MembershipRepository;
 import br.com.domus.platform.commercial.repository.OperatorCompanyRepository;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.repository.ResidentRepository;
+import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
@@ -29,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
  * condomínio. Revogar uma associação tem efeito imediato (o papel nunca vem do token).
  */
 @Service
-public class MemberService {
+public class MemberService implements ResidentAccessRevoker {
 
     private final AppUserRepository users;
     private final MembershipRepository memberships;
@@ -165,6 +166,23 @@ public class MemberService {
         viewSessions.revokeForUser(m.getUserId(), condominiumId, "MEMBERSHIP_REVOKED");
         audit.record(actor.userId(), null, condominiumId, "member.revoke", "membership", membershipId.toString(),
                 AuditOutcome.SUCCESS);
+    }
+
+    /** O cadastro foi desativado (mudou-se, saiu): sem vínculo ele não chama a central, não convida nem vê câmeras. */
+    @Override
+    @Transactional
+    public int revokeResidentAccess(UUID actorUserId, UUID condominiumId, UUID residentId) {
+        int revoked = 0;
+        for (Membership m : memberships.findByResidentId(residentId)) {
+            if (m.isActive() && condominiumId.equals(m.getCondominiumId())) {
+                m.revoke();
+                viewSessions.revokeForUser(m.getUserId(), condominiumId, "RESIDENT_DEACTIVATED");
+                audit.record(actorUserId, null, condominiumId, "member.revoke", "membership", m.getId().toString(),
+                        AuditOutcome.SUCCESS);
+                revoked++;
+            }
+        }
+        return revoked;
     }
 
     private AppUser upsertUser(String subject, String email, String displayName) {

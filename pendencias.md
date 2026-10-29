@@ -153,6 +153,9 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 - Formulário de perfil sobrescrevia o que a pessoa digitava quando a carga chegava depois (e pioraria com a renovação do token); teste que falha sem a correção.
 - CI: teste de bootstrap dependente da ordem de execução e referência inexistente do `osv-scanner`.
 - Healthcheck do contêiner de produção, caminhos do Caddy, scripts com caminho contendo espaços.
+- **Validação do fluxo do administrador, do cadastro à visualização (2026-10-28):** percorri pela API real empresa → condomínio → blocos/unidades → síndico/operador → moradores e contas → dispositivos e câmera → morador (convite, visita, encomenda, chamada, vídeo) → porta → relatórios → desativações e isolamento entre empresas. Dois defeitos de lógica, ambos corrigidos com teste:
+  1. **Morador desativado continuava com acesso** (chamar a central, acionar o pânico, criar convites, ver câmeras liberadas): a autoridade de morador vem do vínculo, e desativar o cadastro não o encerrava. Agora desativar revoga o vínculo e as sessões de vídeo abertas (contrato `ResidentAccessRevoker`), e a migração V24 revoga os vínculos de quem já estava desativado. Para voltar, reativar o cadastro e emitir a conta de novo. Teste: `ResidentDeactivationIT`.
+  2. **Lista de convites do morador sem o nome do visitante** (a API devolvia `null`; a tela mostrava "Visitante" em todos, e os testes de tela passavam porque o mock já trazia o nome) e **"Revogar" em convite já usado ou vencido**. Corrigidos; a situação aparece como Ativo, Usado, Vencido ou Revogado.
 
 ### Abertos / riscos conhecidos
 | # | Item | Impacto | Como tratar |

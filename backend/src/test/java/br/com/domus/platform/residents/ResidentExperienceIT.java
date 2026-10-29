@@ -149,6 +149,14 @@ class ResidentExperienceIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.granted").value(false));
         assertThat(unread("p5-res-a")).isEqualTo(a + 1);
 
+        // a lista de convites traz o nome do visitante (a tela do morador depende dele) e só os da própria unidade
+        mvc.perform(get(base() + "/me/invitations").with(as("p5-res-a")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + json.readTree(inv.getResponse().getContentAsString()).get("id").asString()
+                        + "')].visitorName").value("Tia Maria"))
+                .andExpect(jsonPath("$.items[*].token").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue())));
+        mvc.perform(get(base() + "/me/invitations").with(as("p5-res-b")))
+                .andExpect(jsonPath("$.totalElements").value(0));
+
         mvc.perform(get(base() + "/me/access-history").with(as("p5-res-a")))
                 .andExpect(jsonPath("$.totalElements").value(2));
         mvc.perform(get(base() + "/me/access-history").with(as("p5-res-b")))

@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Invitation } from "./types";
+import { isExpected } from "./Home";
 import { errorText, useList } from "./useApi";
 
 function localInput(d: Date): string {
@@ -94,13 +95,21 @@ export function Invitations({ token, condo }: { token: string; condo: string }) 
       <ul>
         {items.map((i) => (
           <li key={i.id}>
-            {new Date(i.validFrom).toLocaleString()} → {new Date(i.validUntil).toLocaleString()} · usos {i.useCount}/{i.maxUses} ·{" "}
-            {i.status}{" "}
-            {i.status === "ACTIVE" && <button onClick={() => revoke(i.id)}>Revogar</button>}
+            <strong>{i.visitorName ?? "Visitante"}</strong> · {new Date(i.validFrom).toLocaleString()} → {new Date(i.validUntil).toLocaleString()} · usos {i.useCount}/{i.maxUses} ·{" "}
+            {invitationState(i)}{" "}
+            {isExpected(i) && <button onClick={() => revoke(i.id)}>Revogar</button>}
           </li>
         ))}
         {items.length === 0 && <li>Nenhum convite.</li>}
       </ul>
     </section>
   );
+}
+
+/** Situação do convite para o morador: o `status` da API só distingue ativo de revogado; uso e validade vêm dos outros campos. */
+function invitationState(i: Invitation): string {
+  if (i.status === "REVOKED") return "Revogado";
+  if (i.useCount >= i.maxUses) return "Usado";
+  if (new Date(i.validUntil).getTime() <= Date.now()) return "Vencido";
+  return "Ativo";
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -197,6 +197,20 @@ describe("resident app", () => {
     // "Seu João": uma vez em "Já chegaram" e outra no histórico, resolvido pelo credentialId do convite.
     expect(screen.getAllByText(/Seu João/)).toHaveLength(2);
     expect(screen.getByText(/liberado/)).toBeInTheDocument();
+  });
+
+  it("shows the visitor name and the real state of each invitation, revoking only the ones still valid", async () => {
+    myInvitations = [
+      { id: "i1", visitorName: "Tia Maria", validFrom: new Date().toISOString(), validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 0, status: "ACTIVE", token: null },
+      { id: "i2", visitorName: "Seu João", validFrom: new Date().toISOString(), validUntil: new Date(Date.now() + 3600_000).toISOString(), maxUses: 1, useCount: 1, status: "ACTIVE", token: null },
+    ];
+    await openTab("Convites");
+    const used = (await screen.findByText("Seu João")).closest("li")!;
+    expect(within(used).getByText(/Usado/)).toBeInTheDocument();
+    expect(within(used).queryByRole("button", { name: "Revogar" })).not.toBeInTheDocument();
+    const valid = screen.getByText("Tia Maria").closest("li")!;
+    expect(within(valid).getByText(/Ativo/)).toBeInTheDocument();
+    expect(within(valid).getByRole("button", { name: "Revogar" })).toBeInTheDocument();
   });
 
   it("lists parcels waiting for pickup apart from the ones already collected", async () => {

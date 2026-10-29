@@ -135,7 +135,8 @@ public class AccessController {
     @GetMapping("/me/invitations")
     public PageResponse<InvitationResponse> listInvitations(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
-        return PageResponse.of(service.listMine(condominiumId, pageable), c -> toResponse(c, null, null));
+        return PageResponse.of(service.listMine(condominiumId, pageable),
+                m -> toResponse(m.credential(), m.visitorName(), null));
     }
 
     /**

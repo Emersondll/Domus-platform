@@ -150,9 +150,9 @@ class MemberProvisioningIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void memberListIsRestrictedToManagement() throws Exception {
+    void memberListIsVisibleInsideTheCondominiumOnly() throws Exception {
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-manager-a"))).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-operator-a"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-operator-a"))).andExpect(status().isOk());
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/members").with(as("p9-admin-b"))).andExpect(status().isNotFound());
     }
 

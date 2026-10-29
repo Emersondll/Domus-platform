@@ -62,6 +62,7 @@ class AdultsOnlyAppIT extends AbstractIntegrationTest {
         memberships.save(new Membership(m.getId(), Role.CONDO_MANAGER, null, condo));
         AppUser o = users.save(new AppUser("ad-operator", "ad-operator@example.invalid", "Operador Sintetico"));
         memberships.save(new Membership(o.getId(), Role.OPERATOR, null, condo));
+        users.save(new AppUser("ad-outsider", "ad-outsider@example.invalid", "Fora Sintetico"));
     }
 
     private static RequestPostProcessor as(String s) {
@@ -80,19 +81,39 @@ class AdultsOnlyAppIT extends AbstractIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Dependents do not have an app account; only adults use the app"));
 
-        mvc.perform(get(base() + "/me/invitations").with(as("ad-adult"))).andExpect(status().isOk());
-        mvc.perform(put(base() + "/residents/" + adultId).with(as("ad-manager")).contentType(MediaType.APPLICATION_JSON)
+        UUID turning = residents.save(new Resident(condo, unit, "Adulto Sintetico", null, null, ResidentType.SPOUSE)).getId();
+        AppUser t = users.save(new AppUser("ad-turning", "ad-turning@example.invalid", "Adulto Sintetico"));
+        memberships.save(Membership.forResident(t.getId(), condo, turning));
+        mvc.perform(get(base() + "/me/invitations").with(as("ad-turning"))).andExpect(status().isOk());
+        mvc.perform(put(base() + "/residents/" + turning).with(as("ad-manager")).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fullName\":\"Adulto Sintetico\",\"residentType\":\"DEPENDENT\",\"active\":true}"))
                 .andExpect(status().isOk());
-        mvc.perform(get(base() + "/me/invitations").with(as("ad-adult"))).andExpect(status().isNotFound());
+        mvc.perform(get(base() + "/me/invitations").with(as("ad-turning"))).andExpect(status().isNotFound());
     }
 
     @Test
-    void staffListShowsNamesToTheManagerOnly() throws Exception {
+    void everyoneInTheCondominiumSeesTheStaffButOnlyTheManagerSeesResidents() throws Exception {
         mvc.perform(get(base() + "/members").with(as("ad-manager"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.role=='OPERATOR')].displayName").value("Operador Sintetico"))
-                .andExpect(jsonPath("$[?(@.role=='CONDO_MANAGER')].displayName").value("Sindico Sintetico"));
-        mvc.perform(get(base() + "/members").with(as("ad-operator"))).andExpect(status().isForbidden());
-        mvc.perform(get(base() + "/members").with(as("ad-adult"))).andExpect(status().isNotFound());
+                .andExpect(jsonPath("$[?(@.role=='CONDO_MANAGER')].displayName").value("Sindico Sintetico"))
+                .andExpect(jsonPath("$[?(@.role=='RESIDENT')]").isNotEmpty());
+        for (String who : new String[] {"ad-operator", "ad-adult"}) {
+            mvc.perform(get(base() + "/members").with(as(who))).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.role=='OPERATOR')].displayName").value("Operador Sintetico"))
+                    .andExpect(jsonPath("$[?(@.role=='CONDO_MANAGER')].displayName").value("Sindico Sintetico"))
+                    .andExpect(jsonPath("$[?(@.role=='RESIDENT')]").isEmpty());
+        }
+        mvc.perform(get(base() + "/members").with(as("ad-outsider"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void severalAdultsOfTheSameUnitCanEachHaveAnAppAccount() throws Exception {
+        UUID second = residents.save(new Resident(condo, unit, "Segundo Adulto", null, null, ResidentType.OWNER)).getId();
+        mvc.perform(post(base() + "/residents/" + second + "/account").with(as("ad-manager")).contentType("application/json")
+                .content("{\"externalSubject\":\"ad-second\",\"email\":\"ad-second@example.invalid\","
+                        + "\"displayName\":\"Segundo Adulto\"}"))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(get(base() + "/me/invitations").with(as("ad-second"))).andExpect(status().isOk());
+        mvc.perform(get(base() + "/me/invitations").with(as("ad-adult"))).andExpect(status().isOk());
     }
 }

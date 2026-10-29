@@ -179,7 +179,8 @@ public class MemberService implements ResidentAccessRevoker {
     }
 
     /**
-     * Lista as associações do condomínio, com filtro opcional por e-mail (índice cego).
+     * Lista a equipe do condomínio, visível a quem está nele (equipe de qualquer nível ou morador). O gestor vê também os
+     * moradores vinculados e filtra por e-mail (índice cego).
      *
      * @param condominiumId condomínio
      * @param email e-mail
@@ -187,8 +188,22 @@ public class MemberService implements ResidentAccessRevoker {
      */
     @Transactional
     public List<NamedMembership> list(UUID condominiumId, String email) {
-        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "member.list");
-        List<NamedMembership> result = withNames(listMemberships(condominiumId, email));
+        Actor actor = access.currentActor();
+        boolean manager = access.levelFor(actor, condominiumId).atLeast(AccessLevel.MANAGE);
+        boolean staff = access.levelFor(actor, condominiumId).atLeast(AccessLevel.READ);
+        boolean resident = actor.memberships().stream()
+                .anyMatch(m -> m.getRole() == Role.RESIDENT && condominiumId.equals(m.getCondominiumId()));
+        if (!manager && !staff && !resident) {
+            audit.record(actor.userId(), null, condominiumId, "member.list", "condominium", condominiumId.toString(),
+                    AuditOutcome.DENIED);
+            throw new NotFoundException("Condominium not found");
+        }
+        // Por segurança, quem está no condomínio (equipe de qualquer nível ou morador) vê quem é a equipe. Só o gestor
+        // enxerga também os moradores vinculados e pode filtrar por e-mail.
+        List<Membership> found = manager ? listMemberships(condominiumId, email)
+                : memberships.findByCondominiumIdAndActiveTrue(condominiumId).stream()
+                        .filter(m -> m.getRole() != Role.RESIDENT).toList();
+        List<NamedMembership> result = withNames(found);
         // a listagem devolve nomes de pessoas: leitura de dado pessoal fica na auditoria (por isso não é readOnly)
         audit.record(actor.userId(), null, condominiumId, "member.list", "membership", null, AuditOutcome.SUCCESS);
         return result;

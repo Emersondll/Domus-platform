@@ -1,26 +1,38 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-10-28. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-10-29. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
-## 1. Evidência do estado atual (2026-10-28)
+## 1. Evidência do estado atual (2026-10-29)
 
 | Verificação | Resultado |
 |---|---|
-| Backend `mvn verify` | 184 testes (33 unitários + 151 de integração com PostgreSQL real), 0 falhas (2026-10-28, Spring Boot 4.1.2) |
-| Agente `mvn test` | 36 testes, 0 falhas (2026-10-27) |
-| Web `npm test` + build | 95 testes (59 painel + 36 app do morador), builds OK (código de saída conferido) |
+| Backend `mvn verify` | **exit 0, 0 falhas (2026-10-29)**; ~190 testes de integração e unitários, incluindo `AdultsOnlyAppIT`, `SuspensionIT`, `InvitationLimitIT` e `CompanyAdminManagementIT` |
+| Agente `mvn test` | 43 testes, 0 falhas (2026-10-28) |
+| Web `npm test` + build | **107 testes (68 painel + 39 app do morador), builds OK, código de saída 0 (2026-10-29)** |
 | `scripts/e2e-contingency.sh` · `e2e-agent-update.sh` · `test-agent-launcher.sh` · `verify_keycloak.py` | OK (reexecutados em 2026-10-27; o `e2e-contingency.sh` apaga o banco de desenvolvimento, e o `e2e-agent-update.sh` e o `e2e-browser.py` tiveram defeitos de teste corrigidos) |
 | `scripts/e2e-oidc-browser.py` (Chromium real + Keycloak) | **novo, OK, 15 verificações** (login do morador, renovação do token, TOTP do operador, sair encerra a sessão, OTP errado recusado) |
-| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | OK, 54 verificações, **sem tolerar nenhum 403** (inclui o painel como síndico e como administrador da empresa no navegador, "Meus acessos", foto sintética com revogação, câmeras ao lado da mesa, o morador vendo ao vivo a câmera liberada) |
-| `scripts/restore-drill.sh` | PASS (21 migrações, V1–V21; 2026-10-27) |
-| `scripts/api-smoke.py` | OK (2026-10-27): 55 GETs de condomínio × 4 papéis; só 3 endpoints sem tela (agente e contador de não lidas); **achou um vazamento real** em `me/accesses/policy`, já corrigido |
-| `scripts/load-test.py` | reexecutado em 2026-10-27 depois da trava de reservas: 0 erros nos 6 cenários (leitura 1.200–2.500 req/s, validar credencial ~1.200 req/s, leitor com identidade ~300 req/s). **"Meus acessos" auditado deu 400–650 req/s contra 1.550 em 26/10:** a máquina estava carregada (load ~15 com navegador) e o banco de desenvolvimento acumulou ~15 mil eventos de leitor das execuções repetidas; **não comparei com o jar anterior**, então não afirmo que não houve regressão. Reavaliar em banco limpo. O script agora reconecta a conexão de preparação ociosa |
+| `scripts/e2e-browser.py` (com `E2E_LIVE_VIDEO=1`) | **OK, 89 verificações, exit 0 (2026-10-29)**; 151 das 166 rotas passam pelas telas; sem tolerar nenhum 403 inesperado |
+| `scripts/restore-drill.sh` | PASS (25 migrações, V1–V25; 2026-10-29) |
+| `scripts/api-smoke.py` | OK (2026-10-29): 57 GETs de condomínio × 4 papéis |
+| `scripts/load-test.py` | reexecutado em 2026-10-29 depois da suspensão (checagem extra na autorização): 8 cenários, **0 erros** (leitura ~950 req/s, validar credencial ~1.800 req/s, evento de leitor ~400 req/s) |
 | `scripts/e2e-two-instances.py` | **novo, OK (2 execuções, 2026-10-27):** duas JVMs reais no mesmo banco, equipamento Dahua falso; nunca mais de 1 conexão de eventos; SIGKILL; instância nova assume |
-| CI no GitHub | **verde em `9183976` (7 jobs), a `main` está enviada (2026-10-28).** Histórico: `66f4fca` falhou só no gitleaks (senha de teste fixa no `e2e-oidc-browser.py`, trocada por senha aleatória; a antiga continua no histórico: sintética, usuário descartável do Keycloak de desenvolvimento). O CI **não sobe** Keycloak, Grafana nem Prometheus: essas partes só foram provadas na minha máquina |
+| CI no GitHub | **verde em `9a97abb` (7 jobs), enviado em 2026-10-29.** O commit `478bf66` (testes e documentação) está só local |
 | Câmera real, controladora real, celular real, Safari/iPhone | **nunca testados** (o Keycloak em Chromium real foi provado em 2026-10-27) |
+
+## 1.0 Resumo das pendências (2026-10-29)
+
+**Feito nesta rodada (com evidência):** app só para adultos (dependente sem conta, V25); equipe visível a todo o condomínio e com nome; suspensão de empresa e de condomínio (acesso desligado, nada apagado); tela "Equipe" no app; contador de avisos; CSV por unidade; `heartbeat` removido; câmeras sem teto de quantidade (24 h); só o síndico registra o meio de acesso (MA9); limite de 30 convites ativos por unidade e de 5 aberturas por minuto; telas de veículos, áreas comuns e administradores da empresa; `.deb` instalado num contêiner limpo.
+
+**Dependem de você (decisão):** D2 (controladora), D3 (guarda das chaves), D4 (chave de lançamento do agente), D5 (provedores de aviso), D6 (infraestrutura), D7 (planos, limites e cobrança), D8 (papéis finos), D20/MA2 (sentido de entrada e saída), editar empresa e condomínio (nome, CNPJ), e as 8 rotas sem tela (criar a tela ou remover; ver §3.1).
+
+**Dependem de texto jurídico (sem declarar conformidade):** D1, D16, D18, D19 (confirmar os 90 dias), a base legal e o aviso no local da D21, e a CR6 (a "ciência" do morador não é registrada).
+
+**Dependem de equipamento, rede ou infraestrutura:** B6 e MA3 (controladora real e protocolo), B17 (iPhone/Safari), câmera real, SIP, Redis para escala horizontal, egress dos contêineres, réplica/PITR, WAF, pentest.
+
+**Posso fazer sozinho (baixa prioridade):** revisão da qualidade dos `@param`; `lintian` e `apt install` do `.deb`; cache curto da checagem de suspensão se o volume crescer; segredo de publicação de vídeo por agente; testes do agente publicando para o MediaMTX no CI.
 
 ## 1.1 Plano de ação (ordem recomendada)
 
@@ -282,7 +294,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | # | Decisão | Situação |
 |---|---|---|
 | D16 | **Base legal e consentimento para a foto de cadastro e para a identificação facial** (dado sensível quando vira gabarito biométrico): texto, versão, registro, revogação, quem é o controlador, RIPD, DPO | em aberto (jurídico); **bloqueia** a coleta em produção e a identificação facial |
-| D17 | **Menores e dependentes; quem enxerga o histórico de acessos** (o titular, os moradores da unidade, o síndico, a portaria) e em que condições | em aberto |
+| ~~D17~~ | **Menores e dependentes; quem enxerga o histórico de acessos** | **decidido (2026-10-29) quanto a menores:** só adultos usam o app; dependentes ficam no cadastro, sem conta. Vários adultos da mesma unidade têm conta própria e qualquer um aprova ou nega a visita da unidade. Segue em aberto, com o jurídico, quem mais enxerga o histórico de acessos |
 | D19 | **Prazo de retenção do histórico de entradas e saídas do morador** (recomendado: 90 dias, configurável) | em aberto; hoje 90 dias por padrão |
 | D21 | **Morador ver ao vivo as câmeras de entrada** (base legal, aviso no local, quantas e quais câmeras, se o morador pode ver à noite/sempre) | parcialmente decidido (2026-10-29): 24 h, sem limite de quantidade nem de unidade; segue em aberto a base legal e o aviso no local (jurídico). Recurso por câmera, padrão desligado, auditado, sem gravação |
 | D20 | **Como saber o sentido (entrada ou saída)** em cada ponto de acesso (leitor nos dois sentidos? antipassback?) | em aberto; hoje "passagem" quando o ponto não informa |

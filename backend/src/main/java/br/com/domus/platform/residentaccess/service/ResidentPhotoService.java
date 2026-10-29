@@ -1,5 +1,6 @@
 package br.com.domus.platform.residentaccess.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.residentaccess.entity.PrivacyConsent;
 import br.com.domus.platform.residentaccess.entity.ResidentPhoto;
 import br.com.domus.platform.residentaccess.repository.PrivacyConsentRepository;
@@ -139,7 +140,7 @@ public class ResidentPhotoService {
         PrivacyConsent consent = consents.findFirstByResidentIdAndPurposeAndRevokedAtIsNull(me.residentId(),
                 PrivacyConsent.ACCESS_PHOTO).orElseThrow(() -> new ConflictException("Consent is required"));
         if (raw == null || raw.length == 0 || raw.length > MAX_UPLOAD_BYTES) {
-            throw new IllegalArgumentException("Invalid image size");
+            throw new InvalidRequestException("Invalid image size");
         }
         byte[] jpeg = JpegImages.normalize(raw, MIN_SIDE, MAX_ASPECT);
         Instant now = Instant.now(clock);

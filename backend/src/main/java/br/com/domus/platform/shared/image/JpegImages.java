@@ -1,5 +1,6 @@
 package br.com.domus.platform.shared.image;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -38,17 +39,17 @@ public final class JpegImages {
      */
     public static byte[] normalize(byte[] raw, int minSide, double maxAspect) {
         if (raw == null || raw.length == 0) {
-            throw new IllegalArgumentException("No image");
+            throw new InvalidRequestException("No image");
         }
         try {
             BufferedImage source = ImageIO.read(new ByteArrayInputStream(raw));
             if (source == null) {
-                throw new IllegalArgumentException("Not a valid image");
+                throw new InvalidRequestException("Not a valid image");
             }
             int shortest = Math.min(source.getWidth(), source.getHeight());
             int longest = Math.max(source.getWidth(), source.getHeight());
             if (shortest < minSide || (double) longest / shortest > maxAspect) {
-                throw new IllegalArgumentException("Image dimensions are not acceptable");
+                throw new InvalidRequestException("Image dimensions are not acceptable");
             }
             BufferedImage image = scale(source);
             for (float quality = 0.75f; quality >= 0.3f; quality -= 0.15f) {
@@ -57,9 +58,9 @@ public final class JpegImages {
                     return jpeg;
                 }
             }
-            throw new IllegalArgumentException("Image is too large");
+            throw new InvalidRequestException("Image is too large");
         } catch (IOException e) {
-            throw new IllegalArgumentException("Not a valid image");
+            throw new InvalidRequestException("Not a valid image");
         }
     }
 

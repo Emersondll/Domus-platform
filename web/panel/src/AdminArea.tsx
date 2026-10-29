@@ -40,16 +40,22 @@ function Companies({ token }: { token: string }) {
   const [subject, setSubject] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [admins, setAdmins] = useState<{ membershipId: string; displayName: string }[]>([]);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
+      if (adminCompany) {
+        setAdmins((await request<{ membershipId: string; displayName: string }[]>(token, "GET", `/api/v1/companies/${adminCompany}/admins`)) ?? []);
+      } else {
+        setAdmins([]);
+      }
       setCompanies((await request<Page<Company>>(token, "GET", "/api/v1/companies?size=100"))?.items ?? []);
     } catch (e) {
       setError(errorMessage(e));
     }
-  }, [token]);
+  }, [token, adminCompany]);
   useEffect(() => { void load(); }, [load]);
 
   async function run(fn: () => Promise<void>, ok: string) {
@@ -101,6 +107,21 @@ function Companies({ token }: { token: string }) {
         setEmail("");
         setDisplayName("");
       }, "Administrador adicionado.")}>Adicionar administrador</button>
+      {adminCompany && (
+        <ul aria-label="Administradores da empresa">
+          {admins.map((a) => (
+            <li key={a.membershipId}>{a.displayName}{" "}
+              <button className="danger" aria-label={`Revogar administrador ${a.displayName}`} onClick={() => {
+                if (window.confirm(`Revogar o acesso de administrador de ${a.displayName}?`)) {
+                  void run(async () => { await request(token, "POST", `/api/v1/companies/${adminCompany}/admins/${a.membershipId}/revoke`); },
+                    "Administrador revogado.");
+                }
+              }}>Revogar</button>
+            </li>
+          ))}
+          {admins.length === 0 && <li>Nenhum administrador nesta empresa.</li>}
+        </ul>
+      )}
       {done && <p role="status" className="hint">{done}</p>}
       {error && <p role="alert" className="error">{error}</p>}
     </div>

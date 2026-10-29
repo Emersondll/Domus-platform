@@ -1,5 +1,6 @@
 package br.com.domus.platform.operations.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.operations.entity.CallEvent;
 import br.com.domus.platform.operations.entity.Incident;
 import br.com.domus.platform.operations.entity.ServiceCall;
@@ -289,10 +290,10 @@ public class OperationsService {
     public ServiceCall close(UUID condominiumId, UUID callId, String outcome, String justification) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "call.close");
         if (!OUTCOMES.contains(outcome)) {
-            throw new IllegalArgumentException("Unknown outcome");
+            throw new InvalidRequestException("Unknown outcome");
         }
         if (SENSITIVE_OUTCOMES.contains(outcome) && (justification == null || justification.trim().length() < 5)) {
-            throw new IllegalArgumentException("Justification required for this outcome");
+            throw new InvalidRequestException("Justification required for this outcome");
         }
         ServiceCall call = assignedCall(condominiumId, callId, actor);
         call.close(outcome, now());

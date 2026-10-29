@@ -1,5 +1,6 @@
 package br.com.domus.platform.devices.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.devices.entity.Device;
 import br.com.domus.platform.devices.repository.CameraViewSessionStore;
 import br.com.domus.platform.devices.repository.DeviceRepository;
@@ -82,13 +83,13 @@ public class DeviceService implements DeviceHealthLookup {
                                Map<String, String> config) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.register");
         DeviceAdapter adapter = adapters.find(adapterType)
-                .orElseThrow(() -> new IllegalArgumentException("Adapter not available"));
+                .orElseThrow(() -> new InvalidRequestException("Adapter not available"));
         if ("ACCESS_CONTROLLER".equals(kind) && !adapter.capabilities().contains(DeviceAdapter.Capability.OPEN_DOOR)) {
-            throw new IllegalArgumentException("Adapter cannot control doors");
+            throw new InvalidRequestException("Adapter cannot control doors");
         }
         if (config != null && config.containsKey("rtspUrl")) {
             if (!"CAMERA".equals(kind)) {
-                throw new IllegalArgumentException("rtspUrl only applies to cameras");
+                throw new InvalidRequestException("rtspUrl only applies to cameras");
             }
             hostPolicy.requireAllowedRtsp(config.get("rtspUrl"));
         }
@@ -116,13 +117,13 @@ public class DeviceService implements DeviceHealthLookup {
             return;
         }
         if (!"AGENT".equals(source)) {
-            throw new IllegalArgumentException("videoSource must be AGENT");
+            throw new InvalidRequestException("videoSource must be AGENT");
         }
         if (!"CAMERA".equals(kind)) {
-            throw new IllegalArgumentException("videoSource only applies to cameras");
+            throw new InvalidRequestException("videoSource only applies to cameras");
         }
         if (config.containsKey("rtspUrl")) {
-            throw new IllegalArgumentException("A camera published by the agent has no rtspUrl on the central");
+            throw new InvalidRequestException("A camera published by the agent has no rtspUrl on the central");
         }
     }
 
@@ -137,7 +138,7 @@ public class DeviceService implements DeviceHealthLookup {
         }
         for (String key : config.keySet()) {
             if (!key.endsWith("Env") && key.toLowerCase(java.util.Locale.ROOT).matches(".*(pass|secret|token|credential|apikey).*")) {
-                throw new IllegalArgumentException("Secrets do not belong in the device config; use the credentials endpoint");
+                throw new InvalidRequestException("Secrets do not belong in the device config; use the credentials endpoint");
             }
         }
     }
@@ -146,7 +147,7 @@ public class DeviceService implements DeviceHealthLookup {
     private static void requireValidDirection(Map<String, String> config) {
         String direction = config == null ? null : config.get("direction");
         if (direction != null && !direction.equals("IN") && !direction.equals("OUT")) {
-            throw new IllegalArgumentException("direction must be IN or OUT");
+            throw new InvalidRequestException("direction must be IN or OUT");
         }
     }
 
@@ -158,7 +159,7 @@ public class DeviceService implements DeviceHealthLookup {
         Map<String, String> next = config == null ? Map.of() : config;
         if (next.containsKey("rtspUrl")) {
             if (!"CAMERA".equals(device.getKind())) {
-                throw new IllegalArgumentException("rtspUrl only applies to cameras");
+                throw new InvalidRequestException("rtspUrl only applies to cameras");
             }
             hostPolicy.requireAllowedRtsp(next.get("rtspUrl"));
         }

@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { request } from "../../shared/src/api";
 import type { Member } from "./types";
+import { ApiError, request } from "../../shared/src/api";
 import { errorMessage } from "./useCondoList";
+
+const ADMIN_ONLY = "Só o administrador da empresa operadora altera a equipe.";
+const staffError = (e: unknown) => (e instanceof ApiError && e.status === 403 ? ADMIN_ONLY : errorMessage(e));
 
 const ROLE_TEXT: Record<string, string> = { OPERATOR: "operador", CONDO_MANAGER: "síndico", RESIDENT: "morador" };
 
@@ -37,7 +40,7 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
                 await request(token, "POST", `${base}/${m.id}/revoke`);
                 await load();
               } catch (e) {
-                setError(errorMessage(e));
+                setError(staffError(e));
               }
             }}>Revogar acesso</button>
           </li>
@@ -45,7 +48,7 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
         {members && members.filter((m) => m.role !== "RESIDENT").length === 0 && <li>Ninguém na equipe.</li>}
       </ul>
       <h3>Adicionar à equipe</h3>
-      <p className="hint">Informe o identificador do usuário no provedor de login (Keycloak). Só o síndico ou a administração faz isso.</p>
+      <p className="hint">Informe o identificador do usuário no provedor de login (Keycloak). Só o administrador da empresa operadora adiciona ou revoga equipe; o síndico apenas consulta.</p>
       <label htmlFor="staff-role">Papel</label>
       <select id="staff-role" value={role} onChange={(e) => setRole(e.target.value)}>
         <option value="OPERATOR">Operador</option>
@@ -66,7 +69,7 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
           setDisplayName("");
           await load();
         } catch (e) {
-          setError(errorMessage(e));
+          setError(staffError(e));
         }
       }}>Adicionar</button>
       {error && <p role="alert" className="error">{error}</p>}

@@ -1,5 +1,6 @@
 package br.com.domus.platform.identity.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.identity.entity.AppUser;
 import br.com.domus.platform.identity.entity.Membership;
 import br.com.domus.platform.identity.entity.Role;
@@ -80,6 +81,47 @@ public class MemberService implements ResidentAccessRevoker {
     }
 
     /**
+     * @param membership associação de administrador
+     * @param displayName nome de exibição do usuário
+     */
+    public record CompanyAdmin(Membership membership, String displayName) {
+    }
+
+    /**
+     * Lista os administradores ativos de uma empresa operadora (só o administrador da plataforma).
+     *
+     * @param companyId empresa operadora
+     */
+    @Transactional(readOnly = true)
+    public List<CompanyAdmin> listCompanyAdmins(UUID companyId) {
+        access.requirePlatformAdmin("member.company-admin.list");
+        if (!companies.existsById(companyId)) {
+            throw new NotFoundException("Company not found");
+        }
+        return memberships.findByOperatorCompanyIdAndRoleAndActiveTrue(companyId, Role.COMPANY_ADMIN).stream()
+                .map(m -> new CompanyAdmin(m, users.findById(m.getUserId()).map(AppUser::getDisplayName).orElse("")))
+                .toList();
+    }
+
+    /**
+     * Revoga um administrador da empresa. O próprio administrador da plataforma não perde acesso por isso: só o vínculo
+     * com a empresa acaba.
+     *
+     * @param companyId empresa operadora
+     * @param membershipId associação do administrador
+     */
+    @Transactional
+    public void revokeCompanyAdmin(UUID companyId, UUID membershipId) {
+        Actor actor = access.requirePlatformAdmin("member.company-admin.revoke");
+        Membership m = memberships.findByIdAndOperatorCompanyIdAndRole(membershipId, companyId, Role.COMPANY_ADMIN)
+                .filter(Membership::isActive)
+                .orElseThrow(() -> new NotFoundException("Membership not found"));
+        m.revoke();
+        audit.record(actor.userId(), companyId, null, "member.company-admin.revoke", "membership", membershipId.toString(),
+                AuditOutcome.SUCCESS);
+    }
+
+    /**
      * Cadastra um membro da equipe do condomínio (operador ou síndico).
      *
      * @param condominiumId condomínio
@@ -91,7 +133,7 @@ public class MemberService implements ResidentAccessRevoker {
     @Transactional
     public Membership addStaff(UUID condominiumId, Role role, String subject, String email, String displayName) {
         if (role != Role.OPERATOR && role != Role.CONDO_MANAGER) {
-            throw new IllegalArgumentException("Role must be OPERATOR or CONDO_MANAGER");
+            throw new InvalidRequestException("Role must be OPERATOR or CONDO_MANAGER");
         }
         Actor actor = access.requireCompanyAdminOf(condominiumId, "member.staff.add");
         AppUser user = upsertUser(subject, email, displayName);

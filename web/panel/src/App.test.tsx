@@ -94,6 +94,10 @@ function fakeApi() {
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
     if (url.endsWith("/residents/r1") && init?.method === "PUT") return json({ id: "r1" });
+    if (url.includes("/common-areas?")) return pg([{ id: "ca1", name: "Salão de festas", capacity: 40 }]);
+    if (url.endsWith("/common-areas") && init?.method === "POST") return json({ id: "ca2" });
+    if (url.includes("/reservations?")) return pg([{ id: "rv1", areaId: "ca1", unitId: "un1", startAt: "2030-01-01T18:00:00Z", endAt: "2030-01-01T22:00:00Z", status: "CONFIRMED" }]);
+    if (url.endsWith("/reservations/rv1/cancel")) return json({ id: "rv1", status: "CANCELLED" });
     if (url.includes("/pets?")) return pg([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: "sai com guia" }]);
     if (url.endsWith("/pets") && init?.method === "POST") return json({ id: "p2" });
     if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }]);
@@ -115,6 +119,7 @@ function fakeApi() {
     if (url.endsWith("/remind")) return json({ id: "p1" });
     if (url.endsWith("/rotate-key")) return json({ apiKey: "ROTATED-KEY" });
     if (url === "/api/v1/me/admin-scope") return json(adminScope);
+    if (url === "/api/v1/companies/co1/admins" && init?.method !== "POST") return json([{ membershipId: "m-adm1", userId: "u1", displayName: "Admin Antigo" }]);
     if (url.startsWith("/api/v1/companies?")) return pg([{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }]);
     if (url.startsWith("/api/v1/condominiums?")) return pg([{ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" }]);
     if (url.endsWith("/agents") && (!init?.method || init.method === "GET")) return json([{ id: "ag1", name: "Servidor portaria", status: "ACTIVE", online: true, lastSeenAt: new Date().toISOString(), lastPolicyVersion: 7, backlog: 2 }]);
@@ -519,6 +524,21 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/pets"))?.body).toEqual({ unitId: "un1", name: "Mimi", species: "CAT", breed: null, notes: null }));
   });
 
+  it("registers a common area and lets the staff cancel a resident reservation", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(screen.getByRole("button", { name: "Áreas comuns" }));
+    expect(await screen.findByText("Salão de festas", { selector: "strong" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome da área"), "Churrasqueira");
+    await user.clear(screen.getByLabelText("Capacidade (pessoas)"));
+    await user.type(screen.getByLabelText("Capacidade (pessoas)"), "12");
+    await user.click(screen.getByRole("button", { name: "Cadastrar área" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/common-areas"))?.body).toEqual({ name: "Churrasqueira", capacity: 12 }));
+    await user.click(await screen.findByRole("button", { name: /Cancelar reserva de Salão de festas/ }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/reservations/rv1/cancel"))).toBe(true));
+  });
+
   it("groups the sections and lets the manager register a camera", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
@@ -755,6 +775,10 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Nome", { selector: "#ad-name" }), "Novo Admin");
     await user.click(screen.getByRole("button", { name: "Adicionar administrador" }));
     await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/companies/co1/admins")).toBe(true));
+    expect(await screen.findByText("Admin Antigo")).toBeInTheDocument();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Revogar administrador Admin Antigo" }));
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/companies/co1/admins/m-adm1/revoke")).toBe(true));
 
     await user.click(screen.getByRole("tab", { name: "Condomínios" }));
     expect(await screen.findByText(/Residencial Sol · Alfa Portaria · ACTIVE/)).toBeInTheDocument();

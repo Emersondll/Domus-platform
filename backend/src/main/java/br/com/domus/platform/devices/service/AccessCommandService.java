@@ -1,5 +1,6 @@
 package br.com.domus.platform.devices.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.devices.entity.AccessCommand;
 import br.com.domus.platform.devices.entity.Device;
 import br.com.domus.platform.devices.repository.AccessCommandRepository;
@@ -88,10 +89,10 @@ public class AccessCommandService {
                               String idempotencyKey) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "door.open");
         if (justification == null || justification.trim().length() < 5) {
-            throw new IllegalArgumentException("Justification required");
+            throw new InvalidRequestException("Justification required");
         }
         if ((callId == null) == (attemptId == null)) {
-            throw new IllegalArgumentException("Provide exactly one of callId or attemptId");
+            throw new InvalidRequestException("Provide exactly one of callId or attemptId");
         }
         AccessCommand existing = commands.findByCondominiumIdAndIdempotencyKey(condominiumId, idempotencyKey)
                 .orElse(null);

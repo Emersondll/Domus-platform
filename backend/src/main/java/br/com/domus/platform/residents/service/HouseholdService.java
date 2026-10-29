@@ -1,5 +1,6 @@
 package br.com.domus.platform.residents.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
@@ -67,7 +68,7 @@ public class HouseholdService {
     public Resident add(UUID condominiumId, String fullName, ResidentType relationship, String phone) {
         ResidentContext me = access.requireResident(condominiumId, "household.add");
         if (!SELF_MANAGED.contains(relationship)) {
-            throw new IllegalArgumentException("Relationship must be SPOUSE or DEPENDENT");
+            throw new InvalidRequestException("Relationship must be SPOUSE or DEPENDENT");
         }
         UUID unitId = unitOf(me);
         if (residents.findByCondominiumIdAndUnitIdAndActiveTrueOrderByFullName(condominiumId, unitId).size()

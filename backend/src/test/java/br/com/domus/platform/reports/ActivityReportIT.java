@@ -151,7 +151,9 @@ class ActivityReportIT extends AbstractIntegrationTest {
         mvc.perform(get(url)).andExpect(status().isUnauthorized());
         Instant now = Instant.now();
         mvc.perform(get("/api/v1/condominiums/" + condo + "/reports/activity?from=" + now.minus(40, ChronoUnit.DAYS) + "&to=" + now)
-                .with(as("rep-manager"))).andExpect(status().isBadRequest());
+                .with(as("rep-manager"))).andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.detail")
+                        .value("Period must end after it starts and span at most 31 days"));
     }
 
     @Test

@@ -37,6 +37,15 @@ segurança certificados.
 6. Verifique: `curl -H "X-Local-Key: ..." localhost:8099/status`.
 Use **HTTPS** na `PORTARIA_CENTRAL_URL` (proxy reverso com TLS na central). Defina também `PORTARIA_STORE_KEY` (cifra o armazenamento local).
 
+## Pacote .deb (Debian/Ubuntu/Mint)
+`mvn -f agent/pom.xml package && agent/install/build-deb.sh` gera `agent/target/portaria-agent_<versão>_all.deb` (versão `SNAPSHOT` vira `~snapshot`).
+O pacote instala o launcher em `/opt/portaria-agent/`, a unit do systemd, o modelo `agent.env.example` e o jar inicial; o `postinst` cria o usuário
+`portaria-agent`, `/var/lib/portaria-agent/bin` e copia o jar para lá **só se ainda não houver um** (a atualização segura nunca é sobrescrita por reinstalar).
+**Não liga nem inicia o serviço**: falta o `/etc/portaria-agent/agent.env` com os segredos (passos 3 e 4 acima) e depois `systemctl enable --now portaria-agent`.
+Remover ou purgar o pacote **não apaga** `/var/lib/portaria-agent` (fila local cifrada) nem `/etc/portaria-agent` (segredos): são dados do condomínio.
+Exige **Java 26** instalado (declarado só como `Recommends`, porque nem toda distribuição o empacota). **Validado:** construção do pacote, conteúdo (`dpkg-deb -c`),
+metadados e sintaxe dos scripts (`sh -n`). **Não validado:** instalação real com `dpkg -i`/`apt` em máquina limpa e `lintian`.
+
 ## Atualização segura (opcional)
 Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com `manifest.json` e os jars) e `PORTARIA_UPDATE_PUBLIC_KEY`.
 - **Quem pode publicar:** só quem tem a chave privada de lançamento (Ed25519). A central e o servidor de arquivos **não** são confiáveis para isso: um servidor

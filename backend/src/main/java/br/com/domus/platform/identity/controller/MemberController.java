@@ -78,6 +78,38 @@ public class MemberController {
     }
 
     /**
+     * @param membershipId identificador da associação
+     * @param userId       usuário
+     * @param displayName  nome de exibição
+     */
+    public record CompanyAdminResponse(UUID membershipId, UUID userId, String displayName) {
+    }
+
+    /**
+     * Atende `GET /companies/{companyId}/admins`.
+     *
+     * @param companyId empresa operadora
+     */
+    @GetMapping("/companies/{companyId}/admins")
+    public List<CompanyAdminResponse> listCompanyAdmins(@PathVariable UUID companyId) {
+        return service.listCompanyAdmins(companyId).stream()
+                .map(a -> new CompanyAdminResponse(a.membership().getId(), a.membership().getUserId(), a.displayName()))
+                .toList();
+    }
+
+    /**
+     * Atende `POST /companies/{companyId}/admins/{membershipId}/revoke`.
+     *
+     * @param companyId empresa operadora
+     * @param membershipId associação do administrador
+     */
+    @PostMapping("/companies/{companyId}/admins/{membershipId}/revoke")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeCompanyAdmin(@PathVariable UUID companyId, @PathVariable UUID membershipId) {
+        service.revokeCompanyAdmin(companyId, membershipId);
+    }
+
+    /**
      * Atende `POST /condominiums/{condominiumId}/members`.
      *
      * @param condominiumId condomínio

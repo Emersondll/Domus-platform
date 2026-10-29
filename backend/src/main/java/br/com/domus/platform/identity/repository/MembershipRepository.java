@@ -21,6 +21,10 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
     java.util.Optional<Membership> findByIdAndCondominiumId(UUID id, UUID condominiumId);
 
+    List<Membership> findByOperatorCompanyIdAndRoleAndActiveTrue(UUID companyId, Role role);
+
+    java.util.Optional<Membership> findByIdAndOperatorCompanyIdAndRole(UUID id, UUID companyId, Role role);
+
     boolean existsByUserIdAndRoleAndOperatorCompanyIdAndActiveTrue(UUID userId, Role role, UUID companyId);
 
     boolean existsByUserIdAndRoleAndCondominiumIdAndActiveTrue(UUID userId, Role role, UUID condominiumId);

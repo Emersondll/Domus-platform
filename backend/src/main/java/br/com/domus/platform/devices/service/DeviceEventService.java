@@ -1,5 +1,6 @@
 package br.com.domus.platform.devices.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.devices.entity.AccessCommand;
 import br.com.domus.platform.devices.entity.Device;
 import br.com.domus.platform.devices.entity.DeviceEvent;
@@ -73,7 +74,7 @@ public class DeviceEventService implements DeviceEventSink {
 
     private void record(Device device, String type, UUID commandId, Instant occurredAt, Person person) {
         if (!TYPES.contains(type)) {
-            throw new IllegalArgumentException("Unknown event type");
+            throw new InvalidRequestException("Unknown event type");
         }
         Instant now = Instant.now(clock);
         // Só correlaciona com comando que pertence a este dispositivo: um evento não confirma comando alheio.

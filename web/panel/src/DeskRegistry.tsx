@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { RegistryAreas } from "./RegistryAreas";
 import { RegistryPets } from "./RegistryPets";
 import { RegistryResidents } from "./RegistryResidents";
 import { RegistryStaff } from "./RegistryStaff";
 import { RegistryUnits } from "./RegistryUnits";
 
-const SECTIONS = ["Unidades", "Moradores", "Animais", "Equipe"] as const;
+const SECTIONS = ["Unidades", "Moradores", "Animais", "Áreas comuns", "Equipe"] as const;
 
 /** Cadastros do condomínio. Escrever exige o síndico ou a administração; o operador consulta. */
 export function DeskRegistry({ token, condominiumId }: { token: string; condominiumId: string }) {
@@ -20,6 +21,7 @@ export function DeskRegistry({ token, condominiumId }: { token: string; condomin
       {section === "Unidades" && <RegistryUnits token={token} condominiumId={condominiumId} />}
       {section === "Moradores" && <RegistryResidents token={token} condominiumId={condominiumId} />}
       {section === "Animais" && <RegistryPets token={token} condominiumId={condominiumId} />}
+      {section === "Áreas comuns" && <RegistryAreas token={token} condominiumId={condominiumId} />}
       {section === "Equipe" && <RegistryStaff token={token} condominiumId={condominiumId} />}
     </div>
   );

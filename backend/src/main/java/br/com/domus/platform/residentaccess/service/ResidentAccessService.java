@@ -1,5 +1,6 @@
 package br.com.domus.platform.residentaccess.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.residentaccess.entity.AccessIdentity;
 import br.com.domus.platform.residentaccess.entity.ResidentAccessEvent;
 import br.com.domus.platform.residentaccess.repository.AccessIdentityRepository;
@@ -108,11 +109,11 @@ public class ResidentAccessService implements ResidentPassageRecorder {
     public AccessIdentity register(UUID condominiumId, UUID residentId, String kind, String ref) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "access.identity.register");
         if (!REGISTRABLE_KINDS.contains(kind)) {
-            throw new IllegalArgumentException("Unsupported identity kind");
+            throw new InvalidRequestException("Unsupported identity kind");
         }
         String normalized = normalize(ref);
         if (normalized == null) {
-            throw new IllegalArgumentException("Reference is required");
+            throw new InvalidRequestException("Reference is required");
         }
         requireActiveResident(condominiumId, residentId);
         String hash = cipher.blindIndex(normalized);
@@ -173,7 +174,7 @@ public class ResidentAccessService implements ResidentPassageRecorder {
         Instant end = to == null ? Instant.now(clock) : to;
         Instant start = from == null ? end.minus(Duration.ofDays(7)) : from;
         if (!start.isBefore(end) || Duration.between(start, end).compareTo(MAX_RANGE) > 0) {
-            throw new IllegalArgumentException("Invalid period");
+            throw new InvalidRequestException("Invalid period");
         }
         Page<ResidentAccessEvent> result = events.findByCondominiumIdAndResidentIdAndOccurredAtBetweenOrderByOccurredAtDesc(
                 condominiumId, me.residentId(), start, end, PageRequest.of(Math.max(page, 0), clamp(size)));

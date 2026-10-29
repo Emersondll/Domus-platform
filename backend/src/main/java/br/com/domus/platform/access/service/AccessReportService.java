@@ -122,7 +122,7 @@ public class AccessReportService {
         Page<AccessAttempt> page = attempts.findInPeriod(condominiumId, from, to, normalize(result),
                 PageRequest.of(0, MAX_EXPORT_ROWS + 1, Sort.by(Sort.Direction.ASC, "occurredAt")));
         if (page.getContent().size() > MAX_EXPORT_ROWS) {
-            throw new IllegalArgumentException("Too many rows; narrow the period (limit " + MAX_EXPORT_ROWS + ")");
+            throw new InvalidRequestException("Too many rows; narrow the period (limit " + MAX_EXPORT_ROWS + ")");
         }
         List<Row> rows = page.getContent().stream().map(rowMapper(condominiumId, page.getContent())).toList();
         audit.record(actor.userId(), null, condominiumId, "access.report.export", "access_attempt", null,
@@ -169,7 +169,7 @@ public class AccessReportService {
             return null;
         }
         if (!Set.of("GRANTED", "DENIED").contains(result)) {
-            throw new IllegalArgumentException("result must be GRANTED or DENIED");
+            throw new InvalidRequestException("result must be GRANTED or DENIED");
         }
         return result;
     }

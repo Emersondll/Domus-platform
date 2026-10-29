@@ -1,5 +1,6 @@
 package br.com.domus.platform.devices.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.devices.adapter.DeviceAdapter;
 import br.com.domus.platform.devices.adapter.DeviceSecrets;
 import br.com.domus.platform.devices.adapter.HostPolicy;
@@ -262,7 +263,7 @@ public class CameraStreamService implements ViewSessionRevoker {
 
     private static UUID deviceIdOf(String path) {
         if (!path.startsWith("cam-")) {
-            throw new IllegalArgumentException("Not a camera path");
+            throw new InvalidRequestException("Not a camera path");
         }
         return UUID.fromString(path.substring(4));
     }

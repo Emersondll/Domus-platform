@@ -2,7 +2,7 @@ import { useState } from "react";
 import { devLogin } from "../../shared/src/api";
 import { startLogin, type OidcConfig } from "../../shared/src/oidc";
 
-const DEV_USERS = ["operator-sol", "operator-multi", "manager-sol", "alpha-admin"];
+const DEV_USERS = ["operator-sol", "operator-multi", "manager-sol", "alpha-admin", "platform-admin"];
 
 /**
  * Tela de entrada. Com OIDC configurado (/config.json do proxy) o login é o do Keycloak (MFA obrigatório para equipe).

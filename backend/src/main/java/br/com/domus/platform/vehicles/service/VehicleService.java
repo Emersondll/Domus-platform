@@ -1,5 +1,6 @@
 package br.com.domus.platform.vehicles.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.vehicles.entity.Vehicle;
 import br.com.domus.platform.vehicles.repository.VehicleRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
@@ -57,7 +58,7 @@ public class VehicleService {
             return vehicles.findByCondominiumId(condominiumId, pageable);
         }
         if (vehicles.countByCondominiumId(condominiumId) > MAX_PLATE_SORT) {
-            throw new IllegalArgumentException("Too many vehicles to sort by plate; search by plate instead");
+            throw new InvalidRequestException("Too many vehicles to sort by plate; search by plate instead");
         }
         java.util.Comparator<Vehicle> byPlate = java.util.Comparator.comparing(Vehicle::getPlate);
         List<Vehicle> all = new java.util.ArrayList<>(vehicles.findByCondominiumId(condominiumId,

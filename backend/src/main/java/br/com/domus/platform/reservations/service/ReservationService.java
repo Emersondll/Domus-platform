@@ -1,5 +1,6 @@
 package br.com.domus.platform.reservations.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.reservations.entity.CommonArea;
 import br.com.domus.platform.reservations.entity.Reservation;
 import br.com.domus.platform.reservations.repository.CommonAreaRepository;
@@ -189,7 +190,7 @@ public class ReservationService {
     private void validateWindow(Instant startAt, Instant endAt) {
         Instant now = Instant.now(clock);
         if (!endAt.isAfter(startAt) || startAt.isBefore(now) || Duration.between(startAt, endAt).compareTo(MAX_DURATION) > 0) {
-            throw new IllegalArgumentException("Invalid reservation window");
+            throw new InvalidRequestException("Invalid reservation window");
         }
     }
 }

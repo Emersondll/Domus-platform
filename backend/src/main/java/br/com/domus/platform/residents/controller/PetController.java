@@ -1,5 +1,6 @@
 package br.com.domus.platform.residents.controller;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.residents.entity.Pet;
 import br.com.domus.platform.residents.service.PetService;
 import br.com.domus.platform.shared.PageResponse;
@@ -71,7 +72,7 @@ public class PetController {
     @ResponseStatus(HttpStatus.CREATED)
     public PetResponse register(@PathVariable UUID condominiumId, @Valid @RequestBody PetRequest r) {
         if (r.unitId() == null) {
-            throw new IllegalArgumentException("unitId is required");
+            throw new InvalidRequestException("unitId is required");
         }
         return PetResponse.from(service.register(condominiumId, r.unitId(), r.name(), r.species(), r.breed(),
                 r.notes()));

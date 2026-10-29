@@ -1,5 +1,6 @@
 package br.com.domus.platform.access.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.access.entity.AccessAttempt;
 import br.com.domus.platform.access.entity.AccessCredential;
 import br.com.domus.platform.access.entity.Visitor;
@@ -112,7 +113,7 @@ public class CredentialService {
         if (!validUntil.isAfter(validFrom) || validFrom.isBefore(now.minus(START_TOLERANCE))
                 || Duration.between(validFrom, validUntil).compareTo(MAX_VALIDITY) > 0
                 || maxUses < 1 || maxUses > MAX_USES) {
-            throw new IllegalArgumentException("Invalid invitation window or use limit");
+            throw new InvalidRequestException("Invalid invitation window or use limit");
         }
         UUID unitId = unitOf(me);
         // trava por unidade: sem ela, pedidos simultâneos passariam todos pela contagem e estourariam o teto

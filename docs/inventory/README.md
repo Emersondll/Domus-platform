@@ -1,12 +1,12 @@
 # Inventário de dependências e licenças
 
-Regenerado em 2026-10-28 a partir das próprias ferramentas de build (`license-maven-plugin` 2.4.0 e `npm ls`), depois das atualizações do Spring Boot 4.1.2 e das dependências do agente e do web. Os textos de licença e a lista de jars sem arquivo de licença (42) são de 2026-10-22 e **não foram regerados**.
+Regenerado em 2026-10-29 a partir das próprias ferramentas de build (`license-maven-plugin` 2.5.0 para Maven; `npm ls` para o web, de 2026-10-28), depois do OpenTelemetry 1.67.0. A lista de jars sem arquivo de licença (40 de 139 jars do backend) foi refeita varrendo o jar empacotado. Os textos de licença padrão (Apache-2.0, EPL-2.0, MIT) são os mesmos de 2026-10-22: o texto da licença não muda com a versão da dependência.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `maven-backend-THIRD-PARTY.txt` | 154 dependências de runtime do backend (`license-maven-plugin`) |
+| `maven-backend-THIRD-PARTY.txt` | 153 dependências de runtime do backend (`license-maven-plugin`) |
 | `maven-agent-THIRD-PARTY.txt` | 6 dependências do agente |
-| `backend-jars-without-license-files.txt` | 42 jars do backend sem arquivo de licença próprio, com licença e página do projeto |
+| `backend-jars-without-license-files.txt` | 40 jars do backend sem arquivo de licença próprio, com licença e página do projeto |
 | `Apache-2.0.txt`, `EPL-2.0.txt`, `MIT-notices.txt` | textos de licença que acompanham os artefatos |
 | `npm-production-licenses.txt` | 35 dependências npm que entram nos bundles (27 MIT, 7 ISC e hls.js, Apache-2.0) |
 

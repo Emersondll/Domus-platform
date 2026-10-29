@@ -26,6 +26,7 @@ const overview = [
 let commandState = "SENT";
 let parcelList: unknown[] = [];
 let posted: { url: string; body: unknown }[] = [];
+let gets: string[] = [];
 let credsConfigured = false;
 let visitStatus = "PENDING";
 let remoteEnabled = false;
@@ -46,6 +47,7 @@ function fakeApi() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
+    if (!init?.method || init.method === "GET") gets.push(url);
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
     if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null },
@@ -99,6 +101,7 @@ function fakeApi() {
     if (url.endsWith("/common-areas") && init?.method === "POST") return json({ id: "ca2" });
     if (url.includes("/reservations?")) return pg([{ id: "rv1", areaId: "ca1", unitId: "un1", startAt: "2030-01-01T18:00:00Z", endAt: "2030-01-01T22:00:00Z", status: "CONFIRMED" }]);
     if (url.endsWith("/reservations/rv1/cancel")) return json({ id: "rv1", status: "CANCELLED" });
+    if (url.includes("/vehicles?")) return pg([{ id: "vh1", unitId: "un1", plate: "ABC1D23", model: "Sedan", color: "Prata" }]);
     if (url.includes("/pets?")) return pg([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: "sai com guia" }]);
     if (url.endsWith("/pets") && init?.method === "POST") return json({ id: "p2" });
     if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }]);
@@ -154,7 +157,7 @@ async function login() {
 describe("operator panel", () => {
   beforeEach(() => {
     commandState = "SENT";
-    posted = []; credsConfigured = false;
+    posted = []; gets = []; credsConfigured = false;
     visitStatus = "PENDING";
     videoDown = false;
     devicePerms = "MANAGE";
@@ -619,6 +622,17 @@ describe("operator panel", () => {
     expect(within(perUnit).getByText("A / 101").parentElement).toHaveTextContent("4");
     expect(within(perUnit).getByText("B / 202")).toBeInTheDocument();
     expect(within(units).getByRole("button", { name: "Exportar por unidade (CSV)" })).toBeInTheDocument();
+  });
+
+  it("lets the desk search residents' vehicles by plate", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: "Veículos" }));
+    expect(await screen.findByText(/ABC1D23 · unidade .*101 · Sedan · Prata/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Buscar por placa"), "abc1d23");
+    await user.click(screen.getByRole("button", { name: "Buscar" }));
+    await waitFor(() => expect(gets.some((u) => u.includes("/vehicles?") && u.includes("plate=abc1d23"))).toBe(true));
   });
 
   it("prints a parcel receipt through the browser", async () => {

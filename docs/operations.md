@@ -18,6 +18,17 @@ Validado localmente (com `DOMAIN=localhost`): TLS e cabeçalhos de segurança, `
 `/v3/api-docs` retornam 404 no proxy, porta de gestão inacessível de fora, login via Keycloak e API aceitando o token.
 **Não** validado: certificados públicos reais (Let's Encrypt), múltiplas instâncias da API, DNS real.
 
+## Antes de atualizar para as migrações V24/V25 (aviso ao síndico)
+As migrações **V24** (cadastro de morador inativo) e **V25** (cadastro de dependente) **desativam vínculos de acesso ao app** que já existam nessas condições, sem apagar nada.
+Em um ambiente com moradores reais, antes de aplicar: (1) liste quem será afetado (`SELECT m.id FROM membership m JOIN resident r ON r.id = m.resident_id WHERE m.active AND
+(r.resident_type = 'DEPENDENT' OR NOT r.active)`); (2) avise o síndico de que essas pessoas deixam de entrar no app (só adultos usam o app; dependentes ficam no cadastro); (3) se
+algum for adulto cadastrado como dependente por engano, corrija o tipo e conceda o acesso de novo depois da migração. A reversão é conceder o acesso outra vez pela tela de Moradores.
+
+## Suspensão de empresa e de condomínio
+Suspender desliga o app para todos do escopo (403 "Access suspended") e recusa o agente e os equipamentos; nada é apagado. Reativar devolve o acesso. Quem suspende: a empresa, só o
+administrador da plataforma; o condomínio, o administrador da plataforma ou o da empresa dona (Administração → Empresas/Condomínios). Fica na auditoria (`company.suspend`,
+`condominium.suspend` e os de reativar).
+
 ## Variáveis de ambiente (API)
 | Variável | Obrigatória em produção | Para quê |
 |---|---|---|

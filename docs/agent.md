@@ -44,7 +44,10 @@ O pacote instala o launcher em `/opt/portaria-agent/`, a unit do systemd, o mode
 **Não liga nem inicia o serviço**: falta o `/etc/portaria-agent/agent.env` com os segredos (passos 3 e 4 acima) e depois `systemctl enable --now portaria-agent`.
 Remover ou purgar o pacote **não apaga** `/var/lib/portaria-agent` (fila local cifrada) nem `/etc/portaria-agent` (segredos): são dados do condomínio.
 Exige **Java 26** instalado (declarado só como `Recommends`, porque nem toda distribuição o empacota). **Validado:** construção do pacote, conteúdo (`dpkg-deb -c`),
-metadados e sintaxe dos scripts (`sh -n`). **Não validado:** instalação real com `dpkg -i`/`apt` em máquina limpa e `lintian`.
+metadados e sintaxe dos scripts (`sh -n`); **instalação real com `dpkg -i` num contêiner Ubuntu limpo com Java 26 (2026-10-29, sem rede):** o usuário e o grupo `portaria-agent` são criados,
+`/var/lib/portaria-agent` e `/etc/portaria-agent` ficam com modo 750, o jar inicial é copiado, o serviço **não** é habilitado nem iniciado, reinstalar **preserva** o jar já em uso (a atualização segura),
+`dpkg -r` e `dpkg -P` mantêm os dados do agente em `/var/lib` (de propósito: a fila local não é apagada por remoção do pacote). Sem systemd no contêiner, a dependência foi ignorada
+(`--force-depends`). **Não validado:** `lintian` (não instalado aqui), `apt install` a partir de um repositório e o ciclo de vida com systemd real.
 
 ## Atualização segura (opcional)
 Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com `manifest.json` e os jars) e `PORTARIA_UPDATE_PUBLIC_KEY`.

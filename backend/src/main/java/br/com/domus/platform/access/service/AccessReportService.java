@@ -1,5 +1,6 @@
 package br.com.domus.platform.access.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.access.entity.AccessAttempt;
 import br.com.domus.platform.access.entity.AccessCredential;
 import br.com.domus.platform.access.entity.VisitRequest;
@@ -159,7 +160,7 @@ public class AccessReportService {
 
     private static void validatePeriod(Instant from, Instant to) {
         if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {
-            throw new IllegalArgumentException("Period must be positive and at most 31 days");
+            throw new InvalidRequestException("Period must end after it starts and span at most 31 days");
         }
     }
 

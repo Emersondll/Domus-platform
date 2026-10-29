@@ -188,11 +188,11 @@ Visibilidade por perfil (percurso real na API, 11 perfis × todas as rotas de le
 | # | Item | Impacto | Como tratar |
 |---|---|---|---|
 | V1 | **Dependente (DEPENDENT) pode abrir o portão pelo app, chamar a central, acionar pânico, convidar e aprovar visitas**, mas não vê câmeras (decisão minha) nem consente foto ("dependentes ainda não suportados") | Criança com poder de liberar visitante e abrir portão; regra inconsistente entre recursos | **Decisão do titular/jurídico (D17/D21):** definir o que o dependente pode (ex.: só chamar a central e pânico) e aplicar numa regra única, não recurso a recurso |
-| V2 | Sem teto de convites ativos por unidade (30 criados em paralelo, 30 aceitos) | Morador gera QR em massa; só o limite de taxa da API segura | Definir teto por unidade (ex.: 20 ativos) |
-| V3 | Relatórios recusam intervalo acima de ~31 dias com "Invalid request parameter" | A pessoa não sabe o motivo | Mensagem clara com o limite |
-| V4 | Listagem de equipe (`GET /members`) não traz nome | A tela mostra só papel; impossível saber quem é quem | Decidir se o nome (cifrado) entra na resposta para MANAGE |
-| V5 | Mesmo morador só consegue abrir o portão cerca de 9 vezes por minuto (429) | Intencional (limite por usuário); confirmar o valor | Confirmar |
-| V6 | Chamada repetida passou a devolver a chamada aberta da unidade (201 com o mesmo `id`) | Quem mora junto vê a mesma chamada; o nome informado do segundo toque é ignorado | Confirmar o comportamento no app |
+| ~~V2~~ | Sem teto de convites ativos por unidade | — | **RESOLVIDO (2026-10-29), decisão do titular: teto de 30 convites ativos por unidade** (ativo = não revogado, não vencido, com uso restante). 31º = 409; trava por unidade para pedidos simultâneos. `InvitationLimitIT` (2: sequencial e 40 pedidos juntos de dois moradores → exatamente 30) |
+| ~~V3~~ | Relatórios recusavam intervalo acima de 31 dias com mensagem genérica | — | **RESOLVIDO (2026-10-29):** `InvalidRequestException` devolve 400 com "Period must end after it starts and span at most 31 days" |
+| V4 | **(em aberto — aguardando decisão)** Listagem de equipe (`GET /members`) não traz nome | A tela mostra só papel; impossível saber quem é quem | Decidir se o nome (cifrado) entra na resposta para MANAGE |
+| ~~V5~~ | Limite de aberturas do portão por morador | — | **RESOLVIDO (2026-10-29), decisão do titular: 5 aberturas por minuto por morador** (antes: intervalo mínimo de 30 s entre aberturas). A 6ª dentro de 1 minuto = 429 + auditoria `door.open.resident.throttled`; mesma chave de idempotência continua devolvendo o mesmo comando. `RemoteOpenAndShiftLogIT` ajustado. *O titular escreveu "v4" ao decidir este valor; tratei como V5, que é o item do portão* |
+| ~~V6~~ | Chamada repetida devolve a chamada aberta da unidade (201 com o mesmo `id`) | — | **CONFIRMADO pelo titular (2026-10-29)** |
 
 ## 4. Próximas ações (ordem sugerida)
 **A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — FEITO com leitores simulados e foto desligada por padrão (2026-10-26); a identificação facial NÃO foi feita.**

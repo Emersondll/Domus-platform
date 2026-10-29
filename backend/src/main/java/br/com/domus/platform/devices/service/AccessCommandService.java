@@ -117,8 +117,11 @@ public class AccessCommandService {
                 MDC.get(CorrelationIdFilter.MDC_KEY), Instant.now(clock)));
     }
 
-    /** Janela mínima entre duas aberturas remotas do mesmo morador. */
-    static final Duration RESIDENT_OPEN_COOLDOWN = Duration.ofSeconds(30);
+    /** Janela de contagem das aberturas remotas do mesmo morador. */
+    static final Duration RESIDENT_OPEN_WINDOW = Duration.ofMinutes(1);
+
+    /** Máximo de aberturas remotas por morador dentro da janela (decisão do titular, V5). */
+    static final int RESIDENT_OPEN_MAX_PER_WINDOW = 5;
 
     /**
      * Abertura remota pelo morador. Exige as duas travas (política do condomínio ligada e dispositivo marcado), usa
@@ -143,10 +146,11 @@ public class AccessCommandService {
             throw new NotFoundException("Remote open is not available");
         }
         Instant now = Instant.now(clock);
-        if (commands.countByRequestedByAndRequestedAtAfter(me.actor().userId(), now.minus(RESIDENT_OPEN_COOLDOWN)) > 0) {
+        if (commands.countByRequestedByAndRequestedAtAfter(me.actor().userId(), now.minus(RESIDENT_OPEN_WINDOW))
+                >= RESIDENT_OPEN_MAX_PER_WINDOW) {
             audit.record(me.actor().userId(), null, condominiumId, "door.open.resident.throttled", "device",
                     deviceId.toString(), AuditOutcome.DENIED);
-            throw new TooManyRequestsException("Wait a few seconds before opening again");
+            throw new TooManyRequestsException("Too many openings; wait a minute before opening again");
         }
         return dispatch(me.actor(), condominiumId, device, adapter, idempotencyKey, () -> AccessCommand.byResident(
                 condominiumId, deviceId, me.actor().userId(), "Abertura remota pelo morador", idempotencyKey,

@@ -318,7 +318,7 @@ describe("resident app", () => {
     openStatus = 429;
     const user = await openTab("Início");
     await user.click(await screen.findByRole("button", { name: "Abrir Social" }));
-    expect(await screen.findByText(/Aguarde alguns segundos/)).toBeInTheDocument();
+    expect(await screen.findByText(/Aguarde um minuto/)).toBeInTheDocument();
   });
 
   it("separates notifications by subject, with the unread count on each tab", async () => {

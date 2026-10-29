@@ -1,5 +1,6 @@
 package br.com.domus.platform.reports.service;
 
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.tenant.AccessLevel;
@@ -135,7 +136,7 @@ public class ActivityReportService {
 
     private static void checkPeriod(Instant from, Instant to) {
         if (from == null || to == null || !to.isAfter(from) || Duration.between(from, to).compareTo(MAX_PERIOD) > 0) {
-            throw new IllegalArgumentException("Period must be positive and at most 31 days");
+            throw new InvalidRequestException("Period must end after it starts and span at most 31 days");
         }
     }
 

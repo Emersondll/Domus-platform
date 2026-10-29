@@ -39,6 +39,11 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "conflict", "The request conflicts with existing data");
     }
 
+    @ExceptionHandler(InvalidRequestException.class)
+    ProblemDetail invalidRequest(InvalidRequestException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "bad-request", ex.getMessage());
+    }
+
     @ExceptionHandler({PropertyReferenceException.class, IllegalArgumentException.class})
     ProblemDetail badRequest(RuntimeException ex) {
         return problem(HttpStatus.BAD_REQUEST, "bad-request", "Invalid request parameter");

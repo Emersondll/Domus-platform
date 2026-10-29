@@ -51,4 +51,17 @@ public interface AccessCredentialRepository extends JpaRepository<AccessCredenti
             WHERE id = :id AND condominium_id = :condominiumId AND use_count < max_uses
             """, nativeQuery = true)
     int applyOfflineUse(@Param("id") UUID id, @Param("condominiumId") UUID condominiumId);
+
+    /** Convites ainda utilizáveis da unidade (ativos, não vencidos, com uso restante). */
+    @Query("select count(c) from AccessCredential c where c.condominiumId = :condominiumId and c.unitId = :unitId "
+            + "and c.status = 'ACTIVE' and c.validUntil > :now and c.useCount < c.maxUses")
+    long countActiveByUnit(@Param("condominiumId") UUID condominiumId, @Param("unitId") UUID unitId,
+                           @Param("now") Instant now);
+
+    /**
+     * Trava de transação por chave: serializa a contagem seguida de gravação (teto de convites por unidade),
+     * que sem ela seria ultrapassado por pedidos simultâneos.
+     */
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))) l", nativeQuery = true)
+    int lockKey(@Param("key") String key);
 }

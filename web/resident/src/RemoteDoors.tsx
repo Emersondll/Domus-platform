@@ -44,7 +44,7 @@ export function RemoteDoors({ token, condo }: { token: string; condo: string }) 
         { idempotencyKey: crypto.randomUUID() });
       if (c) await follow(door.id, c.id);
     } catch (e) {
-      const text = e instanceof ApiError && e.status === 429 ? "Aguarde alguns segundos para abrir de novo."
+      const text = e instanceof ApiError && e.status === 429 ? "Limite de aberturas por minuto atingido. Aguarde um minuto para abrir de novo."
         : e instanceof ApiError && e.status === 404 ? "Abertura remota indisponível no momento."
         : "Não foi possível enviar o comando. A porta NÃO abriu.";
       setStatus((s) => ({ ...s, [door.id]: text }));

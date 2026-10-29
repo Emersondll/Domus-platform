@@ -24,6 +24,7 @@ import br.com.domus.platform.identity.repository.MembershipRepository;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
+import java.util.List;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeAll;
@@ -141,12 +142,16 @@ class RemoteOpenAndShiftLogIT extends AbstractIntegrationTest {
         }
         assertThat(state).isEqualTo("CONFIRMED");
 
-        // mesma chave = mesmo comando (sem abrir de novo); chave nova dentro da janela = 429
+        // mesma chave = mesmo comando (sem abrir de novo); até 5 aberturas por minuto por morador, a 6ª = 429 (V5)
         mvc.perform(post(base() + "/me/doors/" + door + "/open").with(as("ro-res-a"))
                 .contentType(MediaType.APPLICATION_JSON).content(openBody("ro-k2")))
                 .andExpect(status().isAccepted()).andExpect(jsonPath("$.id").value(command));
+        for (String key : List.of("ro-k3", "ro-k3b", "ro-k3c", "ro-k3d")) {
+            mvc.perform(post(base() + "/me/doors/" + door + "/open").with(as("ro-res-a"))
+                    .contentType(MediaType.APPLICATION_JSON).content(openBody(key))).andExpect(status().isAccepted());
+        }
         mvc.perform(post(base() + "/me/doors/" + door + "/open").with(as("ro-res-a"))
-                .contentType(MediaType.APPLICATION_JSON).content(openBody("ro-k3")))
+                .contentType(MediaType.APPLICATION_JSON).content(openBody("ro-k3e")))
                 .andExpect(status().isTooManyRequests());
 
         // outro morador e a equipe não leem o comando do morador pelo endpoint dele; a chave não vaza entre moradores

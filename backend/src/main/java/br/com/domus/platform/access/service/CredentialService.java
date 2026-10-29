@@ -13,6 +13,7 @@ import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.config.CorrelationIdFilter;
+import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.Actor;
@@ -40,6 +41,9 @@ public class CredentialService {
     static final Duration MAX_VALIDITY = Duration.ofDays(7);
     static final Duration START_TOLERANCE = Duration.ofMinutes(5);
     static final int MAX_USES = 20;
+
+    /** Convites ativos (não revogados, não vencidos, com uso restante) por unidade; decisão do titular (V2). */
+    static final int MAX_ACTIVE_INVITATIONS_PER_UNIT = 30;
 
     private final AccessCredentialRepository credentials;
     private final VisitorRepository visitors;
@@ -111,6 +115,11 @@ public class CredentialService {
             throw new IllegalArgumentException("Invalid invitation window or use limit");
         }
         UUID unitId = unitOf(me);
+        // trava por unidade: sem ela, pedidos simultâneos passariam todos pela contagem e estourariam o teto
+        credentials.lockKey("invitations:" + unitId);
+        if (credentials.countActiveByUnit(condominiumId, unitId, now) >= MAX_ACTIVE_INVITATIONS_PER_UNIT) {
+            throw new ConflictException("Active invitation limit reached for this unit; revoke or wait for expiry");
+        }
         Visitor visitor = visitors.save(new Visitor(condominiumId, unitId, visitorName, kind));
         AccessCredential credential = credentials.save(new AccessCredential(condominiumId, unitId,
                 visitor.getId(), validFrom, validUntil, maxUses, me.actor().userId()));

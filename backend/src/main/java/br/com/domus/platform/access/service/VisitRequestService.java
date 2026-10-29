@@ -135,7 +135,7 @@ public class VisitRequestService {
     public VisitRequest decide(UUID condominiumId, UUID requestId, boolean approve) {
         String action = approve ? "visit.approve" : "visit.deny";
         ResidentContext me = access.requireResident(condominiumId, action);
-        VisitRequest request = requests.findByIdAndCondominiumId(requestId, condominiumId)
+        VisitRequest request = requests.findWithLockByIdAndCondominiumId(requestId, condominiumId)
                 .filter(r -> r.getUnitId().equals(myUnit(me, condominiumId)))
                 .orElseThrow(() -> new NotFoundException("Visit request not found"));
         Instant now = Instant.now(clock);
@@ -155,7 +155,7 @@ public class VisitRequestService {
     @Transactional
     public AccessAttempt registerEntry(UUID condominiumId, UUID requestId, String entrance) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "visit.entry");
-        VisitRequest request = requests.findByIdAndCondominiumId(requestId, condominiumId)
+        VisitRequest request = requests.findWithLockByIdAndCondominiumId(requestId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Visit request not found"));
         if (!VisitRequest.APPROVED.equals(request.effectiveStatus(Instant.now(clock)))) {
             throw new ConflictException("Only an approved request can have an entry");

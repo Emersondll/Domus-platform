@@ -143,7 +143,7 @@ public class AccessReportService {
     @Transactional
     public Row registerExit(UUID condominiumId, UUID attemptId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.exit");
-        AccessAttempt attempt = attempts.findByIdAndCondominiumId(attemptId, condominiumId)
+        AccessAttempt attempt = attempts.findWithLockByIdAndCondominiumId(attemptId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Access entry not found"));
         if (!"GRANTED".equals(attempt.getResult())) {
             throw new ConflictException("Only a granted entry can have an exit");

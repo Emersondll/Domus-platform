@@ -137,7 +137,15 @@ try:
         errors: list[str] = []
         failed_requests: list[str] = []  # só para diagnóstico: diz qual URL deu 4xx/5xx quando o console reclama
 
+        traced: set[tuple[str, str, int]] = set()  # E2E_TRACE_REQUESTS=arquivo: quais rotas as telas realmente chamam
+
+        def trace(r):
+            if "/api/" in r.url:
+                traced.add((r.request.method, r.url.split("?")[0].split("localhost")[-1].split("/", 1)[-1], r.status))
+
         def watch(page, label):
+            if os.environ.get("E2E_TRACE_REQUESTS"):
+                page.on("response", trace)
             page.on("pageerror", lambda e: errors.append(f"{label}: {e}"))
             page.on("response", lambda r: failed_requests.append(f"{label}: {r.status} {r.request.method} {r.url}") if r.status >= 400 else None)
             page.on("console", lambda m: errors.append(f"{label}: {m.text}") if m.type == "error" and "401" not in m.text else None)
@@ -571,6 +579,9 @@ try:
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)
         # síndico e administrador não são operadores: o escopo (me/admin-scope) evita a consulta de atendimentos, então nenhum 403 é tolerado
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]) + (" | requisições com erro: " + str(failed_requests[:6]) if errors else ""))
+        if os.environ.get("E2E_TRACE_REQUESTS"):
+            with open(os.environ["E2E_TRACE_REQUESTS"], "w") as f:
+                json.dump(sorted(traced), f)
         browser.close()
 finally:
     cleanup()

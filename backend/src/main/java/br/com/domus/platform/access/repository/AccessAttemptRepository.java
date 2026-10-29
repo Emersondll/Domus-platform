@@ -2,11 +2,13 @@ package br.com.domus.platform.access.repository;
 
 import br.com.domus.platform.access.entity.AccessAttempt;
 import java.time.Instant;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -42,6 +44,10 @@ public interface AccessAttemptRepository extends JpaRepository<AccessAttempt, UU
                                                @Param("ids") java.util.Collection<UUID> ids);
 
     Optional<AccessAttempt> findByIdAndCondominiumId(UUID id, UUID condominiumId);
+
+    /** Igual a {@link #findByIdAndCondominiumId}, mas trava a linha até o fim da transação (a saída é registrada uma única vez). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AccessAttempt> findWithLockByIdAndCondominiumId(UUID id, UUID condominiumId);
 
     /** Entradas concedidas ainda sem saída registrada (quem está no local). */
     @Query("""

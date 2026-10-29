@@ -4,11 +4,13 @@ import br.com.domus.platform.operations.entity.ServiceCall;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,10 @@ import org.springframework.data.repository.query.Param;
 public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> {
 
     Optional<ServiceCall> findByIdAndCondominiumId(UUID id, UUID condominiumId);
+
+    /** Igual a {@link #findByIdAndCondominiumId}, mas trava a linha até o fim da transação (a mudança de estado acontece uma única vez). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<ServiceCall> findWithLockByIdAndCondominiumId(UUID id, UUID condominiumId);
 
     Page<ServiceCall> findByCondominiumId(UUID condominiumId, Pageable pageable);
 
@@ -43,6 +49,13 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
             """, nativeQuery = true)
     Optional<UUID> claimNext(@Param("userId") UUID userId, @Param("condominiumIds") Collection<UUID> condominiumIds,
                              @Param("now") Instant now);
+
+    /**
+     * Serializa, até o fim da transação, quem disputa a mesma chave (aqui, as chamadas de uma unidade): sem isso, duas
+     * requisições simultâneas passam juntas pela verificação "já existe uma em aberto?".
+     */
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))) l", nativeQuery = true)
+    int lockKey(@Param("key") String key);
 
     @Query(value = "SELECT count(*) FROM service_call WHERE condominium_id = :c AND status = :status",
             nativeQuery = true)

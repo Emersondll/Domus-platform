@@ -153,6 +153,7 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 - Formulário de perfil sobrescrevia o que a pessoa digitava quando a carga chegava depois (e pioraria com a renovação do token); teste que falha sem a correção.
 - CI: teste de bootstrap dependente da ordem de execução e referência inexistente do `osv-scanner`.
 - Healthcheck do contêiner de produção, caminhos do Caddy, scripts com caminho contendo espaços.
+- **Concorrência de moradores e portaria (2026-10-29):** disparando as mesmas requisições juntas, sete operações aceitavam a repetição que em sequência dão 409: decidir a mesma visita (aprovar e negar ao mesmo tempo, vencia a última), retirar a mesma encomenda (10 de 10 "retiradas"), encerrar a mesma chamada (8 eventos `CLOSED` e 8 avisos ao morador), registrar a mesma saída, resolver o mesmo incidente, cancelar a mesma reserva e abrir várias chamadas/pânicos da mesma unidade (12 chamadas abertas por toque repetido; o app só escondia o botão). Corrigido com trava de linha (`PESSIMISTIC_WRITE`) nas mudanças de estado e trava por unidade (`pg_advisory_xact_lock`) nas chamadas; agora a chamada repetida devolve a que já está aberta. Teste: `ResidentConcurrencyIT` (10 casos; 7 falham sem a correção). Já estavam corretos sob disputa: QR de uso único (20 validações → 1 entrada), convite de 3 usos (15 → 3), reserva do mesmo horário (12 → 1), cadastro duplicado de unidade e de conta, placa repetida, abrir turno, pegar a próxima chamada, idempotência do portão (10 pedidos → 1 comando).
 - **Validação do fluxo do administrador, do cadastro à visualização (2026-10-28):** percorri pela API real empresa → condomínio → blocos/unidades → síndico/operador → moradores e contas → dispositivos e câmera → morador (convite, visita, encomenda, chamada, vídeo) → porta → relatórios → desativações e isolamento entre empresas. Dois defeitos de lógica, ambos corrigidos com teste:
   1. **Morador desativado continuava com acesso** (chamar a central, acionar o pânico, criar convites, ver câmeras liberadas): a autoridade de morador vem do vínculo, e desativar o cadastro não o encerrava. Agora desativar revoga o vínculo e as sessões de vídeo abertas (contrato `ResidentAccessRevoker`), e a migração V24 revoga os vínculos de quem já estava desativado. Para voltar, reativar o cadastro e emitir a conta de novo. Teste: `ResidentDeactivationIT`.
   2. **Lista de convites do morador sem o nome do visitante** (a API devolvia `null`; a tela mostrava "Visitante" em todos, e os testes de tela passavam porque o mock já trazia o nome) e **"Revogar" em convite já usado ou vencido**. Corrigidos; a situação aparece como Ativo, Usado, Vencido ou Revogado.
@@ -170,6 +171,28 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 | B8 | Revogação de credencial durante a queda só chega ao agente quando a política renova (TTL 6 h) | janela limitada e auditável | risco aceito |
 | B9 | Quota offline é por agente: dois agentes offline podem estourar uma credencial multiuso | vira `QUOTA_EXCEEDED` na volta | risco aceito |
 | B10 | Em Keycloak já existente, o mapper de audiência precisa ser adicionado, senão os logins recebem 401 | falha no upgrade | passo documentado em `docs/operations.md` |
+
+## 3.1 Auditoria de endpoints × uso e visibilidade por perfil (2026-10-29)
+
+Método: lista de 159 rotas lida dos controllers; cruzada com (1) as requisições que as telas fazem de verdade durante o `e2e-browser` (`E2E_TRACE_REQUESTS=arquivo.json`) e (2) a busca nos fontes das telas, do agente e dos scripts. Resultado: 88 rotas tocadas pelas telas reais nesta jornada; 71 não. Das 71:
+
+| Grupo | Rotas | O que fazer |
+|---|---|---|
+| **Sem cliente nenhum (candidatas a remover ou ligar)** | `GET /condominiums/{id}` (a tela usa a lista); `GET /reports/activity/by-unit.csv` (a tela pede só o JSON); `GET /me/notifications/unread-count` (o app conta pela lista); `POST /agent/heartbeat` (o agente não chama; o contato já é registrado ao buscar política e comandos) | **Validar com o titular:** ligar à tela (botão de CSV por unidade; contador leve no app) ou remover. Têm teste de API; enquanto isso, superfície sem uso |
+| Externas por desenho | `/agent/*` (5), `POST /devices/{id}/events` (equipamento), `POST /internal/media/auth` (servidor de mídia) | Cobertas por `e2e-agent-update.sh`, `load-test.py`, `e2e-browser.py` e testes; sem hardware real |
+| **Tela existe, mas o teste de navegador não passa por ela (61)** | cadastro de blocos/unidades/moradores/contas/equipe, áreas comuns e reservas, animais (síndico), incidentes, transferência de chamada, identidades de acesso, exportar/anonimizar, credenciais da câmera, relatórios, retirar convite, deny, remover familiar/animal, preferências, etc. | Ampliar o `e2e-browser` para percorrê-las. Hoje estão cobertas por testes de integração e, em 2026-10-29, por um percurso de API com todos os perfis |
+
+Visibilidade por perfil (percurso real na API, 11 perfis × todas as rotas de leitura, mais as escritas de 4 tipos de morador): nenhum 2xx indevido entre empresas, condomínios ou papéis; `/me/*` só para morador (equipe e plataforma recebem 404); gestão só para equipe do próprio condomínio; operador não vê equipe, credenciais, relatório por unidade nem identidades de acesso (403). Cadastro: administrador da empresa → condomínio/blocos/unidades/equipe; síndico → moradores dos 4 tipos (proprietário, inquilino, cônjuge, dependente) com conta; morador → familiares (cônjuge/dependente) sem conta.
+
+**Pontos que dependem de decisão ou melhoria (novos):**
+| # | Item | Impacto | Como tratar |
+|---|---|---|---|
+| V1 | **Dependente (DEPENDENT) pode abrir o portão pelo app, chamar a central, acionar pânico, convidar e aprovar visitas**, mas não vê câmeras (decisão minha) nem consente foto ("dependentes ainda não suportados") | Criança com poder de liberar visitante e abrir portão; regra inconsistente entre recursos | **Decisão do titular/jurídico (D17/D21):** definir o que o dependente pode (ex.: só chamar a central e pânico) e aplicar numa regra única, não recurso a recurso |
+| V2 | Sem teto de convites ativos por unidade (30 criados em paralelo, 30 aceitos) | Morador gera QR em massa; só o limite de taxa da API segura | Definir teto por unidade (ex.: 20 ativos) |
+| V3 | Relatórios recusam intervalo acima de ~31 dias com "Invalid request parameter" | A pessoa não sabe o motivo | Mensagem clara com o limite |
+| V4 | Listagem de equipe (`GET /members`) não traz nome | A tela mostra só papel; impossível saber quem é quem | Decidir se o nome (cifrado) entra na resposta para MANAGE |
+| V5 | Mesmo morador só consegue abrir o portão cerca de 9 vezes por minuto (429) | Intencional (limite por usuário); confirmar o valor | Confirmar |
+| V6 | Chamada repetida passou a devolver a chamada aberta da unidade (201 com o mesmo `id`) | Quem mora junto vê a mesma chamada; o nome informado do segundo toque é ignorado | Confirmar o comportamento no app |
 
 ## 4. Próximas ações (ordem sugerida)
 **A. "Meus acessos" do morador, com a foto do cadastro, preparando a identificação facial — FEITO com leitores simulados e foto desligada por padrão (2026-10-26); a identificação facial NÃO foi feita.**

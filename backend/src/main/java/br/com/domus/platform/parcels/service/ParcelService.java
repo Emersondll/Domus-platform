@@ -77,7 +77,7 @@ public class ParcelService {
     @Transactional
     public Parcel pickUp(UUID condominiumId, UUID parcelId, String personName) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "parcel.pickup");
-        Parcel parcel = parcels.findByIdAndCondominiumId(parcelId, condominiumId)
+        Parcel parcel = parcels.findWithLockByIdAndCondominiumId(parcelId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Parcel not found"));
         if (Parcel.PICKED_UP.equals(parcel.getStatus())) {
             throw new ConflictException("Parcel already picked up");

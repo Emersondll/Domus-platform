@@ -170,6 +170,13 @@ public class OperationsService {
     public ServiceCall createCallAsResident(UUID condominiumId, String callerName) {
         ResidentContext me = access.requireResident(condominiumId, "call.create.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
+        // Uma chamada em aberto por unidade: repetir o toque (ou outra pessoa da casa) devolve a mesma, não enche a fila.
+        calls.lockKey("call:" + unitId);
+        Optional<ServiceCall> open = calls.findFirstByCondominiumIdAndUnitIdAndSourceAndStatusNot(condominiumId, unitId,
+                "RESIDENT_APP", ServiceCall.CLOSED);
+        if (open.isPresent()) {
+            return open.get();
+        }
         return enqueue(condominiumId, unitId, "RESIDENT_APP", callerName, me.actor().userId());
     }
 
@@ -181,6 +188,7 @@ public class OperationsService {
     public ServiceCall raisePanic(UUID condominiumId) {
         ResidentContext me = access.requireResident(condominiumId, "panic.raise");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
+        calls.lockKey("panic:" + unitId);
         Optional<ServiceCall> open = calls.findFirstByCondominiumIdAndUnitIdAndSourceAndStatusNot(condominiumId, unitId,
                 "PANIC", ServiceCall.CLOSED);
         if (open.isPresent()) {
@@ -377,7 +385,7 @@ public class OperationsService {
     @Transactional
     public Incident resolveIncident(UUID condominiumId, UUID incidentId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "incident.resolve");
-        Incident incident = incidents.findByIdAndCondominiumId(incidentId, condominiumId)
+        Incident incident = incidents.findWithLockByIdAndCondominiumId(incidentId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Incident not found"));
         if (Incident.RESOLVED.equals(incident.getStatus())) {
             throw new ConflictException("Incident already resolved");
@@ -468,7 +476,7 @@ public class OperationsService {
     }
 
     private ServiceCall assignedCall(UUID condominiumId, UUID callId, Actor actor) {
-        ServiceCall call = calls.findByIdAndCondominiumId(callId, condominiumId)
+        ServiceCall call = calls.findWithLockByIdAndCondominiumId(callId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Call not found"));
         if (!ServiceCall.ASSIGNED.equals(call.getStatus())) {
             throw new ConflictException("Call is not in progress");

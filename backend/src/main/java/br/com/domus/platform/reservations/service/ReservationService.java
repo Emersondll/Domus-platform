@@ -129,7 +129,7 @@ public class ReservationService {
     public Reservation cancelAsResident(UUID condominiumId, UUID reservationId) {
         ResidentContext me = access.requireResident(condominiumId, "reservation.cancel.self");
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
-        Reservation reservation = reservations.findByIdAndCondominiumId(reservationId, condominiumId)
+        Reservation reservation = reservations.findWithLockByIdAndCondominiumId(reservationId, condominiumId)
                 .filter(r -> r.getUnitId().equals(unitId))
                 .orElseThrow(() -> new NotFoundException("Reservation not found"));
         return cancel(reservation, me.actor().userId(), condominiumId);
@@ -144,7 +144,7 @@ public class ReservationService {
     @Transactional
     public Reservation cancelAsStaff(UUID condominiumId, UUID reservationId) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "reservation.cancel");
-        Reservation reservation = reservations.findByIdAndCondominiumId(reservationId, condominiumId)
+        Reservation reservation = reservations.findWithLockByIdAndCondominiumId(reservationId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Reservation not found"));
         return cancel(reservation, actor.userId(), condominiumId);
     }

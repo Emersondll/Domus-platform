@@ -10,6 +10,7 @@ import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DeviceEventSink;
 import br.com.domus.platform.shared.ResidentPassageRecorder;
 import br.com.domus.platform.shared.error.ForbiddenException;
+import br.com.domus.platform.shared.tenant.CondominiumLookup;
 import br.com.domus.platform.shared.error.NotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -34,15 +35,18 @@ public class DeviceEventService implements DeviceEventSink {
     private final AccessCommandRepository commands;
     private final ResidentPassageRecorder passages;
     private final Clock clock;
+    private final CondominiumLookup condominiums;
 
     /** Construtor de DeviceEventService; recebe as dependências por injeção. */
     public DeviceEventService(DeviceRepository devices, DeviceEventRepository events,
-                              AccessCommandRepository commands, ResidentPassageRecorder passages, Clock clock) {
+                              AccessCommandRepository commands, ResidentPassageRecorder passages, Clock clock,
+                              CondominiumLookup condominiums) {
         this.devices = devices;
         this.events = events;
         this.commands = commands;
         this.passages = passages;
         this.clock = clock;
+        this.condominiums = condominiums;
     }
 
     /** Evento vindo da rede: exige a chave de API do dispositivo. */
@@ -54,6 +58,9 @@ public class DeviceEventService implements DeviceEventSink {
                 DeviceService.sha256(apiKey).getBytes(StandardCharsets.UTF_8),
                 device.getApiKeyHash().getBytes(StandardCharsets.UTF_8))) {
             throw new ForbiddenException("Invalid device credentials");
+        }
+        if (condominiums.isSuspended(device.getCondominiumId())) {
+            throw new ForbiddenException("Access suspended");
         }
         record(device, type, commandId, occurredAt, person);
     }

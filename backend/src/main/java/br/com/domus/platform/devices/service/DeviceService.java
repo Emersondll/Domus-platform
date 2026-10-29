@@ -37,7 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeviceService implements DeviceHealthLookup {
 
-    public static final int MAX_RESIDENT_CAMERAS = 4;
 
     /** Dispositivo recém-criado, com a chave de API em claro (exibida somente uma vez). */
     public record Registered(Device device, String apiKey) {
@@ -218,7 +217,7 @@ public class DeviceService implements DeviceHealthLookup {
         return device;
     }
 
-    /** Libera (ou retira) a câmera para o morador ver ao vivo; no máximo {@value #MAX_RESIDENT_CAMERAS} por condomínio. */
+    /** Libera (ou retira) a câmera para o morador ver ao vivo. Sem limite de quantidade nem horário (decisão do titular: 24 horas). */
     @Transactional
     public Device setResidentViewable(UUID condominiumId, UUID deviceId, boolean enabled) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.resident-viewable");
@@ -229,10 +228,6 @@ public class DeviceService implements DeviceHealthLookup {
         if (enabled && !device.isResidentViewable()) {
             if (!device.isActive()) {
                 throw new ConflictException("Activate the camera first");
-            }
-            devices.lockCondominium(condominiumId);
-            if (devices.countByCondominiumIdAndResidentViewableTrue(condominiumId) >= MAX_RESIDENT_CAMERAS) {
-                throw new ConflictException("At most " + MAX_RESIDENT_CAMERAS + " cameras can be shown to residents");
             }
         }
         boolean changed = device.isResidentViewable() != enabled;

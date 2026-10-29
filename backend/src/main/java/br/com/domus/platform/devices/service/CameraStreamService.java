@@ -276,6 +276,12 @@ public class CameraStreamService implements ViewSessionRevoker {
         return sessions.revokeByUser(userId, condominiumId, reason, clock.instant());
     }
 
+    @Override
+    @Transactional
+    public int revokeForCondominium(UUID condominiumId, String reason) {
+        return sessions.revokeByCondominium(condominiumId, reason, clock.instant());
+    }
+
     private String mac(String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

@@ -14,4 +14,7 @@ public interface ViewSessionRevoker {
      * @return quantidade de sessões revogadas
      */
     int revokeForUser(UUID userId, UUID condominiumId, String reason);
+
+    /** Revoga todas as sessões de vídeo ativas do condomínio (suspensão). */
+    int revokeForCondominium(UUID condominiumId, String reason);
 }

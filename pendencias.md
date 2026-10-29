@@ -179,7 +179,7 @@ Método: lista de 159 rotas lida dos controllers; cruzada com (1) as requisiçõ
 
 | Grupo | Rotas | O que fazer |
 |---|---|---|
-| **Sem cliente nenhum (candidatas a remover ou ligar)** | `GET /condominiums/{id}` (a tela usa a lista); `GET /reports/activity/by-unit.csv` (a tela pede só o JSON); `GET /me/notifications/unread-count` (o app conta pela lista); `POST /agent/heartbeat` (o agente não chama; o contato já é registrado ao buscar política e comandos) | **Validar com o titular:** ligar à tela (botão de CSV por unidade; contador leve no app) ou remover. Têm teste de API; enquanto isso, superfície sem uso |
+| ~~Rotas sem cliente~~ | `GET /condominiums/{id}`, `GET /reports/activity/by-unit.csv`, `GET /me/notifications/unread-count`, `POST /agent/heartbeat` | — | **RESOLVIDO (2026-10-29), decisão do titular: ligar à tela.** O detalhe do condomínio confere a situação antes de suspender/reativar (Administração → Condomínios); o botão "Exportar por unidade (CSV)" está em Relatórios; o contador de avisos não lidos aparece no botão Início do app. O heartbeat não tem tela (quem chama é o agente, e cada consulta dele já registra o contato): foi **removido**, e os testes usam `GET /agent/commands` |
 | Externas por desenho | `/agent/*` (5), `POST /devices/{id}/events` (equipamento), `POST /internal/media/auth` (servidor de mídia) | Cobertas por `e2e-agent-update.sh`, `load-test.py`, `e2e-browser.py` e testes; sem hardware real |
 | **Tela existe, mas o teste de navegador não passa por ela (61)** | cadastro de blocos/unidades/moradores/contas/equipe, áreas comuns e reservas, animais (síndico), incidentes, transferência de chamada, identidades de acesso, exportar/anonimizar, credenciais da câmera, relatórios, retirar convite, deny, remover familiar/animal, preferências, etc. | Ampliar o `e2e-browser` para percorrê-las. Hoje estão cobertas por testes de integração e, em 2026-10-29, por um percurso de API com todos os perfis |
 
@@ -235,7 +235,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | ~~MA6~~ | Dependentes e menores fora da foto e do histórico | **resolvido (2026-10-29):** dependente não tem conta no app; só adultos usam |
 | MA7 | **Foto sem detecção de rosto:** só valida formato, tamanho (≤ 2 MB), dimensão mínima (160 px) e proporção (≤ 3:1); a qualidade depende de quem envia; a tela diz isso | decidir e licenciar uma biblioteca de visão computacional, se for necessário (a fase de reconhecimento facial vai exigir) |
 | MA8 | **Foto desligada por padrão** (`RESIDENT_PHOTO_ENABLED=false`); ligar em produção depende de **D16** (base legal e consentimento) e do parecer jurídico | parecer jurídico; revisar o texto do consentimento (versão `2026-10-v1`) |
-| MA9 | **Cadastro do meio de acesso só pelo síndico/administração:** o morador não cadastra o próprio QR/app; a portaria (operador) não cadastra | decidir se o morador pode cadastrar QR/app |
+| ~~MA9~~ | **Cadastro do meio de acesso só pelo síndico/administração** | — | **CONFIRMADO (2026-10-29):** só o síndico registra; o morador não cadastra o próprio QR/app e a portaria também não |
 | MA10 | **Captura de tela** da foto ou do histórico pelo morador não tem como ser impedida; **dispositivo comprometido** pode forjar passagens do próprio ponto de acesso | risco aceito; mTLS por dispositivo (B-seg) |
 | MA11 | **Desempenho:** evento de leitor com identidade = ~280 req/s por dispositivo no teste (contenção na linha do dispositivo; leitores distintos não disputam) | reavaliar com leitores reais e, se preciso, não atualizar o `status` a cada evento |
 | MA12 | **Identificação facial:** só reservada (`method=FACE`, `kind=FACE_REF` no banco); **não existe** `ENROLL_FACE` no contrato de adaptadores, gabarito, nem alternativa de cadastro no terminal | depende de D16 a D18, RIPD e terminal facial |
@@ -246,7 +246,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | # | Limite | O que falta |
 |---|---|---|
 | CR1 | ~~O teto de 4 câmeras liberadas era verificado sem trava~~ — resolvido em 2026-10-26 (trava por condomínio e teste de concorrência) | — |
-| CR2 | Qualquer morador adulto vinculado ao condomínio vê as câmeras liberadas (dependentes não têm conta desde 2026-10-29); não há horário nem restrição por unidade | decisão D21 |
+| ~~CR2~~ | Qualquer morador adulto vê as câmeras que o síndico liberou | — | **DECIDIDO (2026-10-29), D21:** 24 horas, sem limite de quantidade e sem restrição por unidade. O teto de 4 câmeras liberadas foi **removido** (o monitor da central segue mostrando até 4 vídeos ao mesmo tempo, por limite do navegador) |
 | CR3 | Mesmos limites do vídeo da portaria: nenhuma câmera real testada, H.264 apenas, câmera atrás de NAT depende do agente publicar o fluxo | `docs/cameras.md` |
 | CR4 | O app não impede captura de tela nem gravação do celular | só aviso na tela |
 | CR5 | **Cadastro guiado de câmeras (usuário e senha cifrados no banco, hoje só o nome de uma variável de ambiente) e leitura do endereço pelo ONVIF `GetStreamUri`:** não feitos; mudam o modelo de segredos (decisão D4) e dependem de câmera real | decidir D4; testar com câmera real |
@@ -283,7 +283,7 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | D16 | **Base legal e consentimento para a foto de cadastro e para a identificação facial** (dado sensível quando vira gabarito biométrico): texto, versão, registro, revogação, quem é o controlador, RIPD, DPO | em aberto (jurídico); **bloqueia** a coleta em produção e a identificação facial |
 | D17 | **Menores e dependentes; quem enxerga o histórico de acessos** (o titular, os moradores da unidade, o síndico, a portaria) e em que condições | em aberto |
 | D19 | **Prazo de retenção do histórico de entradas e saídas do morador** (recomendado: 90 dias, configurável) | em aberto; hoje 90 dias por padrão |
-| D21 | **Morador ver ao vivo as câmeras de entrada** (base legal, aviso no local, quantas e quais câmeras, se o morador pode ver à noite/sempre) | em aberto; recurso por câmera, padrão desligado, até 4, auditado, sem gravação |
+| D21 | **Morador ver ao vivo as câmeras de entrada** (base legal, aviso no local, quantas e quais câmeras, se o morador pode ver à noite/sempre) | parcialmente decidido (2026-10-29): 24 h, sem limite de quantidade nem de unidade; segue em aberto a base legal e o aviso no local (jurídico). Recurso por câmera, padrão desligado, auditado, sem gravação |
 | D20 | **Como saber o sentido (entrada ou saída)** em cada ponto de acesso (leitor nos dois sentidos? antipassback?) | em aberto; hoje "passagem" quando o ponto não informa |
 | D18 | **Onde mora o gabarito facial** (no terminal ou na central), fabricante/modelo do terminal e alternativa sem biometria | em aberto; depende de D2 |
 | D1 | **LGPD:** base legal por tratamento, DPO, RIPD, contratos controlador/operador, retenção final, política para dados de visitantes e de gravações | em aberto (jurídico); o lado técnico está em `docs/lgpd.md` |
@@ -292,8 +292,8 @@ limites informados, e este projeto não declara conformidade com a LGPD. Antes d
 | D4 | **Custódia da chave privada de lançamento do agente** (offline, quem assina, como recuperar) | em aberto |
 | D5 | **Provedores** de e-mail, push e WhatsApp | em aberto |
 | D6 | **Infraestrutura de produção:** nuvem/servidor, domínio, TLS, Keycloak próprio ou gerenciado, política de backup | em aberto |
-| D7 | **Planos, contratos e limites** por empresa operadora (regras de negócio e cobrança) | em aberto |
-| D8 | **Papéis e permissões finos** das telas de administração (o que o síndico e o administrador da empresa podem ver e fazer) | em aberto |
+| D7 | **Planos, contratos e limites** por empresa operadora (regras de negócio e cobrança) | em aberto para planos/limites/cobrança. **Suspensão decidida e feita (2026-10-29):** suspender a empresa (plataforma) ou um condomínio (plataforma ou administrador da empresa) desliga o acesso ao app de administradores, síndico, operadores e moradores (403 "Access suspended") e recusa agente e equipamento do condomínio; as sessões de vídeo são revogadas e **nada é apagado**; reativar devolve tudo. Prova: `SuspensionIT` (3 testes) + navegador |
+| D8 | **Papéis e permissões finos** das telas de administração (o que o síndico e o administrador da empresa podem ver e fazer) | em aberto (a suspensão segue a regra: empresa só a plataforma; condomínio a plataforma e o administrador da empresa dona) |
 | D9 | Java 26 (não LTS) ou 25 LTS | **decidido: manter Java 26** (2026-10-21) |
 | D10 | Licença do projeto | **decidido: Apache 2.0** (trocada de MIT em 2026-10-25; metadados e avisos alinhados) |
 | D11 | `.claude/` e `CLAUDE.md` fora do Git | **decidido: só locais** |

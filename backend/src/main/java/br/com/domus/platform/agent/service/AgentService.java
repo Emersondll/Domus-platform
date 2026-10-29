@@ -13,6 +13,7 @@ import br.com.domus.platform.shared.error.ForbiddenException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
+import br.com.domus.platform.shared.tenant.CondominiumLookup;
 import br.com.domus.platform.shared.tenant.Actor;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -50,13 +51,14 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     private final AgentRepository agents;
     private final PolicyVersionRepository versions;
     private final AccessService access;
+    private final CondominiumLookup condominiums;
     private final AuditService audit;
     private final Clock clock;
     private final byte[] masterSecret;
 
     /** Construtor de AgentService; recebe as dependências por injeção. */
     public AgentService(AgentRepository agents, PolicyVersionRepository versions, AccessService access,
-                        AuditService audit, Clock clock,
+                        CondominiumLookup condominiums, AuditService audit, Clock clock,
                         @Value("${portaria.agent.policy-master-secret:}") String masterSecret) {
         if (masterSecret == null || masterSecret.length() < 32) {
             throw new IllegalStateException("portaria.agent.policy-master-secret (AGENT_POLICY_MASTER_SECRET) "
@@ -65,6 +67,7 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         this.agents = agents;
         this.versions = versions;
         this.access = access;
+        this.condominiums = condominiums;
         this.audit = audit;
         this.clock = clock;
         this.masterSecret = masterSecret.getBytes(StandardCharsets.UTF_8);
@@ -125,7 +128,7 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
     public Agent authenticate(UUID agentId, String apiKey, Long policyVersion, Integer backlog) {
         Instant now = Instant.now(clock);
         Agent agent = agents.findById(agentId).filter(a -> "ACTIVE".equals(a.getStatus())).orElse(null);
-        if (agent == null || apiKey == null) {
+        if (agent == null || apiKey == null || condominiums.isSuspended(agent.getCondominiumId())) {
             throw new ForbiddenException("Invalid agent credentials");
         }
         String given = sha256(apiKey);

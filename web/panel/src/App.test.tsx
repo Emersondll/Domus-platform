@@ -122,6 +122,8 @@ function fakeApi() {
     if (url === "/api/v1/me/admin-scope") return json(adminScope);
     if (url === "/api/v1/companies/co1/admins" && init?.method !== "POST") return json([{ membershipId: "m-adm1", userId: "u1", displayName: "Admin Antigo" }]);
     if (url.startsWith("/api/v1/companies?")) return pg([{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }]);
+    if (url === "/api/v1/condominiums/c1" && (init?.method ?? "GET") === "GET") return json({ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" });
+    if (url.endsWith("/suspend") || url.endsWith("/reactivate")) return json({ id: "x" });
     if (url.startsWith("/api/v1/condominiums?")) return pg([{ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" }]);
     if (url.endsWith("/agents") && (!init?.method || init.method === "GET")) return json([{ id: "ag1", name: "Servidor portaria", status: "ACTIVE", online: true, lastSeenAt: new Date().toISOString(), lastPolicyVersion: 7, backlog: 2 }]);
     if (url.endsWith("/agents") && init?.method === "POST") return json({ id: "ag2", name: "Novo", apiKey: "KEY-ONCE", policySecret: "SECRET-ONCE" }, 201);
@@ -350,7 +352,7 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
     const box = await screen.findByRole("region", { name: "Câmeras para moradores" });
-    expect(within(box).getByText(/0 de 4 liberadas/)).toBeInTheDocument();
+    expect(within(box).getByText(/0 liberadas/)).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Liberar Câmera garagem para o morador" })).toBeEnabled();
   });
 
@@ -616,6 +618,7 @@ describe("operator panel", () => {
     const perUnit = within(units).getByRole("list", { name: "Encomendas recebidas por unidade" });
     expect(within(perUnit).getByText("A / 101").parentElement).toHaveTextContent("4");
     expect(within(perUnit).getByText("B / 202")).toBeInTheDocument();
+    expect(within(units).getByRole("button", { name: "Exportar por unidade (CSV)" })).toBeInTheDocument();
   });
 
   it("prints a parcel receipt through the browser", async () => {
@@ -791,8 +794,14 @@ describe("operator panel", () => {
     await user.click(screen.getByRole("button", { name: "Revogar administrador Admin Antigo" }));
     await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/companies/co1/admins/m-adm1/revoke")).toBe(true));
 
+    await user.click(screen.getByRole("tab", { name: "Empresas" }));
+    await user.click(await screen.findByRole("button", { name: "Suspender empresa Alfa Portaria" }));
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/companies/co1/suspend")).toBe(true));
+
     await user.click(screen.getByRole("tab", { name: "Condomínios" }));
-    expect(await screen.findByText(/Residencial Sol · Alfa Portaria · ACTIVE/)).toBeInTheDocument();
+    expect(await screen.findByText(/Residencial Sol · Alfa Portaria · ativo/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Suspender condomínio Residencial Sol" }));
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/condominiums/c1/suspend")).toBe(true));
     await user.type(screen.getByLabelText("Nome do condomínio"), "Residencial Lua");
     await user.click(screen.getByRole("button", { name: "Criar condomínio" }));
     await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/condominiums")?.body)

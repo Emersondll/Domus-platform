@@ -47,10 +47,11 @@ public class CommercialController {
      * @param id    identificador da empresa
      * @param name  nome da empresa
      * @param taxId CNPJ
+     * @param status ACTIVE ou SUSPENDED (acesso desligado, registros mantidos)
      */
-    public record CompanyResponse(UUID id, String name, String taxId) {
+    public record CompanyResponse(UUID id, String name, String taxId, String status) {
         static CompanyResponse from(OperatorCompany c) {
-            return new CompanyResponse(c.getId(), c.getName(), c.getTaxId());
+            return new CompanyResponse(c.getId(), c.getName(), c.getTaxId(), c.getStatus());
         }
     }
 
@@ -143,6 +144,46 @@ public class CommercialController {
     @GetMapping("/companies")
     public PageResponse<CompanyResponse> listCompanies(@PageableDefault(size = 20, sort = "name") Pageable pageable) {
         return PageResponse.of(service.listCompanies(pageable), CompanyResponse::from);
+    }
+
+    /**
+     * Atende `POST /companies/{companyId}/suspend` (só o administrador da plataforma).
+     *
+     * @param companyId empresa
+     */
+    @PostMapping("/companies/{companyId}/suspend")
+    public CompanyResponse suspendCompany(@PathVariable UUID companyId) {
+        return CompanyResponse.from(service.setCompanySuspended(companyId, true));
+    }
+
+    /**
+     * Atende `POST /companies/{companyId}/reactivate` (só o administrador da plataforma).
+     *
+     * @param companyId empresa
+     */
+    @PostMapping("/companies/{companyId}/reactivate")
+    public CompanyResponse reactivateCompany(@PathVariable UUID companyId) {
+        return CompanyResponse.from(service.setCompanySuspended(companyId, false));
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/suspend` (administrador da empresa dona ou da plataforma).
+     *
+     * @param condominiumId condomínio
+     */
+    @PostMapping("/condominiums/{condominiumId}/suspend")
+    public CondominiumResponse suspendCondominium(@PathVariable UUID condominiumId) {
+        return CondominiumResponse.from(service.setCondominiumSuspended(condominiumId, true));
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/reactivate` (administrador da empresa dona ou da plataforma).
+     *
+     * @param condominiumId condomínio
+     */
+    @PostMapping("/condominiums/{condominiumId}/reactivate")
+    public CondominiumResponse reactivateCondominium(@PathVariable UUID condominiumId) {
+        return CondominiumResponse.from(service.setCondominiumSuspended(condominiumId, false));
     }
 
     /**

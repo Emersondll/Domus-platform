@@ -154,22 +154,6 @@ public class AgentController {
     }
 
     /**
-     * Atende `POST /agent/heartbeat`.
-     *
-     * @param id identificador
-     * @param key chave
-     * @param backlog eventos pendentes no agente
-     * @param policyVersion versão de política
-     */
-    @PostMapping("/heartbeat")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void heartbeat(@RequestHeader("X-Agent-Id") UUID id, @RequestHeader("X-Agent-Key") String key,
-            @RequestHeader(value = "X-Agent-Backlog", required = false) Integer backlog,
-            @RequestParam(required = false) Long policyVersion) {
-        agents.authenticate(id, key, policyVersion, backlog);
-    }
-
-    /**
      * Atende `POST /agent/rotate-key`.
      *
      * @param id identificador

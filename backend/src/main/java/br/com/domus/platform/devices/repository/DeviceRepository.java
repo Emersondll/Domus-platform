@@ -26,16 +26,7 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
 
     List<Device> findByCondominiumIdAndEntranceAndVisitorEntranceTrue(UUID condominiumId, String entrance);
 
-    long countByCondominiumIdAndResidentViewableTrue(UUID condominiumId);
-
     List<Device> findByCondominiumIdAndResidentViewableTrue(UUID condominiumId);
-
-    /**
-     * Trava a linha do condomínio até o fim da transação: serializa quem libera câmeras ao morador, para o teto não ser
-     * ultrapassado por duas liberações simultâneas.
-     */
-    @Query(value = "SELECT id FROM condominium WHERE id = :condominiumId FOR UPDATE", nativeQuery = true)
-    List<UUID> lockCondominium(@Param("condominiumId") UUID condominiumId);
 
     boolean existsByCondominiumIdAndName(UUID condominiumId, String name);
 }

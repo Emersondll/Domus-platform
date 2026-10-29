@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface OperatorCompanyRepository extends JpaRepository<OperatorCompany, UUID> {
 
     boolean existsByTaxId(String taxId);
+
+    boolean existsByIdAndStatus(UUID id, String status);
 }

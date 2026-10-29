@@ -498,6 +498,13 @@ try:
         res.get_by_role("button", name="← Voltar ao início").click()
         expect(res.get_by_role("button", name="Último acesso")).to_contain_text("portaria", timeout=15000)
         check("o início mostra o último acesso do morador", True)
+        more(res, "Equipe")
+        expect(res.get_by_role("heading", name="Equipe da portaria")).to_be_visible()
+        expect(res.get_by_role("region", name="Equipe").get_by_role("listitem").first).to_be_visible(timeout=15000)
+        check("o morador vê a equipe da portaria (nome e função)",
+              res.get_by_role("region", name="Equipe").get_by_text(re.compile("Portaria remota|Síndico")).count() > 0)
+        res.get_by_role("button", name="← Voltar para Mais opções").click()
+        res.get_by_role("button", name="← Voltar ao início").click()
 
         pan.get_by_role("tab", name="Relatórios").click()
         pan.get_by_role("button", name="Consultar").click()
@@ -656,6 +663,9 @@ try:
             mgr.get_by_role("button", name="Exportar resumo (CSV)").click()
         check("síndico vê o resumo da atividade, a atividade por unidade e baixa o CSV",
               open(dl3.value.path(), encoding="utf-8").read().strip() != "")
+        with mgr.expect_download() as dl4:
+            mgr.get_by_role("button", name="Exportar por unidade (CSV)").click()
+        check("síndico baixa o CSV da atividade por unidade", open(dl4.value.path(), encoding="utf-8").read().strip() != "")
         mtokens = mgr.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (síndico)", "eyJ" not in mtokens)
 
@@ -712,6 +722,22 @@ try:
         expect(plat.get_by_text("Administrador revogado.")).to_be_visible()
         expect(plat.get_by_label("Administradores da empresa").get_by_text(f"Admin Sintetico {suf}")).to_have_count(0)
         check("a plataforma revoga o administrador da empresa pela tela", True)
+        plat.once("dialog", lambda d: d.accept())
+        plat.get_by_role("button", name=f"Suspender empresa {emp}").click()
+        expect(plat.get_by_text("Empresa suspensa.")).to_be_visible()
+        expect(plat.get_by_role("button", name=f"Reativar empresa {emp}")).to_be_visible()
+        plat.once("dialog", lambda d: d.accept())
+        plat.get_by_role("button", name=f"Reativar empresa {emp}").click()
+        expect(plat.get_by_text("Empresa reativada.")).to_be_visible()
+        check("a plataforma suspende e reativa a empresa pela tela", True)
+        plat.get_by_role("tab", name="Condomínios").click()
+        plat.once("dialog", lambda d: d.accept())
+        plat.get_by_role("button", name=f"Suspender condomínio {novo}").click()
+        expect(plat.get_by_text("Condomínio suspenso.")).to_be_visible()
+        plat.once("dialog", lambda d: d.accept())
+        plat.get_by_role("button", name=f"Reativar condomínio {novo}").click()
+        expect(plat.get_by_text("Condomínio reativado.")).to_be_visible()
+        check("a plataforma suspende e reativa um condomínio pela tela", True)
 
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)

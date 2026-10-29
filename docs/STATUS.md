@@ -9,10 +9,10 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 ## Evidências desta rodada (build limpo, executado de verdade)
 | Verificação | Resultado |
 |---|---|
-| `mvn -f backend/pom.xml verify` | **Rodada de 2026-10-29: exit 0, 0 falhas** (inclui `InvitationLimitIT` e o limite de 5 aberturas/min). Contagem anterior: **220 testes** (41 unitários + 179 integração com PostgreSQL real), 0 falhas (2026-10-28, após a validação do fluxo do administrador; testes organizados por domínio) |
+| `mvn -f backend/pom.xml verify` | **Rodada de 2026-10-29: exit 0, 0 falhas** (inclui `InvitationLimitIT`, o limite de 5 aberturas/min, `AdultsOnlyAppIT` e `SuspensionIT`). Contagem anterior: **220 testes** (41 unitários + 179 integração com PostgreSQL real), 0 falhas (2026-10-28, após a validação do fluxo do administrador; testes organizados por domínio) |
 | `mvn -f agent/pom.xml verify` | **43 testes**, 0 falhas; jar executável gerado |
 | `scripts/e2e-agent-update.sh` + `scripts/test-agent-launcher.sh` (reexecutados em 2026-10-27; o passo do reinício foi corrigido para parar o agente com TERM como o systemd, sem `timeout` sobre o launcher, e sem deixar java órfão) | OK: jars reais 1.0.0 → 1.1.0 assinada, reinício, confirmação; manifesto adulterado e de outra chave recusados; rollback do launcher (3 falhas) |
-| `cd web && npm test` / `npm run build` | **67** (painel) + **37** (app do morador); build com checagem de tipos ok, código de saída 0 (2026-10-29) |
+| `cd web && npm test` / `npm run build` | **67** (painel) + **39** (app do morador); build com checagem de tipos ok, código de saída 0 (2026-10-29) |
 | `npm audit --omit=dev` (código publicado) | 0 vulnerabilidades |
 | `scripts/e2e-contingency.sh` (**apaga o banco de desenvolvimento**: roda `docker compose down -v`) | (central e agente reais, `kill -9` da central) | OK: offline autoriza 1×, recusa reuso e token adulterado; na volta uso = 1/1, histórico `OFFLINE`, backlog 0, 0 conflitos |
 | `scripts/verify_keycloak.py` (Keycloak 26.8.1 real, reexecutado em 2026-10-28) | OK: operador é obrigado a configurar OTP, morador entra direto; PKCE (verifier errado 400, código reutilizado 400); API valida o token; bootstrap do 1º admin; provisionamento por `sub` |
@@ -62,6 +62,14 @@ morador (React + TypeScript), agente local de contingência (Java + SQLite). **F
 - **Audiência do token** (`aud=portaria-api`) e **renovação silenciosa do token** nos apps.
 - **Tema Domus** nos dois apps e no login do Keycloak.
 
+- **Suspensão de empresa e de condomínio (2026-10-29):** a plataforma suspende uma empresa; a plataforma ou o administrador da empresa suspende um condomínio. Suspenso, ninguém
+  daquele escopo (administrador, síndico, operador, morador) usa o app (403 "Access suspended"; a tela explica), o agente local e o equipamento do condomínio são recusados e as
+  sessões de vídeo abertas são revogadas. **Nada é apagado; reativar devolve tudo.** Ponto único: `AccessService.currentActor`/`levelFor`. Prova: `SuspensionIT` (3 testes) e o
+  navegador (`e2e-browser.py`, 76 verificações). **Limite honesto:** a porta física controlada só pelo agente em modo offline segue a política já baixada até ela vencer (TTL 6 h) — a
+  suspensão desliga o app e a central, não corta a energia do equipamento. O teste de carga (8 cenários) foi repetido depois da mudança: 0 erros.
+- **Equipe no app do morador e rotas ligadas às telas (2026-10-29):** aba "Equipe" (Mais) lista nome e função de quem atende o condomínio (`GET /members` visível a qualquer pessoa do
+  condomínio; só o síndico vê também os moradores); contador de avisos não lidos no botão Início; botão "Exportar por unidade (CSV)"; `POST /agent/heartbeat` removido (redundante).
+- **Câmeras do morador (D21, 2026-10-29):** 24 h, sem limite de quantidade e sem restrição por unidade (o teto de 4 foi removido).
 - **"Meus acessos" do morador (2026-10-26):** identidade de acesso (cartão, usuário do terminal, QR, app; referência cifrada e índice cego), registro das passagens só de
   pessoas cadastradas, sentido pelo ponto de acesso (sem sentido = "passagem"), tela do morador com filtro de período, "Último acesso" no início, consulta auditada,
   retenção de 90 dias (padrão), exportação e anonimização incluem o histórico e a foto. **Foto de cadastro com consentimento específico, versionado e revogável (apaga

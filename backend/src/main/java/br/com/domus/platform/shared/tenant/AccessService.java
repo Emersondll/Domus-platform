@@ -9,6 +9,7 @@ import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ForbiddenException;
 import br.com.domus.platform.shared.error.NotFoundException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,7 +53,22 @@ public class AccessService {
         AppUser user = users.findByExternalSubject(jwt.getSubject())
                 .filter(AppUser::isActive)
                 .orElseThrow(() -> new ForbiddenException("User is not registered or is inactive"));
-        return new Actor(user.getId(), memberships.findByUserIdAndActiveTrue(user.getId()));
+        List<Membership> all = memberships.findByUserIdAndActiveTrue(user.getId());
+        List<Membership> usable = all.stream().filter(m -> !isSuspended(m)).toList();
+        if (usable.isEmpty() && !all.isEmpty()) {
+            // empresa ou condomínio suspenso: o acesso ao app (equipe, moradores, administradores) fica desligado
+            throw new ForbiddenException("Access suspended");
+        }
+        return new Actor(user.getId(), usable);
+    }
+
+    /** O vínculo pertence a uma empresa ou a um condomínio suspenso (o administrador da plataforma nunca é suspenso). */
+    private boolean isSuspended(Membership m) {
+        return switch (m.getRole()) {
+            case PLATFORM_ADMIN -> false;
+            case COMPANY_ADMIN -> m.getOperatorCompanyId() != null && condominiums.isCompanySuspended(m.getOperatorCompanyId());
+            default -> m.getCondominiumId() != null && condominiums.isSuspended(m.getCondominiumId());
+        };
     }
 
     /**
@@ -73,7 +89,8 @@ public class AccessService {
                         companyId = condominiums.companyIdOf(condominiumId).orElse(null);
                         companyLookedUp = true;
                     }
-                    if (companyId != null && companyId.equals(m.getOperatorCompanyId())) {
+                    if (companyId != null && companyId.equals(m.getOperatorCompanyId())
+                            && !condominiums.isSuspended(condominiumId)) {
                         level = AccessLevel.MANAGE;
                     }
                 }

@@ -74,7 +74,21 @@ function Companies({ token }: { token: string }) {
     <div aria-label="Empresas operadoras">
       <h3>Empresas operadoras</h3>
       <ul>
-        {companies.map((c) => <li key={c.id}>{c.name} · CNPJ {c.taxId}</li>)}
+        {companies.map((c) => (
+          <li key={c.id}>{c.name} · CNPJ {c.taxId}{c.status === "SUSPENDED" && <span className="badge warn"> suspensa</span>}{" "}
+            <button className={c.status === "SUSPENDED" ? "" : "danger"}
+              aria-label={`${c.status === "SUSPENDED" ? "Reativar" : "Suspender"} empresa ${c.name}`} onClick={() => {
+                const suspend = c.status !== "SUSPENDED";
+                const text = suspend
+                  ? `Suspender ${c.name}? Administradores, síndicos, operadores e moradores dela perdem o acesso ao app; nada é apagado.`
+                  : `Reativar ${c.name}? O acesso de todos volta.`;
+                if (window.confirm(text)) {
+                  void run(async () => { await request(token, "POST", `/api/v1/companies/${c.id}/${suspend ? "suspend" : "reactivate"}`); },
+                    suspend ? "Empresa suspensa." : "Empresa reativada.");
+                }
+              }}>{c.status === "SUSPENDED" ? "Reativar" : "Suspender"}</button>
+          </li>
+        ))}
         {companies.length === 0 && <li>Nenhuma empresa cadastrada.</li>}
       </ul>
       <h3>Cadastrar empresa</h3>
@@ -147,13 +161,36 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setAllCompanies(companies); if (!companyId && companies[0]) setCompanyId(companies[0].id); }, [companies, companyId]);
 
+  /** Confere a situação atual no servidor antes de mudar (a lista pode estar velha) e só então pede a confirmação. */
+  async function toggle(c: CondoRow) {
+    setError(null);
+    setDone(null);
+    try {
+      const current = await request<CondoRow>(token, "GET", `/api/v1/condominiums/${c.id}`);
+      const suspend = current?.status !== "SUSPENDED";
+      const text = suspend
+        ? `Suspender ${c.name}? Síndico, operadores e moradores perdem o acesso ao app; nada é apagado.`
+        : `Reativar ${c.name}? O acesso de todos volta.`;
+      if (!window.confirm(text)) return;
+      await request(token, "POST", `/api/v1/condominiums/${c.id}/${suspend ? "suspend" : "reactivate"}`);
+      setDone(suspend ? "Condomínio suspenso." : "Condomínio reativado.");
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
   const companyName = (id: string) => allCompanies.find((c) => c.id === id)?.name ?? "—";
   return (
     <div aria-label="Condomínios da administração">
       <h3>Condomínios</h3>
       <ul>
         {condos.map((c) => (
-          <li key={c.id}>{c.name}{platformAdmin ? ` · ${companyName(c.operatorCompanyId)}` : ""} · {c.status}</li>
+          <li key={c.id}>{c.name}{platformAdmin ? ` · ${companyName(c.operatorCompanyId)}` : ""} · {c.status === "SUSPENDED" ? "suspenso" : "ativo"}{" "}
+            <button className={c.status === "SUSPENDED" ? "" : "danger"}
+              aria-label={`${c.status === "SUSPENDED" ? "Reativar" : "Suspender"} condomínio ${c.name}`} onClick={() => toggle(c)}>
+              {c.status === "SUSPENDED" ? "Reativar" : "Suspender"}</button>
+          </li>
         ))}
         {condos.length === 0 && <li>Nenhum condomínio.</li>}
       </ul>

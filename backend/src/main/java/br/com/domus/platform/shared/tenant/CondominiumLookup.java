@@ -7,4 +7,10 @@ import java.util.UUID;
 public interface CondominiumLookup {
 
     Optional<UUID> companyIdOf(UUID condominiumId);
+
+    /** Verdadeiro se o condomínio ou a empresa dona dele está suspensa (acesso ao app desligado, registros mantidos). */
+    boolean isSuspended(UUID condominiumId);
+
+    /** Verdadeiro se a empresa operadora está suspensa. */
+    boolean isCompanySuspended(UUID companyId);
 }

@@ -57,7 +57,7 @@ O recurso de foto vem **desligado** (`RESIDENT_PHOTO_ENABLED=false`) até D16. *
 
 ## Vídeo ao vivo das câmeras de entrada para o morador (2026-10-26)
 
-O síndico escolhe até 4 câmeras de entrada que os moradores podem ver ao vivo (padrão: nenhuma). Não há gravação nem histórico de
+O síndico escolhe quais câmeras de entrada (sem limite de quantidade, 24 horas, decisão de 2026-10-29) que os moradores podem ver ao vivo (padrão: nenhuma). Não há gravação nem histórico de
 vídeo; cada abertura é registrada na auditoria (`camera.view.resident`). A imagem mostra terceiros (visitantes, entregadores,
 outros moradores). **Não declaro conformidade:** base legal, aviso de câmeras no local e quem pode ver exigem parecer jurídico
 (D21 em `pendencias.md`) antes de liberar em produção.

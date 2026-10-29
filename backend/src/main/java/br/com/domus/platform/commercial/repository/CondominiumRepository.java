@@ -17,4 +17,10 @@ public interface CondominiumRepository extends JpaRepository<Condominium, UUID> 
                                   @Param("companyIds") Collection<UUID> companyIds, Pageable pageable);
 
     boolean existsByOperatorCompanyIdAndName(UUID operatorCompanyId, String name);
+
+    java.util.List<Condominium> findByOperatorCompanyId(UUID operatorCompanyId);
+
+    @Query("select count(c) > 0 from Condominium c, OperatorCompany o where c.id = :id and o.id = c.operatorCompanyId "
+            + "and (c.status = 'SUSPENDED' or o.status = 'SUSPENDED')")
+    boolean isSuspendedOrCompanySuspended(@Param("id") UUID condominiumId);
 }

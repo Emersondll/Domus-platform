@@ -24,5 +24,8 @@ export function useCondoList<T>(token: string, path: string, pollMs?: number) {
 }
 
 export function errorMessage(e: unknown): string {
+  if (e instanceof ApiError && e.status === 403 && e.detail === "Access suspended") {
+    return "O acesso desta empresa ou condomínio está suspenso. Fale com a administração da plataforma.";
+  }
   return e instanceof ApiError ? e.detail : "Unexpected error";
 }

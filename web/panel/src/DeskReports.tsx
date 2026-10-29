@@ -76,6 +76,21 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
     }
   }
 
+  async function exportByUnitCsv() {
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity/by-unit.csv?${query()}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new ApiError(res.status, res.status === 400 ? "Período inválido: use no máximo 31 dias." : res.statusText);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(await res.blob());
+      link.download = `atividade-por-unidade-${from}-a-${to}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) {
+      setError(e instanceof ApiError && e.status === 403 ? "O relatório por unidade é do síndico ou da administração." : errorMessage(e));
+    }
+  }
+
   async function exportCsv() {
     setError(null);
     try {
@@ -136,6 +151,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
           <h4>Atividade por unidade</h4>
           <BarChart title="Encomendas recebidas por unidade" bars={byUnit.slice(0, 10).map((u) => ({ label: u.label, value: u.parcelsReceived }))} />
           <BarChart title="Atendimentos por unidade" bars={byUnit.slice(0, 10).map((u) => ({ label: u.label, value: u.calls }))} />
+          <button onClick={exportByUnitCsv}>Exportar por unidade (CSV)</button>
           <p className="hint">Mostra as 10 unidades mais ativas (a API devolve até 500). Só números por unidade, sem nomes; é dado de rotina da família e fica restrito ao síndico e registrado na auditoria.</p>
         </section>
       )}

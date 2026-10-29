@@ -44,6 +44,8 @@ function fakeApi() {
     const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
     if (url.startsWith("/dev/token")) return json({ access_token: "t" });
     if (url === "/api/v1/me/residencies") return json(residency);
+    if (url.endsWith("/me/notifications/unread-count")) return json({ unread: unreadCount });
+    if (url.endsWith("/members")) return json([{ id: "s1", role: "OPERATOR", displayName: "Maria da Portaria" }, { id: "s2", role: "CONDO_MANAGER", displayName: "Carlos Síndico" }]);
     if (url.endsWith("/me/notifications")) return json(page(myNotes));
     if (url.endsWith("/me/common-areas")) return json(page([area]));
     if (url.endsWith("/me/reservations") && method === "POST")
@@ -98,12 +100,14 @@ async function openTab(name: string) {
   render(<App />);
   await user.click(await screen.findByRole("button", { name: /Entrar/ }));
   await screen.findByText(/Residencial Sol/);
-  if (["Avisos", "Meus acessos", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"].includes(name)) {
+  if (["Avisos", "Meus acessos", "Convites", "Reservas", "Veículos", "Minha casa", "Equipe", "Perfil"].includes(name)) {
     await user.click(screen.getByRole("button", { name: "Mais" }));
   }
   await user.click(screen.getByRole("button", { name }));
   return user;
 }
+
+let unreadCount = 0;
 
 describe("resident app", () => {
   beforeEach(() => {
@@ -114,6 +118,7 @@ describe("resident app", () => {
     myCalls = [];
     myParcels = [];
     myNotes = [];
+    unreadCount = 0;
     myInvitations = [];
     myHistory = [];
     myVisitRequests = [];
@@ -126,6 +131,22 @@ describe("resident app", () => {
     vi.stubGlobal("fetch", fakeApi());
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  it("shows who is on the staff by name and role", async () => {
+    await openTab("Equipe");
+    expect(await screen.findByText("Maria da Portaria")).toBeInTheDocument();
+    expect(screen.getByText(/Portaria remota/)).toBeInTheDocument();
+    expect(screen.getByText("Carlos Síndico")).toBeInTheDocument();
+    expect(screen.getByText(/Síndico \/ administração/)).toBeInTheDocument();
+  });
+
+  it("shows the unread notices count on the home button", async () => {
+    unreadCount = 3;
+    render(<App />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Entrar/ }));
+    expect(await screen.findByTitle("3 avisos não lidos")).toBeInTheDocument();
+    expect(calls.some((c) => c.url.endsWith("/me/notifications/unread-count"))).toBe(true);
+  });
 
   it("shows the QR code once after creating an invitation and sends no personal data in it", async () => {
     const user = await openTab("Convites");

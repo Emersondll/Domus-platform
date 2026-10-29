@@ -62,7 +62,7 @@ export type Pet = { id: string; unitId: string; name: string; species: string; b
 export type Member = { id: string; userId: string; role: string; condominiumId: string | null; companyId: string | null; residentId: string | null;
   displayName?: string | null };
 
-export type Company = { id: string; name: string; taxId: string };
+export type Company = { id: string; name: string; taxId: string; status?: string };
 export type AdminScope = { platformAdmin: boolean; operator: boolean; companies: Company[] };
 export type CondoRow = { id: string; operatorCompanyId: string; name: string; status: string };
 export type AgentRow = { id: string; name: string; status: string; online: boolean; lastSeenAt: string | null;

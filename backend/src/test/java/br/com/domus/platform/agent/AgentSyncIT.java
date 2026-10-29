@@ -297,7 +297,7 @@ class AgentSyncIT extends AbstractIntegrationTest {
                         + agentId + "\"}}")).andExpect(status().isCreated()).andReturn());
         String deviceId = dev.get("id").asString();
         // o agente precisa estar online (visto recentemente)
-        mvc.perform(agent(post("/api/v1/agent/heartbeat"), agentId, agentKey)).andExpect(status().isNoContent());
+        mvc.perform(agent(get("/api/v1/agent/commands"), agentId, agentKey)).andExpect(status().isOk());
 
         mvc.perform(post("/api/v1/operator/shifts/start").with(as("p7-op")));
         mvc.perform(post("/api/v1/condominiums/" + condo + "/calls").with(as("p7-op")).contentType(MediaType.APPLICATION_JSON).content("{}"));
@@ -360,8 +360,8 @@ class AgentSyncIT extends AbstractIntegrationTest {
         String newKey = body(mvc.perform(agent(post("/api/v1/agent/rotate-key"), id, oldKey)).andExpect(status().isOk()).andReturn())
                 .get("apiKey").asString();
         assertThat(newKey).isNotEqualTo(oldKey);
-        mvc.perform(agent(post("/api/v1/agent/heartbeat"), id, oldKey)).andExpect(status().isNoContent()); // janela de transição
-        mvc.perform(agent(post("/api/v1/agent/heartbeat"), id, newKey)).andExpect(status().isNoContent());
-        mvc.perform(agent(post("/api/v1/agent/heartbeat"), id, oldKey)).andExpect(status().isForbidden());
+        mvc.perform(agent(get("/api/v1/agent/commands"), id, oldKey)).andExpect(status().isOk()); // janela de transição
+        mvc.perform(agent(get("/api/v1/agent/commands"), id, newKey)).andExpect(status().isOk());
+        mvc.perform(agent(get("/api/v1/agent/commands"), id, oldKey)).andExpect(status().isForbidden());
     }
 }

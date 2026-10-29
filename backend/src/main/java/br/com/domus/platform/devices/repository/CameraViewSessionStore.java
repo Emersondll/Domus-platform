@@ -70,6 +70,14 @@ public class CameraViewSessionStore {
                 .param("now", ts(now)).update();
     }
 
+    /** Revoga todas as sessões ativas de um condomínio. */
+    public int revokeByCondominium(UUID condominiumId, String reason, Instant now) {
+        return jdbc.sql("""
+                UPDATE camera_view_session SET revoked_at = :now, revoked_reason = :reason
+                WHERE condominium_id = :condo AND revoked_at IS NULL
+                """).param("condo", condominiumId).param("reason", reason).param("now", ts(now)).update();
+    }
+
     /** Revoga as sessões ativas de um usuário num condomínio. */
     public int revokeByUser(UUID userId, UUID condominiumId, String reason, Instant now) {
         return jdbc.sql("""

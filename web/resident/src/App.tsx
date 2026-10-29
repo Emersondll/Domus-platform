@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { devLogin, request, setUnauthorizedHandler } from "../../shared/src/api";
+import { ApiError, devLogin, request, setUnauthorizedHandler } from "../../shared/src/api";
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { handleCallback, loadOidcConfig, logout, startLogin, type OidcConfig } from "../../shared/src/oidc";
 import { Home } from "./Home";
@@ -13,11 +13,12 @@ import { Notices } from "./Notices";
 import { Reservations } from "./Reservations";
 import { MyAccesses } from "./MyAccesses";
 import { ResidentCameras } from "./ResidentCameras";
+import { Staff } from "./Staff";
 import type { Residency } from "./types";
 
 /** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
 const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
-const MORE = ["Avisos", "Meus acessos", "Câmeras", "Convites", "Reservas", "Veículos", "Minha casa", "Perfil"] as const;
+const MORE = ["Avisos", "Meus acessos", "Câmeras", "Convites", "Reservas", "Veículos", "Minha casa", "Equipe", "Perfil"] as const;
 type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
 const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
@@ -61,11 +62,28 @@ export function App() {
     }
   }
 
+  // contador de avisos não lidos no botão Início (consulta leve, sem trazer a lista)
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!token || !condo) return;
+    let alive = true;
+    const load = () => request<{ unread: number }>(token, "GET", `/api/v1/condominiums/${condo}/me/notifications/unread-count`)
+      .then((r) => { if (alive) setUnread(r?.unread ?? 0); }).catch(() => undefined);
+    void load();
+    const id = setInterval(load, 30000);
+    return () => { alive = false; clearInterval(id); };
+  }, [token, condo]);
+
   useEffect(() => {
     if (!token) return;
     request<Residency[]>(token, "GET", "/api/v1/me/residencies").then((r) => {
       setResidencies(r ?? []);
       setCondo(r?.[0]?.condominiumId ?? null);
+    }).catch((e) => {
+      // 403: o condomínio ou a empresa operadora está suspensa (os registros ficam; só o acesso é desligado)
+      setError(e instanceof ApiError && e.status === 403
+        ? "O acesso ao seu condomínio está suspenso. Fale com a administração."
+        : "Não foi possível carregar a sua residência. Tente novamente.");
     });
   }, [token]);
 
@@ -117,7 +135,9 @@ export function App() {
         )}
       </header>
       <main>
-        {!condo && <p>Nenhuma residência vinculada a este usuário.</p>}
+        {!condo && (error
+          ? <p role="alert" className="error">{error}</p>
+          : <p>Nenhuma residência vinculada a este usuário.</p>)}
         {condo && tab === "Mais" && (
           <section aria-label="Mais opções">
             <h2>Mais opções</h2>
@@ -144,11 +164,15 @@ export function App() {
         {condo && tab === "Reservas" && <Reservations token={token} condo={condo} />}
         {condo && tab === "Veículos" && <Vehicles token={token} condo={condo} />}
         {condo && tab === "Minha casa" && <Household token={token} condo={condo} />}
+        {condo && tab === "Equipe" && <Staff token={token} condo={condo} />}
         {condo && tab === "Perfil" && <ProfilePage token={token} condo={condo} />}
       </main>
       <nav aria-label="Seções">
         {PRIMARY.map((t) => (
-          <button key={t} aria-current={tab === t} onClick={() => setTab(t)}>{t}</button>
+          <button key={t} aria-current={tab === t} onClick={() => setTab(t)}
+            title={t === "Início" && unread > 0 ? `${unread} avisos não lidos` : undefined}>
+            {t}{t === "Início" && unread > 0 && <span className="count" aria-hidden="true">{unread}</span>}
+          </button>
         ))}
         <button aria-current={isMore(tab)} onClick={() => setTab("Mais")}>Mais</button>
       </nav>

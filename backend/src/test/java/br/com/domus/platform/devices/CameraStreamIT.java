@@ -202,28 +202,23 @@ class CameraStreamIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void atMostFourCamerasCanBeReleasedAndDeactivatingWithdrawsIt() throws Exception {
+    void anyNumberOfCamerasCanBeReleasedAndDeactivatingWithdrawsIt() throws Exception {
         String[] ids = new String[5];
         for (int i = 0; i < 5; i++) {
             ids[i] = registerCamera("Cam Lim " + i, "{\"rtspUrl\":\"rtsp://localhost:8554/l" + i + "\"}");
         }
-        // as câmeras liberadas em outros testes da classe contam; libera até completar 4 e confere o 409 no seguinte
-        int released = 0;
+        // decisão do titular (D21): sem limite de quantidade; todas as cinco são liberadas
         for (String id : ids) {
-            int st = mvc.perform(post(devices() + "/" + id + "/resident-viewable").with(as("cs-manager"))
-                    .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andReturn().getResponse().getStatus();
-            if (st == 200) released++;
-            else org.junit.jupiter.api.Assertions.assertEquals(409, st);
+            mvc.perform(post(devices() + "/" + id + "/resident-viewable").with(as("cs-manager"))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andExpect(status().isOk());
         }
-        org.junit.jupiter.api.Assertions.assertTrue(released >= 1 && released <= 4);
-        org.junit.jupiter.api.Assertions.assertTrue(released < 5, "a quinta liberação deve ser recusada");
         // desativar a câmera retira a liberação
         mvc.perform(post(devices() + "/" + ids[0] + "/active").with(as("cs-manager")).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"active\":false}")).andExpect(status().isOk()).andExpect(jsonPath("$.residentViewable").value(false));
     }
 
     @Test
-    void simultaneousReleasesNeverExceedTheCap() throws Exception {
+    void simultaneousReleasesAreAllAccepted() throws Exception {
         OperatorCompany c = companies.save(new OperatorCompany("CS Race Company", "cs-race-0000"));
         UUID raceCondo = condominiums.save(new Condominium(c.getId(), "CS Race", null)).getId();
         member("cs-race-manager", Role.CONDO_MANAGER, raceCondo);
@@ -256,7 +251,7 @@ class CameraStreamIT extends AbstractIntegrationTest {
             else if (code == 409) conflict++;
         }
         pool.shutdown();
-        org.assertj.core.api.Assertions.assertThat(ok).isEqualTo(4);
-        org.assertj.core.api.Assertions.assertThat(conflict).isEqualTo(4);
+        org.assertj.core.api.Assertions.assertThat(ok).isEqualTo(8);
+        org.assertj.core.api.Assertions.assertThat(conflict).isZero();
     }
 }

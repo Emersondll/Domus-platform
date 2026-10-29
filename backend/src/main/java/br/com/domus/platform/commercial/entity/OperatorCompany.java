@@ -12,6 +12,8 @@ import java.util.UUID;
 @Table(name = "operator_company")
 public class OperatorCompany {
 
+    private static final String SUSPENDED = "SUSPENDED";
+
     @Id
     private UUID id;
 
@@ -55,5 +57,15 @@ public class OperatorCompany {
     /** Retorna o estado atual. */
     public String getStatus() {
         return status;
+    }
+
+    /** Verdadeiro quando o acesso está suspenso (os registros ficam; só o acesso é desligado). */
+    public boolean isSuspended() {
+        return SUSPENDED.equals(status);
+    }
+
+    /** Suspende ou reativa; os registros nunca são apagados. */
+    public void setSuspended(boolean suspended) {
+        this.status = suspended ? SUSPENDED : "ACTIVE";
     }
 }

@@ -8,6 +8,7 @@ import br.com.domus.platform.commercial.repository.BlockRepository;
 import br.com.domus.platform.commercial.repository.CondominiumRepository;
 import br.com.domus.platform.commercial.repository.OperatorCompanyRepository;
 import br.com.domus.platform.commercial.repository.UnitRepository;
+import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ConflictException;
@@ -39,17 +40,19 @@ public class CommercialService {
     private final UnitRepository units;
     private final AccessService access;
     private final AuditService audit;
+    private final ViewSessionRevoker viewSessions;
 
     /** Construtor de CommercialService; recebe as dependências por injeção. */
     public CommercialService(OperatorCompanyRepository companies, CondominiumRepository condominiums,
                              BlockRepository blocks, UnitRepository units, AccessService access,
-                             AuditService audit) {
+                             AuditService audit, ViewSessionRevoker viewSessions) {
         this.companies = companies;
         this.condominiums = condominiums;
         this.blocks = blocks;
         this.units = units;
         this.access = access;
         this.audit = audit;
+        this.viewSessions = viewSessions;
     }
 
     /**
@@ -144,6 +147,10 @@ public class CommercialService {
     @Transactional(readOnly = true)
     public Page<Condominium> listCondominiums(Pageable pageable) {
         Actor actor = access.currentActor();
+        if (access.isPlatformAdmin(actor)) {
+            // dado comercial (nome e situação), sem dado de morador: a plataforma precisa ver todos para suspender e reativar
+            return condominiums.findAll(pageable);
+        }
         Set<UUID> condominiumIds = new HashSet<>(access.directCondominiumIds(actor));
         Set<UUID> companyIds = new HashSet<>(access.companyIdsAdministeredBy(actor));
         condominiumIds.add(NO_ID);
@@ -158,9 +165,65 @@ public class CommercialService {
      */
     @Transactional(readOnly = true)
     public Condominium getCondominium(UUID condominiumId) {
-        access.require(condominiumId, AccessLevel.READ, "condominium.read");
-        return condominiums.findById(condominiumId)
+        Condominium condominium = condominiums.findById(condominiumId)
                 .orElseThrow(() -> new NotFoundException("Condominium not found"));
+        // quem administra a empresa (ou a plataforma) consulta o condomínio mesmo suspenso, para poder reativá-lo
+        Actor actor = access.currentActor();
+        if (!access.isPlatformAdmin(actor)
+                && !access.companyIdsAdministeredBy(actor).contains(condominium.getOperatorCompanyId())) {
+            access.require(condominiumId, AccessLevel.READ, "condominium.read");
+        }
+        return condominium;
+    }
+
+    /**
+     * Suspende ou reativa uma empresa operadora (só o administrador da plataforma). Suspensa, nenhum administrador, síndico,
+     * operador ou morador dela usa o app, e agentes e equipamentos dos condomínios dela são recusados. Nada é apagado.
+     *
+     * @param companyId empresa
+     * @param suspended verdadeiro para suspender, falso para reativar
+     */
+    @Transactional
+    public OperatorCompany setCompanySuspended(UUID companyId, boolean suspended) {
+        String action = suspended ? "company.suspend" : "company.reactivate";
+        Actor actor = access.requirePlatformAdmin(action);
+        OperatorCompany company = companies.findById(companyId)
+                .orElseThrow(() -> new NotFoundException("Company not found"));
+        company.setSuspended(suspended);
+        if (suspended) {
+            condominiums.findByOperatorCompanyId(companyId)
+                    .forEach(c -> viewSessions.revokeForCondominium(c.getId(), "COMPANY_SUSPENDED"));
+        }
+        audit.record(actor.userId(), companyId, null, action, "company", companyId.toString(), AuditOutcome.SUCCESS);
+        return company;
+    }
+
+    /**
+     * Suspende ou reativa um condomínio (administrador da empresa dona ou da plataforma). Mesmo efeito da suspensão da
+     * empresa, restrito a este condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param suspended verdadeiro para suspender, falso para reativar
+     */
+    @Transactional
+    public Condominium setCondominiumSuspended(UUID condominiumId, boolean suspended) {
+        String action = suspended ? "condominium.suspend" : "condominium.reactivate";
+        Actor actor = access.currentActor();
+        Condominium condominium = condominiums.findById(condominiumId).orElse(null);
+        boolean allowed = condominium != null && (access.isPlatformAdmin(actor)
+                || access.companyIdsAdministeredBy(actor).contains(condominium.getOperatorCompanyId()));
+        if (!allowed) {
+            audit.record(actor.userId(), null, condominiumId, action, "condominium", condominiumId.toString(),
+                    AuditOutcome.DENIED);
+            throw new NotFoundException("Condominium not found");
+        }
+        condominium.setSuspended(suspended);
+        if (suspended) {
+            viewSessions.revokeForCondominium(condominiumId, "CONDOMINIUM_SUSPENDED");
+        }
+        audit.record(actor.userId(), condominium.getOperatorCompanyId(), condominiumId, action, "condominium",
+                condominiumId.toString(), AuditOutcome.SUCCESS);
+        return condominium;
     }
 
     /**

@@ -6,12 +6,15 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 |---|---|---|---|
 | GET | `/api/v1/agent/commands` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/events` | agente/dispositivo/mídia | sim |
-| POST | `/api/v1/agent/heartbeat` | agente/dispositivo/mídia | **não** |
 | GET | `/api/v1/agent/policy` | agente/dispositivo/mídia | sim |
 | POST | `/api/v1/agent/rotate-key` | agente/dispositivo/mídia | sim |
 | GET | `/api/v1/companies` | condomínio | sim |
 | POST | `/api/v1/companies` | condomínio | sim |
+| GET | `/api/v1/companies/{companyId}/admins` | condomínio | sim |
 | POST | `/api/v1/companies/{companyId}/admins` | condomínio | sim |
+| POST | `/api/v1/companies/{companyId}/admins/{membershipId}/revoke` | condomínio | sim |
+| POST | `/api/v1/companies/{companyId}/reactivate` | condomínio | sim |
+| POST | `/api/v1/companies/{companyId}/suspend` | condomínio | sim |
 | GET | `/api/v1/condominiums` | condomínio | sim |
 | POST | `/api/v1/condominiums` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}` | condomínio | sim |
@@ -42,6 +45,9 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/devices/permissions` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/active` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/credentials` | condomínio | sim |
+| PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/credentials` | condomínio | sim |
+| DELETE | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/credentials` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/open` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/refresh-status` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/devices/{deviceId}/resident-openable` | condomínio | sim |
@@ -80,7 +86,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/me/messages` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/messages/unread` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/notifications` | morador | sim |
-| GET | `/api/v1/condominiums/{condominiumId}/me/notifications/unread-count` | morador | **não** |
+| GET | `/api/v1/condominiums/{condominiumId}/me/notifications/unread-count` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/notifications/{notificationId}/read` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/panic` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/parcels` | morador | sim |
@@ -119,10 +125,13 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | POST | `/api/v1/condominiums/{condominiumId}/pets` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/pets/{petId}` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/pets/{petId}/remove` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/reactivate` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/remote-open` | condomínio | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/remote-open` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/reports/activity` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/reports/activity.csv` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/reports/activity/by-unit` | condomínio | sim |
+| GET | `/api/v1/condominiums/{condominiumId}/reports/activity/by-unit.csv` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/reservations` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/reservations/{reservationId}/cancel` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/residents` | condomínio | sim |
@@ -138,6 +147,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execuç�
 | GET | `/api/v1/condominiums/{condominiumId}/residents/{residentId}/photo-status` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/shift-log` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/shift-log` | condomínio | sim |
+| POST | `/api/v1/condominiums/{condominiumId}/suspend` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/sync-conflicts` | condomínio | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/sync-conflicts/{conflictId}/resolve` | condomínio | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/units` | condomínio | sim |

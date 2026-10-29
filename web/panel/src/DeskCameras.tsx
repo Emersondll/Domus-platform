@@ -6,7 +6,6 @@ import { CameraPlayer } from "../../shared/src/CameraPlayer";
 import { errorMessage, useCondoList } from "./useCondoList";
 
 const MAX_LIVE = 4;
-const MAX_RESIDENT = 4; // igual ao limite do servidor (DeviceService.MAX_RESIDENT_CAMERAS)
 const STATUS_TEXT: Record<string, string> = { ONLINE: "online", OFFLINE: "offline", UNKNOWN: "estado desconhecido" };
 
 /**
@@ -121,7 +120,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         servidor de mídia ligado (docs/cameras.md). Ver a imagem fica registrado na auditoria. Nenhuma imagem é simulada.
       </p>
       <section aria-label="Câmeras para moradores" className="camera-monitor">
-        <h4>Câmeras para moradores: {released.length} de {MAX_RESIDENT} liberadas</h4>
+        <h4>Câmeras para moradores: {released.length} liberadas</h4>
         {released.length === 0 && <p className="hint">Nenhuma câmera liberada: os moradores não veem vídeo. Confira o vídeo com "Ver ao vivo" antes de liberar.</p>}
         <ul>
           {released.map((c) => <li key={c.id}>{c.name} ({c.entrance}){canManage && <>{" "}<button onClick={() => act(c.id, "resident-viewable", { enabled: false })}
@@ -129,7 +128,6 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         </ul>
         {!permsLoaded && <p className="hint" role="status">Carregando permissões…</p>}
         {permsLoaded && !canManage && <p className="hint">Só o síndico ou a administração libera câmeras aos moradores.</p>}
-        {canManage && released.length >= MAX_RESIDENT && <p className="hint">Limite de {MAX_RESIDENT} câmeras atingido. Retire uma para liberar outra.</p>}
       </section>
       {watching.length > 0 && (
         <div className="camera-grid" aria-label="Câmeras ao vivo">
@@ -158,8 +156,6 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
               aria-label={`${c.active === false ? "Reativar" : "Desativar"} ${c.name}`}>{c.active === false ? "Reativar" : "Desativar"}</button>{" "}
             {c.active !== false && c.liveVideo && (
               <button onClick={() => act(c.id, "resident-viewable", { enabled: !c.residentViewable })}
-                disabled={!c.residentViewable && released.length >= MAX_RESIDENT}
-                title={!c.residentViewable && released.length >= MAX_RESIDENT ? `Já há ${MAX_RESIDENT} câmeras liberadas. Retire uma antes.` : undefined}
                 aria-label={`${c.residentViewable ? "Retirar" : "Liberar"} ${c.name} ${c.residentViewable ? "do" : "para o"} morador`}>
                 {c.residentViewable ? "Retirar do morador" : "Liberar ao morador"}
               </button>

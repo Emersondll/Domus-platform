@@ -110,7 +110,7 @@ publica, HLS 200, sem token 401, o ffmpeg morto volta, agente parado = vídeo so
   retira a liberação. Sem gravação.
   **Quem faz o quê no painel (aba Câmeras):** o operador vê o estado e o vídeo; cadastrar, editar, desativar, marcar a câmera de entrada
   de visitas e liberar ao morador só aparecem para síndico ou administração (a tela consulta `GET /devices/permissions`; o servidor
-  continua sendo quem decide). O quadro "Câmeras para moradores: X de 4 liberadas" mostra o que o morador vê e bloqueia a quinta.
+  continua sendo quem decide). O quadro "Câmeras para moradores: X liberadas" mostra o que o morador vê. Desde 2026-10-29 (decisão do titular) não há limite de câmeras liberadas, de horário (24 h) nem de unidade.
   Ao liberar uma câmera, os moradores recebem a notificação "Nova câmera disponível" (aba Avisos), e o app pede a ciência de que
   as imagens mostram outras pessoas antes de abrir o vídeo (ciência de tela, não consentimento jurídico). A decisão jurídica de mostrar imagem de áreas comuns aos moradores está em `pendencias.md` (D21).
 - **Produção:** `/internal/*` não pode ser publicado no proxy reverso (o `Caddyfile` bloqueia `/internal` com 404; confira se mudar o proxy); o MediaMTX precisa de TLS

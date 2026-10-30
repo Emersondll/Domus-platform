@@ -47,7 +47,7 @@ Exige **Java 26** instalado (declarado só como `Recommends`, porque nem toda di
 metadados e sintaxe dos scripts (`sh -n`); **instalação real com `dpkg -i` num contêiner Ubuntu limpo com Java 26 (2026-10-29, sem rede):** o usuário e o grupo `portaria-agent` são criados,
 `/var/lib/portaria-agent` e `/etc/portaria-agent` ficam com modo 750, o jar inicial é copiado, o serviço **não** é habilitado nem iniciado, reinstalar **preserva** o jar já em uso (a atualização segura),
 `dpkg -r` e `dpkg -P` mantêm os dados do agente em `/var/lib` (de propósito: a fila local não é apagada por remoção do pacote). Sem systemd no contêiner, a dependência foi ignorada
-(`--force-depends`). **Não validado:** `lintian` (não instalado aqui), `apt install` a partir de um repositório e o ciclo de vida com systemd real.
+(`--force-depends`). **Validado em 2026-10-29 (Debian estável limpo, com rede):** `lintian` sem erros (restou só o aviso de que ele não conhece a versão de classe do Java 26); `apt install` do arquivo, reinstalar, `apt remove` e `purge` funcionam e mantêm `/var/lib/portaria-agent`. O pacote usa `/usr/lib/systemd/system`, compressão xz, `changelog.gz`, copyright no formato Debian e depende de `adduser`; o launcher continua em `/opt/portaria-agent` de propósito (override do `lintian` documentado no pacote). **Não validado:** instalar a partir de um repositório apt próprio (não existe) e o ciclo de vida com systemd real.
 
 ## Atualização segura (opcional)
 Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com `manifest.json` e os jars) e `PORTARIA_UPDATE_PUBLIC_KEY`.
@@ -71,10 +71,10 @@ duplicados; 6 credencial e política vencidas; 7 revogação antes e depois da q
 central com `kill -9`, valida offline e confere a reconciliação.
 
 ## Publicação de vídeo de câmeras atrás de NAT (opcional, desligada por padrão)
-Com `PORTARIA_VIDEO_CAMERAS`, `PORTARIA_VIDEO_PUBLISH_URL` e `PORTARIA_VIDEO_PUBLISH_SECRET` definidos, o agente puxa o RTSP local de cada
+Com `PORTARIA_VIDEO_CAMERAS` e `PORTARIA_VIDEO_PUBLISH_URL` definidos, o agente (que publica com a **própria identidade e chave**, `agent-<id>` + chave atual; `PORTARIA_VIDEO_PUBLISH_SECRET` só para o modo de segredo único de teste) puxa o RTSP local de cada
 câmera e o publica no servidor de mídia da central com `ffmpeg` (precisa estar instalado; `PORTARIA_FFMPEG` muda o caminho). É sempre de
 dentro para fora. Detalhes, limites e prova em `docs/cameras.md`. `br.com.domus.agent.video.VideoRelayCli` roda só essa parte (diagnóstico).
-Testes: 7 de unidade (comando, configuração, supervisão) e `scripts/e2e-agent-video.py`.
+Testes: 8 de unidade (comando, configuração, chave rotacionada, supervisão) e `scripts/e2e-agent-video.py` (também no CI, job "Vídeo do agente").
 
 ## Limitações conhecidas (honestas)
 - **Atualização:** não há rotação da chave de lançamento (trocá-la exige reinstalar a chave pública nos agentes); não há instalador/pacote (.deb); só Linux/systemd; o jar

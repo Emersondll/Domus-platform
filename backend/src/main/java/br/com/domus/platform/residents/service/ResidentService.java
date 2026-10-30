@@ -43,7 +43,7 @@ public class ResidentService {
      *
      * @param condominiumId condomínio
      * @param unitId unidade
-     * @param fullName full name
+     * @param fullName nome completo
      * @param email e-mail
      * @param phone telefone de contato
      * @param type tipo

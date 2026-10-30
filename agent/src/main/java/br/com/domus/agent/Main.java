@@ -71,7 +71,7 @@ public final class Main {
                     AgentUpdater.runningVersion());
         });
         // Vídeo de câmeras atrás de NAT: só liga se PORTARIA_VIDEO_CAMERAS estiver configurado (desligado por padrão).
-        VideoRelay relay = VideoRelayConfig.fromEnv(System.getenv()).map(VideoRelay::new).orElse(null);
+        VideoRelay relay = VideoRelayConfig.fromEnv(System.getenv(), cfg.agentId(), apiKey::get).map(VideoRelay::new).orElse(null);
         if (relay != null) {
             relay.start();
         }

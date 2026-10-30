@@ -15,12 +15,30 @@ trap 'rm -rf "$STAGE"' EXIT
 chmod 755 "$STAGE"
 
 install -d -m 755 "$STAGE/DEBIAN" "$STAGE/opt/portaria-agent" "$STAGE/usr/share/portaria-agent" \
-  "$STAGE/lib/systemd/system" "$STAGE/usr/share/doc/portaria-agent"
+  "$STAGE/usr/lib/systemd/system" "$STAGE/usr/share/doc/portaria-agent" \
+  "$STAGE/usr/share/lintian/overrides"
 install -m 755 "$ROOT/agent/install/portaria-agent-run.sh" "$STAGE/opt/portaria-agent/portaria-agent-run.sh"
-install -m 644 "$ROOT/agent/install/portaria-agent.service" "$STAGE/lib/systemd/system/portaria-agent.service"
+install -m 644 "$ROOT/agent/install/portaria-agent.service" "$STAGE/usr/lib/systemd/system/portaria-agent.service"
 install -m 644 "$ROOT/agent/install/agent.env.example" "$STAGE/usr/share/portaria-agent/agent.env.example"
 install -m 644 "$JAR" "$STAGE/usr/share/portaria-agent/agent.jar"
-install -m 644 "$ROOT/LICENSE" "$STAGE/usr/share/doc/portaria-agent/copyright"
+cat > "$STAGE/usr/share/doc/portaria-agent/copyright" <<'EOF'
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Domus
+Source: https://github.com/Emersondll/Domus-platform
+
+Files: *
+Copyright: 2026 Domus
+License: Apache-2.0
+
+License: Apache-2.0
+ O texto completo da licença está em /usr/share/common-licenses/Apache-2.0
+ (e no arquivo LICENSE do repositório). As licenças das dependências empacotadas no jar
+ estão em docs/inventory/ do repositório.
+EOF
+printf 'portaria-agent (%s) stable; urgency=low\n\n  * Pacote gerado pelo repositório Domus (agent/install/build-deb.sh).\n\n -- Domus <emerson.elima@gmail.com>  %s\n' \
+  "$VERSION" "$(date -R)" | gzip -9n > "$STAGE/usr/share/doc/portaria-agent/changelog.gz"
+# o launcher fica em /opt de propósito (dono root, fora do alcance do usuário do agente; ver docs/agent.md)
+echo 'portaria-agent: dir-or-file-in-opt' > "$STAGE/usr/share/lintian/overrides/portaria-agent"
 
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: portaria-agent
@@ -28,7 +46,7 @@ Version: $VERSION
 Section: admin
 Priority: optional
 Architecture: all
-Depends: systemd
+Depends: systemd, adduser
 Recommends: default-jre-headless
 Maintainer: Domus <emerson.elima@gmail.com>
 Description: Agente local de contingência da portaria virtual Domus
@@ -68,8 +86,9 @@ set -e
 if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
 # /var/lib/portaria-agent (fila local cifrada) e /etc/portaria-agent (segredos) NÃO são apagados nem no purge: são dados do condomínio.
 EOF
+chmod 644 "$STAGE/usr/share/doc/portaria-agent/changelog.gz" "$STAGE/usr/share/doc/portaria-agent/copyright" "$STAGE/usr/share/lintian/overrides/portaria-agent"
 chmod 755 "$STAGE/DEBIAN/postinst" "$STAGE/DEBIAN/prerm" "$STAGE/DEBIAN/postrm"
 
 mkdir -p "$OUT"
-dpkg-deb --root-owner-group --build "$STAGE" "$OUT/portaria-agent_${VERSION}_all.deb" >/dev/null
+dpkg-deb --root-owner-group -Zxz --build "$STAGE" "$OUT/portaria-agent_${VERSION}_all.deb" >/dev/null
 echo "$OUT/portaria-agent_${VERSION}_all.deb"

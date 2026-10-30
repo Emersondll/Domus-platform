@@ -80,7 +80,7 @@ public class VisitSnapshotController {
      * Atende `GET /condominiums/{condominiumId}/entrance-snapshots/{snapshotId}/image`.
      *
      * @param condominiumId condomínio
-     * @param snapshotId snapshot id
+     * @param snapshotId imagem capturada na entrada
      */
     @GetMapping("/entrance-snapshots/{snapshotId}/image")
     public ResponseEntity<byte[]> preview(@PathVariable UUID condominiumId, @PathVariable UUID snapshotId) {

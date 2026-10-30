@@ -91,7 +91,7 @@ public class ResidentPhotoController {
      * Atende `POST /condominiums/{condominiumId}/me/consents/{consentId}/revoke`.
      *
      * @param condominiumId condomínio
-     * @param consentId consent id
+     * @param consentId consentimento registrado
      */
     @PostMapping("/me/consents/{consentId}/revoke")
     @ResponseStatus(HttpStatus.NO_CONTENT)

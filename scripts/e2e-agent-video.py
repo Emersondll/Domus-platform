@@ -86,8 +86,24 @@ try:
     check("a API emite a sessão HLS com token", "token=" in hls and f"cam-{cam['id']}" in hls)
     check("antes de o agente publicar não há vídeo (a central não puxa nada)", status_of(hls)[0] in (404, 0))
 
-    renv = dict(os.environ, PORTARIA_VIDEO_CAMERAS=f"{cam['id']}=rtsp://127.0.0.1:8554/src-portaria",
-                PORTARIA_VIDEO_PUBLISH_URL="rtsp://127.0.0.1:8554", PORTARIA_VIDEO_PUBLISH_SECRET=PUBLISH_SECRET)
+    # o agente publica com a identidade e a chave DELE (sem o segredo único de publicação)
+    agent = api("POST", f"/api/v1/condominiums/{condo}/agents", "manager-sol", {"name": "Agente de video e2e"})
+    renv = {k: v for k, v in os.environ.items() if k != "PORTARIA_VIDEO_PUBLISH_SECRET"}
+    renv.update(PORTARIA_VIDEO_CAMERAS=f"{cam['id']}=rtsp://127.0.0.1:8554/src-portaria",
+                PORTARIA_VIDEO_PUBLISH_URL="rtsp://127.0.0.1:8554", PORTARIA_AGENT_ID=agent["id"], PORTARIA_AGENT_KEY=agent["apiKey"])
+
+    print("== um agente de OUTRO condomínio não consegue publicar nesta câmera")
+    other_condo = next(c["id"] for c in api("GET", "/api/v1/condominiums", "alpha-admin")["items"] if c["id"] != condo)
+    stranger = api("POST", f"/api/v1/condominiums/{other_condo}/agents", "alpha-admin", {"name": "Agente estranho e2e"})
+    wrong = dict(renv, PORTARIA_AGENT_ID=stranger["id"], PORTARIA_AGENT_KEY=stranger["apiKey"])
+    bad = subprocess.Popen(["java", "-cp", "agent/target/agent-0.1.0-SNAPSHOT.jar", "br.com.domus.agent.video.VideoRelayCli"], env=wrong,
+                           stdout=open(f"{LOGDIR}/e2e-agentvideo-bad.log", "w"), stderr=subprocess.STDOUT, start_new_session=True)
+    time.sleep(12)
+    check("o agente de outro condomínio, com credenciais válidas, não consegue publicar nesta câmera", status_of(session())[0] in (404, 0))
+    os.killpg(bad.pid, signal.SIGTERM)
+    bad.wait(timeout=15)
+
+    print("== com a chave certa")
     relay = subprocess.Popen(["java", "-cp", "agent/target/agent-0.1.0-SNAPSHOT.jar", "br.com.domus.agent.video.VideoRelayCli"], env=renv,
                              stdout=open(f"{LOGDIR}/e2e-agentvideo-relay.log", "w"), stderr=subprocess.STDOUT, start_new_session=True)
     ok = wait_for(lambda: status_of(session())[0] == 200, 60)
@@ -95,6 +111,10 @@ try:
     check("com o agente publicando, a playlist HLS responde 200", ok and code == 200, f"(HTTP {code})")
     check("e é uma playlist HLS de verdade", body.startswith("#EXTM3U"))
     check("sem token a mesma playlist é recusada", status_of(hls.split("?")[0])[0] == 401)
+
+    def camera_state():
+        return api("POST", f"/api/v1/condominiums/{condo}/devices/{cam['id']}/refresh-status", "manager-sol")["status"]
+    check("o estado da câmera do agente é ONLINE enquanto o agente publica", camera_state() == "ONLINE")
 
     print("== supervisão: o ffmpeg do agente morre")
     subprocess.run(["pkill", "-9", "-f", f"cam-{cam['id']}"])
@@ -109,7 +129,8 @@ try:
     time.sleep(1)
     gone = wait_for(lambda: status_of(session())[0] in (404, 0), 30)
     check("com o agente parado o vídeo some (a central não inventa imagem)", gone)
-    check("o log do agente não tem a senha de publicação", PUBLISH_SECRET not in open(f"{LOGDIR}/e2e-agentvideo-relay.log").read())
+    check("e o estado da câmera do agente passa a OFFLINE", wait_for(lambda: camera_state() == "OFFLINE", 30))
+    check("o log do agente não tem a chave do agente", agent["apiKey"] not in open(f"{LOGDIR}/e2e-agentvideo-relay.log").read())
 finally:
     if relay is not None:
         try:

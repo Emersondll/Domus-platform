@@ -125,6 +125,7 @@ function fakeApi() {
       { id: "d2", name: "Câmera garagem", kind: "CAMERA", adapter: "ONVIF", entrance: "garagem", status: "OFFLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: false, config: { rtspUrl: "rtsp://10.0.0.5/garagem" } },
       { id: "d3", name: "Câmera hall", kind: "CAMERA", adapter: "ONVIF", entrance: "portaria", status: "ONLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: true, config: {} },
       { id: "d4", name: "Câmera velha", kind: "CAMERA", adapter: "ONVIF", entrance: "fundos", status: "UNKNOWN", lastSeenAt: null, liveVideo: false, active: false, visitorEntrance: false, config: {} },
+      { id: "d5", name: "Câmera do agente", kind: "CAMERA", adapter: "ONVIF", entrance: "fundos", status: "ONLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: false, config: { videoSource: "AGENT" } },
     ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
     if (url === "/api/v1/operator/panics") return json(panics);
@@ -569,6 +570,13 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Nome de quem chamou (opcional)"), "Entregador");
     await user.click(screen.getByRole("button", { name: "Registrar chamada" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/calls"))?.body).toEqual({ unitId: "un1", callerName: "Entregador" }));
+  });
+
+  it("explains the state of a camera behind a local agent", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Câmeras" }));
+    expect(await screen.findByText(/agente enviando vídeo/)).toBeInTheDocument();
   });
 
   it("shows the join code and lets the síndico decide the access requests", async () => {

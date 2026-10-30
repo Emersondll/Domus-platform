@@ -36,9 +36,10 @@ public class CameraStreamController {
      * @param action   read, publish, playback...
      * @param path     caminho do fluxo
      * @param query    query string da requisição original (contém o token)
+     * @param user     usuário informado por quem publica ({@code agent-<id>} para o agente local)
      * @param password senha informada por quem publica
      */
-    public record MediaAuthRequest(String action, String path, String query, String password) {
+    public record MediaAuthRequest(String action, String path, String query, String user, String password) {
     }
 
     /**
@@ -83,7 +84,7 @@ public class CameraStreamController {
     /** Chamada do servidor de mídia (sem JWT; restrita por IP). 200 = permitido, 401 = negado. */
     @PostMapping("/internal/media/auth")
     public ResponseEntity<Void> mediaAuth(@RequestBody MediaAuthRequest r, HttpServletRequest request) {
-        boolean ok = streams.authorize(request.getRemoteAddr(), r.action(), r.path(), r.query(), r.password());
+        boolean ok = streams.authorize(request.getRemoteAddr(), r.action(), r.path(), r.query(), r.user(), r.password());
         return ResponseEntity.status(ok ? 200 : 401).build();
     }
 }

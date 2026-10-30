@@ -73,7 +73,7 @@ public class VisitRequestService {
      * @param visitorName nome do visitante
      * @param kind tipo
      * @param callId atendimento
-     * @param snapshotId snapshot id
+     * @param snapshotId imagem capturada na entrada
      */
     @Transactional
     public VisitRequest request(UUID condominiumId, UUID unitId, String visitorName, String kind, UUID callId,

@@ -47,6 +47,28 @@ jobs:
       - name: Launcher do agente (rollback de atualização)
         run: scripts/test-agent-launcher.sh
 
+  agent-video:
+    name: Vídeo do agente (MediaMTX + ffmpeg reais)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: maven
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: docker compose up -d --wait postgres
+      - run: mvn -B -f backend/pom.xml -DskipTests package
+      - run: mvn -B -f agent/pom.xml -DskipTests package
+      - run: scripts/dev-media.sh up
+      # Prova que o agente publica com a identidade e a chave dele, que o vídeo chega ao HLS com token e que um agente de
+      # outro condomínio não publica. Tudo em 127.0.0.1 (não prova câmera real nem internet).
+      - run: python3 scripts/e2e-agent-video.py
+      - if: always()
+        run: scripts/dev-media.sh down || true
+
   web:
     name: Painel e app do morador (testes + build)
     runs-on: ubuntu-latest

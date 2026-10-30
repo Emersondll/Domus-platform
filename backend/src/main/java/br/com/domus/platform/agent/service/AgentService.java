@@ -4,6 +4,7 @@ import br.com.domus.platform.agent.entity.Agent;
 import br.com.domus.platform.agent.entity.PolicyVersionRow;
 import br.com.domus.platform.agent.repository.AgentRepository;
 import br.com.domus.platform.agent.repository.PolicyVersionRepository;
+import br.com.domus.platform.shared.AgentCredentialVerifier;
 import br.com.domus.platform.shared.ConnectivityLookup;
 import br.com.domus.platform.shared.PolicyVersion;
 import br.com.domus.platform.shared.audit.AuditOutcome;
@@ -38,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  * derivado do segredo mestre e do ID do agente, então não precisa ser armazenado.
  */
 @Service
-public class AgentService implements ConnectivityLookup, PolicyVersion {
+public class AgentService implements ConnectivityLookup, PolicyVersion, AgentCredentialVerifier {
 
     public static final Duration ONLINE_WINDOW = Duration.ofSeconds(90);
     static final Duration KEY_GRACE = Duration.ofHours(24);
@@ -143,6 +144,22 @@ public class AgentService implements ConnectivityLookup, PolicyVersion {
         }
         agent.touch(now, policyVersion, backlog);
         return agent;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean verify(UUID agentId, String apiKey, UUID condominiumId) {
+        Agent agent = agents.findById(agentId).filter(a -> "ACTIVE".equals(a.getStatus())).orElse(null);
+        if (agent == null || apiKey == null || !agent.getCondominiumId().equals(condominiumId)
+                || condominiums.isSuspended(agent.getCondominiumId())) {
+            return false;
+        }
+        String given = sha256(apiKey);
+        Instant now = Instant.now(clock);
+        return constantTimeEquals(given, agent.getKeyHash())
+                || (agent.getPrevKeyHash() != null && agent.getPrevKeyExpiresAt() != null
+                && agent.getPrevKeyExpiresAt().isAfter(now) && constantTimeEquals(given, agent.getPrevKeyHash()));
     }
 
     /**

@@ -7,6 +7,10 @@ import { errorMessage, useCondoList } from "./useCondoList";
 
 const MAX_LIVE = 4;
 const STATUS_TEXT: Record<string, string> = { ONLINE: "online", OFFLINE: "offline", UNKNOWN: "estado desconhecido" };
+/** Câmera atrás de agente local: a central não a alcança; o estado é "o agente está enviando vídeo agora?" (clique em Atualizar estado). */
+const AGENT_STATUS_TEXT: Record<string, string> = { ONLINE: "agente enviando vídeo", OFFLINE: "agente sem enviar vídeo", UNKNOWN: "estado desconhecido (use Atualizar estado)" };
+const statusText = (c: { status: string; config?: Record<string, string> }) =>
+  (c.config?.videoSource === "AGENT" ? AGENT_STATUS_TEXT : STATUS_TEXT)[c.status] ?? "estado desconhecido";
 
 /**
  * Câmeras do condomínio: cadastro (síndico/administração), estado e vídeo ao vivo (HLS via servidor de mídia, quando a
@@ -141,7 +145,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
       <ul>
         {cameras.map((c) => (
           <li key={c.id} className={c.active === false ? "inactive" : ""}>
-            <strong>{c.name}</strong> ({c.entrance}) · {c.active === false ? "desativada" : (STATUS_TEXT[c.status] ?? "estado desconhecido")}
+            <strong>{c.name}</strong> ({c.entrance}) · {c.active === false ? "desativada" : statusText(c)}
             {c.visitorEntrance && <span className="badge ok"> câmera de entrada de visitas</span>}{" "}
             {c.residentViewable && <span className="badge ok"> visível ao morador</span>}{" "}
             {c.active !== false && (

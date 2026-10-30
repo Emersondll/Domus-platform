@@ -2,6 +2,7 @@ package br.com.domus.platform.devices.service;
 
 import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.devices.adapter.DeviceAdapter;
+import br.com.domus.platform.shared.AgentCredentialVerifier;
 import br.com.domus.platform.devices.adapter.DeviceSecrets;
 import br.com.domus.platform.devices.adapter.HostPolicy;
 import br.com.domus.platform.devices.adapter.MediaServer;
@@ -51,7 +52,11 @@ public class CameraStreamService implements ViewSessionRevoker {
     /** Valor no lugar do identificador de sessão nos tokens internos de 60 s (o backend lendo o fluxo; não há pessoa). */
     private static final String INTERNAL_SESSION = "internal";
 
+    /** Prefixo do usuário com que o agente local se apresenta ao publicar vídeo: {@code agent-<id do agente>} (sem dois-pontos: a autenticação Basic não os admite no usuário). */
+    public static final String AGENT_USER_PREFIX = "agent-";
+
     private final DeviceService devices;
+    private final AgentCredentialVerifier agents;
     private final CameraViewSessionStore sessions;
     private final DeviceCredentialService credentials;
     private final ResidentProfileLookup residents;
@@ -71,7 +76,7 @@ public class CameraStreamService implements ViewSessionRevoker {
     private final String internalRtspUrl;
 
     /** Cria o serviço de vídeo ao vivo com o servidor de mídia, o armazenamento de sessões e o teto por usuário. */
-    public CameraStreamService(DeviceService devices, DeviceCredentialService credentials, CameraViewSessionStore sessions,
+    public CameraStreamService(DeviceService devices, AgentCredentialVerifier agents, DeviceCredentialService credentials, CameraViewSessionStore sessions,
                                ResidentProfileLookup residents,
                                MediaServer media, HostPolicy hostPolicy, DeviceSecrets secrets,
                                AccessService access, AuditService audit, Clock clock,
@@ -87,6 +92,7 @@ public class CameraStreamService implements ViewSessionRevoker {
             throw new IllegalStateException("portaria.media.token-secret must have at least 32 characters");
         }
         this.devices = devices;
+        this.agents = agents;
         this.sessions = sessions;
         this.credentials = credentials;
         this.residents = residents;
@@ -191,14 +197,19 @@ public class CameraStreamService implements ViewSessionRevoker {
     }
 
     /**
-     * Decisão do servidor de mídia para cada requisição. Leitura: token válido para o caminho. Publicação: só com o
-     * segredo de publicação (fonte de teste ou agente local). Qualquer outra origem de chamada é negada.
+     * Decisão do servidor de mídia para cada requisição. Leitura: token válido para o caminho. Publicação: o agente local
+     * entra com {@code agent-<id>} e a chave dele, e só publica a câmera <b>do próprio condomínio</b> marcada como publicada
+     * por agente; o segredo único de publicação continua valendo só para fonte de teste (vazio = desligado). Qualquer outra
+     * origem de chamada é negada.
      */
-    public boolean authorize(String remoteIp, String action, String path, String query, String password) {
+    public boolean authorize(String remoteIp, String action, String path, String query, String user, String password) {
         if (!enabled || !authAllowedIps.contains(remoteIp) || path == null) {
             return false;
         }
         if ("publish".equals(action)) {
+            if (user != null && user.startsWith(AGENT_USER_PREFIX)) {
+                return authorizeAgentPublish(user.substring(AGENT_USER_PREFIX.length()), path, password);
+            }
             return !publishSecret.isEmpty() && password != null && constantTimeEquals(publishSecret, password);
         }
         if (!"read".equals(action) && !"playback".equals(action)) {
@@ -206,6 +217,16 @@ public class CameraStreamService implements ViewSessionRevoker {
         }
         String token = queryParam(query, "token");
         return token != null && valid(path, token);
+    }
+
+    private boolean authorizeAgentPublish(String agentId, String path, String password) {
+        try {
+            Device camera = devices.findForMedia(deviceIdOf(path)).orElse(null);
+            return camera != null && camera.isActive() && camera.isAgentPublished()
+                    && agents.verify(UUID.fromString(agentId), password, camera.getCondominiumId());
+        } catch (IllegalArgumentException e) { // inclui InvalidRequestException (caminho que não é de câmera)
+            return false;
+        }
     }
 
     static String pathOf(UUID deviceId) {

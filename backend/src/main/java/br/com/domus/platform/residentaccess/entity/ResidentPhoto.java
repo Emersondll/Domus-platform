@@ -54,8 +54,8 @@ public class ResidentPhoto {
      *
      * @param jpeg imagem em JPEG
      * @param capturedAt captured at
-     * @param uploadedByUserId uploaded by user id
-     * @param consentId consent id
+     * @param uploadedByUserId usuário que enviou
+     * @param consentId consentimento registrado
      */
     public final void replace(byte[] jpeg, Instant capturedAt, UUID uploadedByUserId, UUID consentId) {
         this.content = Base64.getEncoder().encodeToString(jpeg);

@@ -59,12 +59,12 @@ public class AuditService {
     /**
      * Registra um fato na trilha de auditoria (sucesso na mesma transação; negação e falha pelo pool dedicado).
      *
-     * @param actorUserId actor user id
-     * @param operatorCompanyId operator company id
+     * @param actorUserId usuário que realizou a ação, quando houver
+     * @param operatorCompanyId empresa operadora, quando houver
      * @param condominiumId condomínio
      * @param action ação registrada na auditoria
-     * @param resourceType resource type
-     * @param resourceId resource id
+     * @param resourceType tipo do recurso afetado
+     * @param resourceId identificador do recurso afetado
      * @param outcome desfecho
      */
     public void record(UUID actorUserId, UUID operatorCompanyId, UUID condominiumId, String action,

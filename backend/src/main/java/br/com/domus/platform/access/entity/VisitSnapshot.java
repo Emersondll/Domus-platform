@@ -61,7 +61,7 @@ public class VisitSnapshot {
     /**
      * Vincula o quadro capturado ao pedido de visita.
      *
-     * @param visitRequestId visit request id
+     * @param visitRequestId pedido de visita
      */
     public void attachTo(UUID visitRequestId) {
         this.visitRequestId = visitRequestId;

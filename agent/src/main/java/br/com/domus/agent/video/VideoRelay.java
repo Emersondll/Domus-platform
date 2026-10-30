@@ -58,17 +58,20 @@ public final class VideoRelay implements AutoCloseable {
 
     /** Linha de comando do ffmpeg de uma câmera: lê por TCP, copia sem recodificar e publica em {@code cam-<id>}. */
     static List<String> command(VideoRelayConfig config, VideoRelayConfig.Camera camera) {
-        String target = withPublishCredentials(config.publishBase(), config.publishSecret()) + "/cam-" + camera.deviceId();
+        String target = withPublishCredentials(config.publishBase(), config.publishUser(), config.publishPassword().get())
+                + "/cam-" + camera.deviceId();
         return List.of(config.ffmpeg(), "-hide_banner", "-loglevel", "error", "-nostdin",
                 "-rtsp_transport", "tcp", "-i", camera.sourceUrl(),
                 "-an", "-c:v", "copy", "-f", "rtsp", "-rtsp_transport", "tcp", target);
     }
 
-    private static String withPublishCredentials(String base, String secret) {
+    private static String withPublishCredentials(String base, String user, String password) {
         int i = base.indexOf("://") + 3;
-        // o servidor de mídia valida só a senha; o usuário é fixo
-        return base.substring(0, i) + "publisher:" + java.net.URLEncoder.encode(secret, java.nio.charset.StandardCharsets.UTF_8)
-                .replace("+", "%20") + "@" + base.substring(i);
+        return base.substring(0, i) + encode(user) + ":" + encode(password) + "@" + base.substring(i);
+    }
+
+    private static String encode(String value) {
+        return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     /** Começa a publicar todas as câmeras configuradas. */

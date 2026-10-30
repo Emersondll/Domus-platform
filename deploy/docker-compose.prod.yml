@@ -101,7 +101,7 @@ services:
     networks: [edge]
 
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.15.1
     profiles: ["observability"]
     restart: unless-stopped
     volumes:
@@ -112,7 +112,7 @@ services:
     networks: [internal]
 
   grafana:
-    image: grafana/grafana:12.2.0
+    image: grafana/grafana:13.3.0
     profiles: ["observability"]
     restart: unless-stopped
     environment:

@@ -1,7 +1,7 @@
 # Observabilidade local: Prometheus + Grafana. Uso: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 services:
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.15.1
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -10,7 +10,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   grafana:
-    image: grafana/grafana:12.2.0
+    image: grafana/grafana:13.3.0
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin_dev_only}

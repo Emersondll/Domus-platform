@@ -60,7 +60,7 @@ public class HouseholdService {
      * Cadastra um integrante da família.
      *
      * @param condominiumId condomínio
-     * @param fullName full name
+     * @param fullName nome completo
      * @param relationship parentesco com o titular
      * @param phone telefone de contato
      */

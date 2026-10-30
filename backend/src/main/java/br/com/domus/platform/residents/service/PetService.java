@@ -83,7 +83,7 @@ public class PetService {
      * Atualiza um animal.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      * @param name nome
      * @param species espécie do animal
      * @param breed raça do animal
@@ -102,7 +102,7 @@ public class PetService {
      * Remove um animal.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      */
     @Transactional
     public void remove(UUID condominiumId, UUID petId) {
@@ -143,7 +143,7 @@ public class PetService {
      * Remove um animal da unidade do morador autenticado.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      */
     @Transactional
     public void removeMine(UUID condominiumId, UUID petId) {
@@ -161,7 +161,7 @@ public class PetService {
      * Atualiza um animal da unidade do morador autenticado.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      * @param name nome
      * @param species espécie do animal
      * @param breed raça do animal

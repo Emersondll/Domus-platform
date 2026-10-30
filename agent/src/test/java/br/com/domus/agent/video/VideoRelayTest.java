@@ -20,7 +20,7 @@ class VideoRelayTest {
     private static final String CAMERA_URL = "rtsp://admin:camera-pass-Qw17@192.168.0.20:554/stream1";
 
     private static VideoRelayConfig config() {
-        return new VideoRelayConfig("ffmpeg", "rtsp://media.example.invalid:8554", SECRET,
+        return new VideoRelayConfig("ffmpeg", "rtsp://media.example.invalid:8554", "publisher", () -> SECRET,
                 List.of(new VideoRelayConfig.Camera(CAM, CAMERA_URL)));
     }
 
@@ -31,6 +31,25 @@ class VideoRelayTest {
         assertThat(cmd).containsSequence("-an", "-c:v", "copy", "-f", "rtsp");
         assertThat(cmd.get(cmd.size() - 1))
                 .isEqualTo("rtsp://publisher:" + SECRET + "@media.example.invalid:8554/cam-" + CAM);
+    }
+
+    @Test
+    void withoutTheSharedSecretTheAgentPublishesWithItsOwnIdentityAndCurrentKey() {
+        UUID agent = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
+        java.util.concurrent.atomic.AtomicReference<String> key = new java.util.concurrent.atomic.AtomicReference<>("key-one-Rt55");
+        Map<String, String> env = Map.of("PORTARIA_VIDEO_CAMERAS", CAM + "=" + CAMERA_URL,
+                "PORTARIA_VIDEO_PUBLISH_URL", "rtsp://media.example.invalid:8554");
+        VideoRelayConfig cfg = VideoRelayConfig.fromEnv(env, agent, key::get).orElseThrow();
+        assertThat(cfg.publishUser()).isEqualTo("agent-" + agent);
+        assertThat(VideoRelay.command(cfg, cfg.cameras().get(0)).getLast())
+                .isEqualTo("rtsp://agent-" + agent + ":key-one-Rt55@media.example.invalid:8554/cam-" + CAM);
+        key.set("key-two-Yp91"); // chave rotacionada: o próximo início do ffmpeg já usa a nova
+        assertThat(VideoRelay.command(cfg, cfg.cameras().get(0)).getLast()).contains(":key-two-Yp91@");
+        assertThat(cfg.toString()).doesNotContain("key-two-Yp91");
+        // com o segredo único definido, ele vale (fonte de teste)
+        Map<String, String> shared = new java.util.HashMap<>(env);
+        shared.put("PORTARIA_VIDEO_PUBLISH_SECRET", SECRET);
+        assertThat(VideoRelayConfig.fromEnv(shared, agent, key::get).orElseThrow().publishUser()).isEqualTo("publisher");
     }
 
     @Test

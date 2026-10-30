@@ -97,7 +97,7 @@ public class PetController {
      * Atende `PUT /condominiums/{condominiumId}/pets/{petId}`.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      * @param r corpo da requisição (validado)
      */
     @PutMapping("/pets/{petId}")
@@ -110,7 +110,7 @@ public class PetController {
      * Atende `POST /condominiums/{condominiumId}/pets/{petId}/remove`.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      */
     @PostMapping("/pets/{petId}/remove")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -145,7 +145,7 @@ public class PetController {
      * Atende `PUT /condominiums/{condominiumId}/me/pets/{petId}`.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      * @param r corpo da requisição (validado)
      */
     @PutMapping("/me/pets/{petId}")
@@ -159,7 +159,7 @@ public class PetController {
      * Atende `POST /condominiums/{condominiumId}/me/pets/{petId}/remove`.
      *
      * @param condominiumId condomínio
-     * @param petId pet id
+     * @param petId animal
      */
     @PostMapping("/me/pets/{petId}/remove")
     @ResponseStatus(HttpStatus.NO_CONTENT)

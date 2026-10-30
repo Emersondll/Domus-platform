@@ -45,4 +45,25 @@ class MediaMtxClient implements MediaServer {
             throw new DeviceAdapter.DeviceCommunicationException("Media server call interrupted");
         }
     }
+
+    @Override
+    public boolean isPublishing(String path) throws DeviceAdapter.DeviceCommunicationException {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(apiUrl + "/v3/paths/get/" + path))
+                    .timeout(Duration.ofSeconds(5)).GET().build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 404) {
+                return false; // o caminho ainda não existe: ninguém publicou
+            }
+            if (response.statusCode() / 100 != 2) {
+                throw new DeviceAdapter.DeviceCommunicationException("Media server rejected the query");
+            }
+            return MAPPER.readTree(response.body()).path("ready").asBoolean(false);
+        } catch (IOException e) {
+            throw new DeviceAdapter.DeviceCommunicationException("Media server unreachable");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DeviceAdapter.DeviceCommunicationException("Media server call interrupted");
+        }
+    }
 }

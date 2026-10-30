@@ -7,6 +7,7 @@ import br.com.domus.platform.devices.repository.DeviceRepository;
 import br.com.domus.platform.devices.adapter.DeviceAdapter;
 import br.com.domus.platform.devices.adapter.DeviceAdapters;
 import br.com.domus.platform.devices.adapter.HostPolicy;
+import br.com.domus.platform.devices.adapter.MediaServer;
 import br.com.domus.platform.shared.DeviceHealthLookup;
 import br.com.domus.platform.notifications.service.NotificationService;
 import br.com.domus.platform.shared.audit.AuditOutcome;
@@ -52,11 +53,13 @@ public class DeviceService implements DeviceHealthLookup {
     private final Clock clock;
     private final NotificationService notifications;
     private final CameraViewSessionStore viewSessions;
+    private final MediaServer media;
 
     /** Construtor de DeviceService; recebe as dependências por injeção. */
     public DeviceService(DeviceRepository devices, DeviceAdapters adapters, HostPolicy hostPolicy,
                          AccessService access, AuditService audit, Clock clock, NotificationService notifications,
-                         CameraViewSessionStore viewSessions) {
+                         CameraViewSessionStore viewSessions, MediaServer media) {
+        this.media = media;
         this.devices = devices;
         this.adapters = adapters;
         this.hostPolicy = hostPolicy;
@@ -285,6 +288,17 @@ public class DeviceService implements DeviceHealthLookup {
     public Device refreshStatus(UUID condominiumId, UUID deviceId) {
         access.require(condominiumId, AccessLevel.OPERATE, "device.status");
         Device device = find(condominiumId, deviceId);
+        if (device.isAgentPublished()) {
+            // a central não alcança a câmera: o estado é "o agente está enviando vídeo agora?", perguntado ao servidor de mídia
+            String health;
+            try {
+                health = media.isPublishing(CameraStreamService.pathOf(deviceId)) ? "ONLINE" : "OFFLINE";
+            } catch (DeviceAdapter.DeviceCommunicationException e) {
+                health = "UNKNOWN";
+            }
+            device.observe(health, Instant.now(clock));
+            return device;
+        }
         DeviceAdapter adapter = adapters.find(device.getAdapter()).orElseThrow(
                 () -> new ConflictException("Adapter not available"));
         DeviceAdapter.StatusReport report = adapter.getStatus(descriptor(device));
@@ -315,6 +329,11 @@ public class DeviceService implements DeviceHealthLookup {
     /** Câmeras liberadas para o morador; quem chama já verificou que é morador do condomínio. */
     public List<Device> residentViewable(UUID condominiumId) {
         return devices.findByCondominiumIdAndResidentViewableTrue(condominiumId);
+    }
+
+    /** Dispositivo por identificador, sem escopo de condomínio: só para a autorização do servidor de mídia (não é rota de pessoa). */
+    public java.util.Optional<Device> findForMedia(UUID deviceId) {
+        return devices.findById(deviceId);
     }
 
     /**

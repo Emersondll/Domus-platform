@@ -56,7 +56,7 @@ Trivy 0.58 (`--severity HIGH,CRITICAL --scanners vuln`), imagens baixadas no mes
 | `caddy:2` | 0 | 10 | Alpine (`curl`, `brotli`) e `go-jose`; 9 têm correção |
 | `quay.io/keycloak/keycloak:26.4` | 8 | 82 | pacotes do RHEL 9 e OpenJDK 21; quase todos com correção em um 26.x mais novo |
 | `bluenviron/mediamtx:1.15.1` | 1 | 45 | bibliotecas Go (`quic-go`, `x/crypto`); todos com correção em versão mais nova |
-| `prom/prometheus:v3.5.0` | 4 | 108 | bibliotecas Go; a maioria com correção |
+| `prom/prometheus:v3.5.0` (varredura desta versão; a imagem passou a v3.15.1 em 2026-10-29 e a varredura não foi repetida) | 4 | 108 | bibliotecas Go; a maioria com correção |
 | `grafana/grafana:12.2.0` | 9 | 148 | Alpine e bibliotecas Go; a maioria com correção |
 
 **Leitura honesta:** vulnerabilidade listada não é vulnerabilidade explorável (o `gosu`, por exemplo, não recebe entrada externa), mas as imagens de Keycloak, MediaMTX, Prometheus e Grafana estão **defasadas** e devem subir de versão antes de produção, com reteste (`verify_keycloak.py`, `e2e-oidc-browser.py`, `e2e-browser.py` com vídeo). Quem expõe porta é o Caddy, o Keycloak e o MediaMTX: priorizar esses três. O Dependabot (`docker`, `docker-compose`) abre os pedidos de atualização.

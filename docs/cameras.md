@@ -48,7 +48,7 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 |---|---|
 | `MEDIA_ENABLED=true` | liga o recurso (padrão: desligado) |
 | `MEDIA_TOKEN_SECRET` | ≥ 32 caracteres; assina os tokens de visualização |
-| `MEDIA_PUBLISH_SECRET` | senha de quem **publica** no servidor de mídia (fonte de teste, futuro agente local) |
+| `MEDIA_PUBLISH_SECRET` | senha única de quem **publica** no servidor de mídia: só para **fonte de teste**. O agente local não usa: publica como `agent-<id>` com a chave dele. Vazio = publicação por segredo único desligada (recomendado em produção) |
 | `MEDIA_PUBLIC_HLS_URL` | URL pública do HLS que o navegador acessa (ex.: `https://video.exemplo.com.br`) |
 | `MEDIA_API_URL` | API de controle do MediaMTX (padrão `http://127.0.0.1:9997`, só loopback) |
 | `MEDIA_AUTH_ALLOWED_IPS` | IPs de onde o MediaMTX chama a validação (padrão loopback) |
@@ -88,10 +88,9 @@ configuração comum da câmera recusa chaves que pareçam segredo (`password`, 
 Cadastre a câmera com a opção "Vídeo publicado pelo agente local" (`config.videoSource = AGENT`, sem `rtspUrl` na central). O agente
 puxa o RTSP **da rede local** e **empurra** o fluxo para o servidor de mídia da central (`ffmpeg -c copy`, conexão de dentro para
 fora, nenhuma porta aberta no condomínio). Variáveis do agente: `PORTARIA_VIDEO_CAMERAS` (`id-da-câmera=rtsp://…;…`),
-`PORTARIA_VIDEO_PUBLISH_URL`, `PORTARIA_VIDEO_PUBLISH_SECRET` (o `MEDIA_PUBLISH_SECRET` da central), `PORTARIA_FFMPEG`. Se o ffmpeg
-cair, o agente o reabre com espera 5, 10, 20, 30 s. **Limites:** o endereço da câmera e o segredo de publicação aparecem nos argumentos do
-processo ffmpeg (visíveis a quem lê os processos da máquina do agente; nunca vão a log); o segredo de publicação é **um só para toda
-a instalação** (o ideal é um por agente: pendente); o vídeo só vai cifrado até a central se o servidor de mídia aceitar `rtsps`
+`PORTARIA_VIDEO_PUBLISH_URL`, `PORTARIA_FFMPEG`. O agente se autentica no servidor de mídia com o usuário `agent-<id do agente>` e a chave dele (a mesma da sincronização, relida a cada início do ffmpeg, então a rotação de chave vale); a central só aceita publicar a câmera **do próprio condomínio** marcada como publicada por agente, e um agente revogado ou de condomínio suspenso é recusado. Não há mais segredo compartilhado entre agentes. Se o ffmpeg
+cair, o agente o reabre com espera 5, 10, 20, 30 s. O estado mostrado na tela para essas câmeras é "o agente está enviando vídeo agora?" (ao clicar em *Atualizar estado*, a central pergunta ao servidor de mídia se há alguém publicando; servidor fora do ar = estado desconhecido). **Limites:** o endereço da câmera e a chave do agente aparecem nos argumentos do
+processo ffmpeg (visíveis a quem lê os processos da máquina do agente; nunca vão a log); a chave do agente aparece nos argumentos do mesmo processo; o vídeo só vai cifrado até a central se o servidor de mídia aceitar `rtsps`
 (o `mediamtx.yml` de exemplo não liga TLS). Provado com `scripts/e2e-agent-video.py` (MediaMTX e ffmpeg reais, tudo em 127.0.0.1:
 publica, HLS 200, sem token 401, o ffmpeg morto volta, agente parado = vídeo some). **Nunca testado com câmera real nem pela internet.**
 

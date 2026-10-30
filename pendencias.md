@@ -28,7 +28,9 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 **Decididas em 2026-10-29:** D3 (chaves continuam como variáveis de ambiente); D8 (somente o administrador cadastra síndicos — a plataforma cadastra a empresa e seu administrador, que cadastra os síndicos; o síndico cadastra câmeras, equipe e moradores — o administrador da empresa também pode, mas a responsabilidade é do síndico; o morador se cadastra e se associa ao condomínio, e o síndico aprova a associação); D20/MA2 (haverá **dois leitores**: reconhecimento facial, a implementar depois, e **ticket numerado validado na saída**); as 8 rotas sem tela **terão tela**, cada uma no perfil que a usa (ver §3.1). Já feitas: editar animal pelo morador, detalhe do morador, imagem da entrada na tela do operador. **Novas pendências nascidas dessas decisões:** (a) o fluxo "morador se associa e o síndico aprova" (hoje o síndico concede o acesso direto); (b) o ticket numerado de saída; (c) o leitor facial.
 
-**Dependem de você (decisão):** D2 (controladora), D4 (chave de lançamento do agente), D5 (provedores de aviso), D6 (infraestrutura), D7 (planos, limites e cobrança), editar empresa e condomínio (nome, CNPJ), e as demais rotas sem tela ("verificaremos depois das próximas ações").
+**A construir (decidido, falta implementar):** (1) o morador pede a associação ao condomínio e o síndico aprova (hoje o síndico concede o acesso direto); (2) ticket numerado validado na saída; (3) leitor facial (depende de D2, D16 e D18); (4) telas das 5 rotas restantes: chamadas do condomínio (`GET`/`POST /calls`), transferir chamada, `GET /me/messages/unread`, resolver conflito de sincronização.
+
+**Dependem de você (decisão):** D2 (controladora), D4 (chave de lançamento do agente), D5 (provedores de aviso), D6 (infraestrutura), D7 (planos, limites e cobrança), editar empresa e condomínio (nome, CNPJ).
 
 **Dependem de texto jurídico (sem declarar conformidade):** D1, D16, D18, D19 (confirmar os 90 dias), a base legal e o aviso no local da D21, e a CR6 (a "ciência" do morador não é registrada).
 
@@ -97,7 +99,7 @@ Busca de anterioridade da marca (L1), varredura de proveniência com ferramenta 
 | B17 | HLS no iPhone/Safari (reprodução nativa) e reprodução automática **não foram testados**; só Chromium | média | aberto |
 | B18 | E2E de navegador roda como operador: telas do síndico só têm teste de componente | média | **corrigido** (bloco "painel como síndico" no e2e) |
 | ~~B19~~ | Liberar câmera notificava dependentes (CR2) | — | **resolvido (2026-10-29):** dependentes não têm conta no app (V1); o horário e a restrição por unidade das câmeras seguem em D21 |
-| CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **corrigido** (`SELECT … FOR UPDATE` no condomínio; teste com 8 liberações simultâneas = exatamente 4) |
+| CR1 | Teto de 4 câmeras sem trava de concorrência | baixa | **obsoleto desde 2026-10-29:** o teto de 4 câmeras foi removido (D21: 24 h, sem limite); a trava e o teste foram retirados junto |
 | B21 | `BootstrapAdmin` criava o administrador inicial sem `email_hash` | baixa | **corrigido (2026-10-27)** (recebe o `FieldCipher`; teste unitário confere o hash) |
 | B22 | `scripts/dev-media.sh` não reiniciava uma fonte de teste que morreu (foi a causa do "Sem imagem" do Hall) | baixa (ambiente de teste) | **corrigido (2026-10-27)**: cada fonte reabre o ffmpeg sozinha (testado matando o processo) e há `dev-media.sh repair` |
 | B23 | O player mostrava a mesma mensagem para servidor de mídia fora do ar e para câmera sem fonte | baixa (UX) | **corrigido (2026-10-27)**: a mensagem vem do código HTTP do hls.js (sem resposta = servidor de mídia; 404 = câmera sem vídeo; 401/403 = recusado). Não validado com câmera real |

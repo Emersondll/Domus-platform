@@ -137,12 +137,21 @@ class HouseholdAndPetsIT extends AbstractIntegrationTest {
         String id = r.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
         send(post(base() + "/me/pets"), "hp-res-1", "{\"name\":\"Z\",\"species\":\"DRAGON\"}")
                 .andExpect(status().isBadRequest());
-        mvc.perform(get(base() + "/me/pets").with(as("hp-res-2"))).andExpect(jsonPath("$[?(@.name=='Rex')]").isEmpty());
+        mvc.perform(get(base() + "/me/pets").with(as("hp-res-2"))).andExpect(jsonPath("$[?(@.name=='Rex II')]").isEmpty());
         send(post(base() + "/me/pets/" + id + "/remove"), "hp-res-2", "{}").andExpect(status().isNotFound());
+
+        // o morador edita o animal da própria unidade; o de outra unidade não existe para ele
+        String renamed = "{\"name\":\"Rex II\",\"species\":\"DOG\",\"notes\":\"agora sem guia\"}";
+        send(put(base() + "/me/pets/" + id), "hp-res-2", renamed).andExpect(status().isNotFound());
+        send(put(base() + "/me/pets/" + id), "hp-res-1", "{\"name\":\"Z\",\"species\":\"DRAGON\"}")
+                .andExpect(status().isBadRequest());
+        send(put(base() + "/me/pets/" + id), "hp-operator", renamed).andExpect(status().isNotFound());
+        send(put(base() + "/me/pets/" + id), "hp-res-1", renamed).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Rex II")).andExpect(jsonPath("$.breed").doesNotExist());
 
         // administração: lista por unidade (operador lê), só o síndico cadastra
         mvc.perform(get(base() + "/pets?unitId=" + unit1).with(as("hp-operator")))
-                .andExpect(jsonPath("$.items[?(@.name=='Rex')]").isNotEmpty());
+                .andExpect(jsonPath("$.items[?(@.name=='Rex II')]").isNotEmpty());
         mvc.perform(get(base() + "/pets").with(as("hp-other-mgr"))).andExpect(status().isNotFound());
         String cat = "{\"unitId\":\"" + unit2 + "\",\"name\":\"Mimi\",\"species\":\"CAT\"}";
         send(post(base() + "/pets"), "hp-operator", cat).andExpect(status().isForbidden());
@@ -150,6 +159,18 @@ class HouseholdAndPetsIT extends AbstractIntegrationTest {
         send(post(base() + "/pets"), "hp-manager", "{\"name\":\"Sem unidade\",\"species\":\"CAT\"}")
                 .andExpect(status().isBadRequest());
         send(post(base() + "/me/pets/" + id + "/remove"), "hp-res-1", "{}").andExpect(status().isNoContent());
-        mvc.perform(get(base() + "/me/pets").with(as("hp-res-1"))).andExpect(jsonPath("$[?(@.name=='Rex')]").isEmpty());
+        mvc.perform(get(base() + "/me/pets").with(as("hp-res-1"))).andExpect(jsonPath("$[?(@.name=='Rex II')]").isEmpty());
+    }
+
+    @Test
+    void residentDetailIsVisibleToStaffAndToTheResidentThemselvesOnly() throws Exception {
+        UUID own = residents.findAll().stream().filter(r -> "hp-res-1".equals(r.getFullName())).findFirst().orElseThrow().getId();
+        UUID neighbour = residents.findAll().stream().filter(r -> "hp-res-2".equals(r.getFullName())).findFirst().orElseThrow().getId();
+        mvc.perform(get(base() + "/residents/" + own).with(as("hp-res-1"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(own.toString()));
+        mvc.perform(get(base() + "/residents/" + neighbour).with(as("hp-res-1"))).andExpect(status().isNotFound());
+        mvc.perform(get(base() + "/residents/" + own).with(as("hp-operator"))).andExpect(status().isOk());
+        mvc.perform(get(base() + "/residents/" + own).with(as("hp-manager"))).andExpect(status().isOk());
+        mvc.perform(get(base() + "/residents/" + own).with(as("hp-other-mgr"))).andExpect(status().isNotFound());
     }
 }

@@ -3,13 +3,16 @@ import { request } from "../../shared/src/api";
 import type { Attempt, Preferences, Profile } from "./types";
 import { errorText, useList } from "./useApi";
 
-export function ProfilePage({ token, condo }: { token: string; condo: string }) {
+const TYPE_TEXT: Record<string, string> = { OWNER: "proprietário", TENANT: "locatário", SPOUSE: "cônjuge", DEPENDENT: "dependente" };
+
+export function ProfilePage({ token, condo, residentId }: { token: string; condo: string; residentId?: string }) {
   const base = `/api/v1/condominiums/${condo}/me`;
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   // Campos que a pessoa já mexeu: a resposta do servidor (carga lenta ou renovação do token) não pode sobrescrevê-los.
   const edited = useRef({ email: false, phone: false });
+  const [registration, setRegistration] = useState<{ residentType: string; active: boolean } | null>(null);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const history = useList<Attempt>(token, `${base}/access-history`);
@@ -22,6 +25,12 @@ export function ProfilePage({ token, condo }: { token: string; condo: string }) 
     });
     request<Preferences>(token, "GET", `${base}/preferences`).then(setPrefs);
   }, [token, base]);
+
+  useEffect(() => {
+    if (!residentId) return;
+    request<{ residentType: string; active: boolean }>(token, "GET", `/api/v1/condominiums/${condo}/residents/${residentId}`)
+      .then((r) => setRegistration(r ?? null)).catch(() => setRegistration(null));
+  }, [token, condo, residentId]);
 
   async function saveContact(e: React.FormEvent) {
     e.preventDefault();
@@ -47,6 +56,11 @@ export function ProfilePage({ token, condo }: { token: string; condo: string }) 
     <section aria-label="Perfil">
       <h2>Perfil e privacidade</h2>
       <p>{profile?.fullName}</p>
+      {registration && (
+        <p className="hint" aria-label="Meu cadastro">
+          Meu cadastro: {TYPE_TEXT[registration.residentType] ?? registration.residentType} · {registration.active ? "ativo" : "inativo"}
+        </p>
+      )}
       <form onSubmit={saveContact}>
         <label htmlFor="email">E-mail</label>
         <input id="email" type="email" value={email} onChange={(e) => { edited.current.email = true; setEmail(e.target.value); }} />

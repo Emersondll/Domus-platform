@@ -96,6 +96,8 @@ function fakeApi() {
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
     if (url.endsWith("/residents/r1") && init?.method === "PUT") return json({ id: "r1" });
+    if (url.endsWith("/residents/r1") && (init?.method ?? "GET") === "GET") return json({ id: "r1", unitId: "un1", fullName: "Joana Teste", email: "joana@example.invalid", phone: null, residentType: "OWNER", active: true });
+    if (url.endsWith("/pets/p1") && init?.method === "PUT") return json({ id: "p1" });
     if (url.endsWith("/members") && init?.method !== "POST") return json([{ id: "mb1", userId: "11111111-aaaa", role: "OPERATOR", condominiumId: "c1", companyId: null, residentId: null, displayName: "Operador Teste" }]);
     if (url.includes("/common-areas?")) return pg([{ id: "ca1", name: "Salão de festas", capacity: 40 }]);
     if (url.endsWith("/common-areas") && init?.method === "POST") return json({ id: "ca2" });
@@ -518,6 +520,9 @@ describe("operator panel", () => {
     await user.selectOptions(screen.getByLabelText("Vínculo"), "SPOUSE");
     await user.click(screen.getByRole("button", { name: "Cadastrar morador" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents"))?.body).toEqual({ unitId: "un1", fullName: "Carlos Teste", email: null, phone: null, residentType: "SPOUSE" }));
+    await user.click(screen.getByRole("button", { name: "Detalhes de Joana Teste" }));
+    expect(await screen.findByLabelText("Detalhe do morador")).toHaveTextContent("joana@example.invalid");
+    await user.click(screen.getByRole("button", { name: "Fechar detalhe" }));
     await user.click(screen.getByRole("button", { name: "Desativar Joana Teste" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents/r1"))?.body).toMatchObject({ active: false, residentType: "OWNER" }));
 
@@ -528,6 +533,11 @@ describe("operator panel", () => {
     await user.selectOptions(screen.getByLabelText("Espécie"), "CAT");
     await user.click(screen.getByRole("button", { name: "Cadastrar animal" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/pets"))?.body).toEqual({ unitId: "un1", name: "Mimi", species: "CAT", breed: null, notes: null }));
+    await user.click(await screen.findByRole("button", { name: "Editar Rex" }));
+    await user.clear(screen.getByLabelText("Nome"));
+    await user.type(screen.getByLabelText("Nome"), "Rex II");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/pets/p1"))?.body).toEqual({ unitId: "un1", name: "Rex II", species: "DOG", breed: null, notes: "sai com guia" }));
   });
 
   it("registers a common area and lets the staff cancel a resident reservation", async () => {

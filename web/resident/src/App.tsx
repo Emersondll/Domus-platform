@@ -165,7 +165,7 @@ export function App() {
         {condo && tab === "Veículos" && <Vehicles token={token} condo={condo} />}
         {condo && tab === "Minha casa" && <Household token={token} condo={condo} />}
         {condo && tab === "Equipe" && <Staff token={token} condo={condo} />}
-        {condo && tab === "Perfil" && <ProfilePage token={token} condo={condo} />}
+        {condo && tab === "Perfil" && <ProfilePage token={token} condo={condo} residentId={current?.residentId} />}
       </main>
       <nav aria-label="Seções">
         {PRIMARY.map((t) => (

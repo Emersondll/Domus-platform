@@ -92,6 +92,7 @@ Gerado por `scripts/api-smoke.py --write` a partir do OpenAPI da API em execu√ß√
 | GET | `/api/v1/condominiums/{condominiumId}/me/parcels` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/pets` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/pets` | morador | sim |
+| PUT | `/api/v1/condominiums/{condominiumId}/me/pets/{petId}` | morador | sim |
 | POST | `/api/v1/condominiums/{condominiumId}/me/pets/{petId}/remove` | morador | sim |
 | GET | `/api/v1/condominiums/{condominiumId}/me/photo` | morador | sim |
 | PUT | `/api/v1/condominiums/{condominiumId}/me/photo` | morador | sim |

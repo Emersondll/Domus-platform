@@ -16,6 +16,7 @@ export function RegistryPets({ token, condominiumId }: { token: string; condomin
   const [species, setSpecies] = useState("DOG");
   const [breed, setBreed] = useState("");
   const [notes, setNotes] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const label = (id: string) => {
     const u = units.items.find((x) => x.id === id);
@@ -32,6 +33,22 @@ export function RegistryPets({ token, condominiumId }: { token: string; condomin
     }
   }
 
+  function startEdit(p: Pet) {
+    setEditing(p.id);
+    setUnitId(p.unitId);
+    setName(p.name);
+    setSpecies(p.species);
+    setBreed(p.breed ?? "");
+    setNotes(p.notes ?? "");
+  }
+
+  function clearForm() {
+    setEditing(null);
+    setName("");
+    setBreed("");
+    setNotes("");
+  }
+
   return (
     <div aria-label="Animais">
       <h3>Animais de estimação</h3>
@@ -40,14 +57,15 @@ export function RegistryPets({ token, condominiumId }: { token: string; condomin
           <li key={p.id}>
             <strong>{p.name}</strong> · {SPECIES_TEXT[p.species] ?? p.species}{p.breed ? ` (${p.breed})` : ""} · unidade {label(p.unitId)}
             {p.notes ? ` · ${p.notes}` : ""}{" "}
+            <button onClick={() => startEdit(p)} aria-label={`Editar ${p.name}`}>Editar</button>{" "}
             <button onClick={() => run(() => request(token, "POST", `${base}/pets/${p.id}/remove`))} aria-label={`Remover ${p.name}`}>Remover</button>
           </li>
         ))}
         {pets.items.length === 0 && <li>Nenhum animal cadastrado.</li>}
       </ul>
-      <h3>Novo animal</h3>
+      <h3>{editing ? "Editar animal" : "Novo animal"}</h3>
       <label htmlFor="pet-unit">Unidade</label>
-      <select id="pet-unit" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+      <select id="pet-unit" value={unitId} disabled={!!editing} onChange={(e) => setUnitId(e.target.value)}>
         <option value="">Selecione</option>
         {units.items.map((u) => <option key={u.id} value={u.id}>{label(u.id)}</option>)}
       </select>
@@ -62,11 +80,15 @@ export function RegistryPets({ token, condominiumId }: { token: string; condomin
       <label htmlFor="pet-notes">Observação para a portaria (opcional)</label>
       <input id="pet-notes" maxLength={200} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <button disabled={!unitId || !name.trim()} onClick={() => run(async () => {
-        await request(token, "POST", `${base}/pets`, { unitId, name: name.trim(), species, breed: breed.trim() || null, notes: notes.trim() || null });
-        setName("");
-        setBreed("");
-        setNotes("");
-      })}>Cadastrar animal</button>
+        const body = { name: name.trim(), species, breed: breed.trim() || null, notes: notes.trim() || null };
+        if (editing) {
+          await request(token, "PUT", `${base}/pets/${editing}`, { unitId, ...body });
+        } else {
+          await request(token, "POST", `${base}/pets`, { unitId, ...body });
+        }
+        clearForm();
+      })}>{editing ? "Salvar alterações" : "Cadastrar animal"}</button>
+      {editing && <button onClick={clearForm}>Cancelar edição</button>}
       {error && <p role="alert" className="error">{error}</p>}
     </div>
   );

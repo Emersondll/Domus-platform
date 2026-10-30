@@ -32,6 +32,7 @@ export function Household({ token, condo }: { token: string; condo: string }) {
   const [species, setSpecies] = useState("DOG");
   const [breed, setBreed] = useState("");
   const [notes, setNotes] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function run(fn: () => Promise<unknown>, after: () => Promise<void>) {
@@ -42,6 +43,22 @@ export function Household({ token, condo }: { token: string; condo: string }) {
     } catch (e) {
       setError(errorText(e));
     }
+  }
+
+  function startEdit(p: Pet) {
+    setEditing(p.id);
+    setPetName(p.name);
+    setSpecies(p.species);
+    setBreed(p.breed ?? "");
+    setNotes(p.notes ?? "");
+  }
+
+  function clearPetForm() {
+    setEditing(null);
+    setPetName("");
+    setSpecies("DOG");
+    setBreed("");
+    setNotes("");
   }
 
   return (
@@ -81,6 +98,7 @@ export function Household({ token, condo }: { token: string; condo: string }) {
         {pets.items.map((p) => (
           <li key={p.id}>
             <strong>{p.name}</strong> · {SPECIES_TEXT[p.species] ?? p.species}{p.breed ? ` (${p.breed})` : ""}{p.notes ? ` · ${p.notes}` : ""}{" "}
+            <button aria-label={`Editar ${p.name}`} onClick={() => startEdit(p)}>Editar</button>{" "}
             <button aria-label={`Remover ${p.name}`}
               onClick={() => run(() => request(token, "POST", `${base}/pets/${p.id}/remove`), pets.reload)}>Remover</button>
           </li>
@@ -98,11 +116,15 @@ export function Household({ token, condo }: { token: string; condo: string }) {
       <label htmlFor="pet-notes">Observação para a portaria (opcional)</label>
       <input id="pet-notes" maxLength={200} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <button disabled={!petName.trim()} onClick={() => run(async () => {
-        await request(token, "POST", `${base}/pets`, { name: petName.trim(), species, breed: breed.trim() || null, notes: notes.trim() || null });
-        setPetName("");
-        setBreed("");
-        setNotes("");
-      }, pets.reload)}>Adicionar animal</button>
+        const body = { name: petName.trim(), species, breed: breed.trim() || null, notes: notes.trim() || null };
+        if (editing) {
+          await request(token, "PUT", `${base}/pets/${editing}`, body);
+        } else {
+          await request(token, "POST", `${base}/pets`, body);
+        }
+        clearPetForm();
+      }, pets.reload)}>{editing ? "Salvar alterações do animal" : "Adicionar animal"}</button>
+      {editing && <button onClick={clearPetForm}>Cancelar edição</button>}
       {error && <p role="alert" className="error">{error}</p>}
     </section>
   );

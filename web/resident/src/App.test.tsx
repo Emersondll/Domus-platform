@@ -65,6 +65,8 @@ function fakeApi() {
     if (url.endsWith("/me/household") && method === "POST") return json({ id: "f2" }, 201);
     if (url.endsWith("/me/household")) return json([{ id: "f0", fullName: "Titular Teste", relationship: "OWNER", phone: null, removable: false }, { id: "f1", fullName: "Esposa Teste", relationship: "SPOUSE", phone: null, removable: true }]);
     if (url.endsWith("/me/pets") && method === "POST") return json({ id: "p2" }, 201);
+    if (url.endsWith("/me/pets/p1") && method === "PUT") return json({ id: "p1" });
+    if (url.includes("/residents/") && method === "GET") return json({ id: "r1", unitId: "u1", fullName: "Fulano", email: null, phone: null, residentType: "OWNER", active: true });
     if (url.endsWith("/me/pets")) return json([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: null }]);
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
@@ -308,6 +310,22 @@ describe("resident app", () => {
     await user.selectOptions(screen.getByLabelText("Espécie"), "CAT");
     await user.click(screen.getByRole("button", { name: "Adicionar animal" }));
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/pets") && c.method === "POST")?.body).toBe(JSON.stringify({ name: "Mimi", species: "CAT", breed: null, notes: null })));
+  });
+
+  it("edits a pet of the unit", async () => {
+    const user = await openTab("Minha casa");
+    await user.click(await screen.findByRole("button", { name: "Editar Rex" }));
+    expect(screen.getByLabelText("Nome do animal")).toHaveValue("Rex");
+    await user.clear(screen.getByLabelText("Nome do animal"));
+    await user.type(screen.getByLabelText("Nome do animal"), "Rex II");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações do animal" }));
+    await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/pets/p1") && c.method === "PUT")?.body)
+      .toBe(JSON.stringify({ name: "Rex II", species: "DOG", breed: null, notes: null })));
+  });
+
+  it("shows the own registration on the profile", async () => {
+    await openTab("Perfil");
+    expect(await screen.findByLabelText("Meu cadastro")).toHaveTextContent("proprietário · ativo");
   });
 
   it("offers no door button unless the condominium enabled remote opening", async () => {

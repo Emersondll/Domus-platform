@@ -142,6 +142,20 @@ public class PetController {
     }
 
     /**
+     * Atende `PUT /condominiums/{condominiumId}/me/pets/{petId}`.
+     *
+     * @param condominiumId condomínio
+     * @param petId pet id
+     * @param r corpo da requisição (validado)
+     */
+    @PutMapping("/me/pets/{petId}")
+    public PetResponse updateMine(@PathVariable UUID condominiumId, @PathVariable UUID petId,
+                                  @Valid @RequestBody PetRequest r) {
+        return PetResponse.from(service.updateMine(condominiumId, petId, r.name(), r.species(), r.breed(),
+                r.notes()));
+    }
+
+    /**
      * Atende `POST /condominiums/{condominiumId}/me/pets/{petId}/remove`.
      *
      * @param condominiumId condomínio

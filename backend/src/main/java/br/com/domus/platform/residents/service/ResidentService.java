@@ -11,6 +11,7 @@ import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
+import br.com.domus.platform.shared.tenant.ResidentContext;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -94,14 +95,23 @@ public class ResidentService {
     }
 
     /**
-     * Consulta um morador do condomínio.
+     * Consulta um morador do condomínio. A equipe (portaria, síndico, administrador) vê qualquer morador do
+     * condomínio; o morador vê somente o próprio cadastro.
      *
      * @param condominiumId condomínio
      * @param residentId morador
      */
     @Transactional
     public Resident get(UUID condominiumId, UUID residentId) {
-        Actor actor = access.require(condominiumId, AccessLevel.READ, "resident.read");
+        Actor actor = access.currentActor();
+        if (!access.levelFor(actor, condominiumId).atLeast(AccessLevel.READ)) {
+            ResidentContext me = access.requireResident(condominiumId, "resident.read");
+            if (!me.residentId().equals(residentId)) {
+                audit.record(actor.userId(), null, condominiumId, "resident.read", "resident",
+                        residentId.toString(), AuditOutcome.DENIED);
+                throw new NotFoundException("Resident not found");
+            }
+        }
         Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Resident not found"));
         audit.record(actor.userId(), null, condominiumId, "resident.read", "resident",

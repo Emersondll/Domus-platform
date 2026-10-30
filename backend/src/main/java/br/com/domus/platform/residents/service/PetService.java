@@ -157,6 +157,29 @@ public class PetService {
                 AuditOutcome.SUCCESS);
     }
 
+    /**
+     * Atualiza um animal da unidade do morador autenticado.
+     *
+     * @param condominiumId condomínio
+     * @param petId pet id
+     * @param name nome
+     * @param species espécie do animal
+     * @param breed raça do animal
+     * @param notes observações livres
+     */
+    @Transactional
+    public Pet updateMine(UUID condominiumId, UUID petId, String name, String species, String breed, String notes) {
+        ResidentContext me = access.requireResident(condominiumId, "pet.update.self");
+        Pet pet = find(condominiumId, petId);
+        if (!pet.getUnitId().equals(myUnit(me))) {
+            throw new NotFoundException("Pet not found");
+        }
+        pet.update(name.trim(), species, blankToNull(breed), blankToNull(notes));
+        audit.record(me.actor().userId(), null, condominiumId, "pet.update.self", "pet", petId.toString(),
+                AuditOutcome.SUCCESS);
+        return pet;
+    }
+
     private Pet create(UUID userId, UUID condominiumId, UUID unitId, String name, String species, String breed,
                        String notes, String action) {
         if (pets.countByCondominiumIdAndUnitIdAndActiveTrue(condominiumId, unitId) >= MAX_PER_UNIT) {

@@ -19,6 +19,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
   const [type, setType] = useState("OWNER");
   const [accessFor, setAccessFor] = useState<string | null>(null);
   const [identitiesFor, setIdentitiesFor] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Resident | null>(null);
   const [subject, setSubject] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -60,6 +61,14 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
                 {r.active && r.residentType !== "DEPENDENT" && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
                 {r.active && <button onClick={() => setIdentitiesFor(r.id)} aria-label={`Meios de acesso de ${r.fullName}`}>Meios de acesso</button>}{" "}
                 <button onClick={async () => {
+                  setError(null);
+                  try {
+                    setDetail((await request<Resident>(token, "GET", `${base}/residents/${r.id}`)) ?? null);
+                  } catch (e) {
+                    setError(errorMessage(e));
+                  }
+                }} aria-label={`Detalhes de ${r.fullName}`}>Detalhes</button>{" "}
+                <button onClick={async () => {
                   const data = await request<unknown>(token, "GET", `${base}/residents/${r.id}/export`);
                   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
                   const a = document.createElement("a");
@@ -77,6 +86,14 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
             ))}
             {residents.items.length === 0 && <li>Nenhum morador nesta unidade.</li>}
           </ul>
+          {detail && (
+            <section aria-label="Detalhe do morador">
+              <h3>{detail.fullName}</h3>
+              <p>{TYPE_TEXT[detail.residentType] ?? detail.residentType} · {detail.active ? "ativo" : "inativo"}</p>
+              <p>E-mail: {detail.email ?? "não informado"} · Telefone: {detail.phone ?? "não informado"}</p>
+              <button onClick={() => setDetail(null)}>Fechar detalhe</button>
+            </section>
+          )}
           {identitiesFor && residents.items.find((x) => x.id === identitiesFor) && (
             <RegistryAccessIdentities token={token} condominiumId={condominiumId}
               resident={residents.items.find((x) => x.id === identitiesFor)!} />

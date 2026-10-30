@@ -1,5 +1,6 @@
 package br.com.domus.platform.access.controller;
 
+import br.com.domus.platform.access.entity.AccessAttempt;
 import br.com.domus.platform.access.entity.VisitRequest;
 import br.com.domus.platform.access.service.VisitRequestService;
 import br.com.domus.platform.shared.PageResponse;
@@ -78,8 +79,11 @@ public class VisitRequestController {
     public record EntryRequest(@NotBlank @Size(max = 60) String entrance) {
     }
 
-    /** @param attemptId registro de entrada criado; use-o para registrar a saída */
-    public record EntryResponse(UUID attemptId) {
+    /**
+     * @param attemptId  registro de entrada criado; use-o para registrar a saída
+     * @param exitTicket número do ticket de saída que o visitante recebe
+     */
+    public record EntryResponse(UUID attemptId, Integer exitTicket) {
     }
 
     /**
@@ -118,7 +122,8 @@ public class VisitRequestController {
     @ResponseStatus(HttpStatus.CREATED)
     public EntryResponse entry(@PathVariable UUID condominiumId, @PathVariable UUID requestId,
                                @Valid @RequestBody EntryRequest r) {
-        return new EntryResponse(service.registerEntry(condominiumId, requestId, r.entrance().trim()).getId());
+        AccessAttempt entry = service.registerEntry(condominiumId, requestId, r.entrance().trim());
+        return new EntryResponse(entry.getId(), entry.getExitTicket());
     }
 
     /**

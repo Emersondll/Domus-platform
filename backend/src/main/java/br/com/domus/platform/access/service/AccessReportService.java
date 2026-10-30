@@ -54,7 +54,7 @@ public class AccessReportService {
      * @param unitLabel "Bloco / número" da unidade visitada, quando a credencial a identifica
      */
     public record Row(UUID attemptId, Instant occurredAt, String entrance, String result, String reason,
-                      UUID unitId, String unitLabel, String visitorName, Instant exitedAt) {
+                      UUID unitId, String unitLabel, String visitorName, Instant exitedAt, Integer exitTicket) {
     }
 
     private final AccessAttemptRepository attempts;
@@ -146,6 +146,25 @@ public class AccessReportService {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.exit");
         AccessAttempt attempt = attempts.findWithLockByIdAndCondominiumId(attemptId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Access entry not found"));
+        return closeEntry(actor, condominiumId, attempt, "access.exit");
+    }
+
+    /**
+     * Valida o ticket numerado na saída: encerra a permanência de quem recebeu aquele número. Não abre porta; um ticket
+     * só vale uma vez, e um número que não existe no condomínio responde 404.
+     *
+     * @param condominiumId condomínio
+     * @param ticket número impresso no ticket
+     */
+    @Transactional
+    public Row validateExitTicket(UUID condominiumId, int ticket) {
+        Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "access.exit.ticket");
+        AccessAttempt attempt = attempts.findWithLockByCondominiumIdAndExitTicket(condominiumId, ticket)
+                .orElseThrow(() -> new NotFoundException("Exit ticket not found"));
+        return closeEntry(actor, condominiumId, attempt, "access.exit.ticket");
+    }
+
+    private Row closeEntry(Actor actor, UUID condominiumId, AccessAttempt attempt, String action) {
         if (!"GRANTED".equals(attempt.getResult())) {
             throw new ConflictException("Only a granted entry can have an exit");
         }
@@ -153,7 +172,7 @@ public class AccessReportService {
             throw new ConflictException("Exit already registered");
         }
         attempt.registerExit(actor.userId(), Instant.now(clock));
-        audit.record(actor.userId(), null, condominiumId, "access.exit", "access_attempt", attemptId.toString(),
+        audit.record(actor.userId(), null, condominiumId, action, "access_attempt", attempt.getId().toString(),
                 AuditOutcome.SUCCESS);
         return rowMapper(condominiumId, List.of(attempt)).apply(attempt);
     }
@@ -200,7 +219,7 @@ public class AccessReportService {
             UUID unitId = c != null ? c.getUnitId() : walkIn == null ? null : walkIn.getUnitId();
             String name = v != null ? v.getFullName() : walkIn == null ? null : walkIn.getVisitorName();
             return new Row(a.getId(), a.getOccurredAt(), a.getEntrance(), a.getResult(), a.getReason(), unitId,
-                    unitId == null ? null : unitLabels.get(unitId), name, a.getExitedAt());
+                    unitId == null ? null : unitLabels.get(unitId), name, a.getExitedAt(), a.getExitTicket());
         };
     }
 

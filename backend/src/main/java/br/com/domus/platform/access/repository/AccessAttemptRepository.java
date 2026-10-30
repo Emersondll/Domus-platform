@@ -49,6 +49,10 @@ public interface AccessAttemptRepository extends JpaRepository<AccessAttempt, UU
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AccessAttempt> findWithLockByIdAndCondominiumId(UUID id, UUID condominiumId);
 
+    /** Busca pelo número do ticket de saída, com trava (o ticket é validado uma única vez). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AccessAttempt> findWithLockByCondominiumIdAndExitTicket(UUID condominiumId, Integer exitTicket);
+
     /** Entradas concedidas ainda sem saída registrada (quem está no local). */
     @Query("""
             SELECT a FROM AccessAttempt a

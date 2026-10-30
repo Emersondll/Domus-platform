@@ -41,12 +41,14 @@ public class AccessReportController {
      * @param unitLabel   "Bloco / número" da unidade
      * @param visitorName visitante, quando identificado
      * @param exitedAt    saída registrada; nulo = ainda no local (ou negada)
+     * @param exitTicket  número do ticket de saída; nulo em entradas negadas e nas anteriores ao ticket
      */
     public record AccessRowResponse(UUID attemptId, Instant occurredAt, String entrance, String result, String reason,
-                                    UUID unitId, String unitLabel, String visitorName, Instant exitedAt) {
+                                    UUID unitId, String unitLabel, String visitorName, Instant exitedAt,
+                                    Integer exitTicket) {
         static AccessRowResponse from(AccessReportService.Row r) {
             return new AccessRowResponse(r.attemptId(), r.occurredAt(), r.entrance(), r.result(), r.reason(),
-                    r.unitId(), r.unitLabel(), r.visitorName(), r.exitedAt());
+                    r.unitId(), r.unitLabel(), r.visitorName(), r.exitedAt(), r.exitTicket());
         }
     }
 
@@ -109,5 +111,16 @@ public class AccessReportController {
     @PostMapping("/entries/{attemptId}/exit")
     public AccessRowResponse registerExit(@PathVariable UUID condominiumId, @PathVariable UUID attemptId) {
         return AccessRowResponse.from(service.registerExit(condominiumId, attemptId));
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/access/exit-tickets/{ticket}/validate`.
+     *
+     * @param condominiumId condomínio
+     * @param ticket número do ticket de saída
+     */
+    @PostMapping("/exit-tickets/{ticket}/validate")
+    public AccessRowResponse validateExitTicket(@PathVariable UUID condominiumId, @PathVariable int ticket) {
+        return AccessRowResponse.from(service.validateExitTicket(condominiumId, ticket));
     }
 }

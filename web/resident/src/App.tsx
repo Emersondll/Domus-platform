@@ -7,6 +7,7 @@ import { Visits } from "./Visits";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
 import { ProfilePage } from "./Profile";
+import { JoinCondominium } from "./JoinCondominium";
 import { Household } from "./Household";
 import { Messages } from "./Messages";
 import { Notices } from "./Notices";
@@ -28,6 +29,8 @@ export function App() {
   const [condo, setCondo] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("Início");
   const [error, setError] = useState<string | null>(null);
+  const [needsJoin, setNeedsJoin] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [oidc, setOidc] = useState<OidcConfig | null | undefined>(undefined); // undefined = carregando
 
   useEffect(() => {
@@ -56,7 +59,8 @@ export function App() {
   async function login(e: React.FormEvent) {
     e.preventDefault();
     try {
-      setToken(await devLogin("resident-sol"));
+      // só no build de desenvolvimento: ?devSubject=<usuário> escolhe outro morador de teste (ex.: quem ainda não tem vínculo)
+      setToken(await devLogin(new URLSearchParams(window.location.search).get("devSubject") || "resident-sol"));
     } catch {
       setError("Dev login unavailable. Is the API running with the dev profile?");
     }
@@ -74,18 +78,34 @@ export function App() {
     return () => { alive = false; clearInterval(id); };
   }, [token, condo]);
 
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  useEffect(() => {
+    if (!token || !condo) return;
+    let alive = true;
+    const load = () => request<{ unread: number }>(token, "GET", `/api/v1/condominiums/${condo}/me/messages/unread`)
+      .then((r) => { if (alive) setUnreadMessages(r?.unread ?? 0); }).catch(() => undefined);
+    void load();
+    const id = setInterval(load, 30000);
+    return () => { alive = false; clearInterval(id); };
+  }, [token, condo, tab]);
+
   useEffect(() => {
     if (!token) return;
     request<Residency[]>(token, "GET", "/api/v1/me/residencies").then((r) => {
       setResidencies(r ?? []);
       setCondo(r?.[0]?.condominiumId ?? null);
+      setNeedsJoin((r ?? []).length === 0);
+      setError(null);
     }).catch((e) => {
       // 403: o condomínio ou a empresa operadora está suspensa (os registros ficam; só o acesso é desligado)
-      setError(e instanceof ApiError && e.status === 403
+      // 403 "não cadastrado": ainda não há vínculo; a pessoa pode pedir acesso com o código do síndico
+      const notRegistered = e instanceof ApiError && e.status === 403 && /not registered/i.test(e.detail);
+      setError(notRegistered ? null : e instanceof ApiError && e.status === 403
         ? "O acesso ao seu condomínio está suspenso. Fale com a administração."
         : "Não foi possível carregar a sua residência. Tente novamente.");
+      setNeedsJoin(notRegistered);
     });
-  }, [token]);
+  }, [token, reloadKey]);
 
   if (oidc === undefined) {
     return <main className="login" aria-busy="true"><span className="skeleton line" role="status" aria-label="Carregando" /><span className="skeleton line" /></main>;
@@ -135,9 +155,9 @@ export function App() {
         )}
       </header>
       <main>
-        {!condo && (error
-          ? <p role="alert" className="error">{error}</p>
-          : <p>Nenhuma residência vinculada a este usuário.</p>)}
+        {!condo && error && <p role="alert" className="error">{error}</p>}
+        {!condo && !error && needsJoin && <JoinCondominium token={token} onApproved={() => setReloadKey((k) => k + 1)} />}
+        {!condo && !error && !needsJoin && <p>Nenhuma residência vinculada a este usuário.</p>}
         {condo && tab === "Mais" && (
           <section aria-label="Mais opções">
             <h2>Mais opções</h2>
@@ -170,8 +190,11 @@ export function App() {
       <nav aria-label="Seções">
         {PRIMARY.map((t) => (
           <button key={t} aria-current={tab === t} onClick={() => setTab(t)}
-            title={t === "Início" && unread > 0 ? `${unread} avisos não lidos` : undefined}>
-            {t}{t === "Início" && unread > 0 && <span className="count" aria-hidden="true">{unread}</span>}
+            title={t === "Início" && unread > 0 ? `${unread} avisos não lidos`
+              : t === "Mensagens" && unreadMessages > 0 ? `${unreadMessages} mensagens não lidas` : undefined}>
+            {t}
+            {t === "Início" && unread > 0 && <span className="count" aria-hidden="true">{unread}</span>}
+            {t === "Mensagens" && unreadMessages > 0 && <span className="count" aria-hidden="true">{unreadMessages}</span>}
           </button>
         ))}
         <button aria-current={isMore(tab)} onClick={() => setTab("Mais")}>Mais</button>

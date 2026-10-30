@@ -261,7 +261,7 @@ public class MemberService implements ResidentAccessRevoker {
         return revoked;
     }
 
-    private AppUser upsertUser(String subject, String email, String displayName) {
+    AppUser upsertUser(String subject, String email, String displayName) {
         AppUser existing = users.findByExternalSubject(subject).orElse(null);
         if (existing != null) {
             if (!existing.isActive()) {

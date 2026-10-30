@@ -43,7 +43,12 @@ function fakeApi() {
     calls.push({ url, method, body: init?.body as string | undefined });
     const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
     if (url.startsWith("/dev/token")) return json({ access_token: "t" });
-    if (url === "/api/v1/me/residencies") return json(residency);
+    if (url === "/api/v1/me/residencies") {
+      return notRegistered ? json({ detail: "User is not registered or is inactive" }, 403) : json(residency);
+    }
+    if (url.endsWith("/me/messages/unread")) return json({ unread: unreadMessages });
+    if (url === "/api/v1/me/association-requests") return json(myRequests);
+    if (url === "/api/v1/association-requests" && method === "POST") return json({ id: "ar1", condominiumName: "Residencial Sol", status: "PENDING", createdAt: new Date().toISOString() }, 201);
     if (url.endsWith("/me/notifications/unread-count")) return json({ unread: unreadCount });
     if (url.endsWith("/members")) return json([{ id: "s1", role: "OPERATOR", displayName: "Maria da Portaria" }, { id: "s2", role: "CONDO_MANAGER", displayName: "Carlos Síndico" }]);
     if (url.endsWith("/me/notifications")) return json(page(myNotes));
@@ -110,6 +115,9 @@ async function openTab(name: string) {
 }
 
 let unreadCount = 0;
+let notRegistered = false;
+let unreadMessages = 0;
+let myRequests: unknown[] = [];
 
 describe("resident app", () => {
   beforeEach(() => {
@@ -121,6 +129,9 @@ describe("resident app", () => {
     myParcels = [];
     myNotes = [];
     unreadCount = 0;
+    notRegistered = false;
+    unreadMessages = 0;
+    myRequests = [];
     myInvitations = [];
     myHistory = [];
     myVisitRequests = [];
@@ -310,6 +321,38 @@ describe("resident app", () => {
     await user.selectOptions(screen.getByLabelText("Espécie"), "CAT");
     await user.click(screen.getByRole("button", { name: "Adicionar animal" }));
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/me/pets") && c.method === "POST")?.body).toBe(JSON.stringify({ name: "Mimi", species: "CAT", breed: null, notes: null })));
+  });
+
+  it("lets a person without a link ask the síndico for access with the join code", async () => {
+    notRegistered = true;
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Entrar/ }));
+    await user.type(await screen.findByLabelText("Código de adesão"), "abcd234567");
+    await user.type(screen.getByLabelText("Nome completo"), "Ana Teste");
+    await user.type(screen.getByLabelText("E-mail"), "ana@example.invalid");
+    await user.selectOptions(screen.getByLabelText("Vínculo"), "TENANT");
+    await user.type(screen.getByLabelText(/Unidade \(ex/), "Bloco A, 101");
+    await user.click(screen.getByRole("button", { name: "Enviar pedido" }));
+    await waitFor(() => expect(JSON.parse(calls.find((c) => c.url === "/api/v1/association-requests" && c.method === "POST")!.body!))
+      .toEqual({ code: "abcd234567", fullName: "Ana Teste", email: "ana@example.invalid", phone: null, type: "TENANT", unitText: "Bloco A, 101" }));
+    expect(await screen.findByText(/Pedido enviado/)).toBeInTheDocument();
+  });
+
+  it("shows the state of an earlier request and hides the form while it is pending", async () => {
+    notRegistered = true;
+    myRequests = [{ id: "ar1", condominiumName: "Residencial Sol", status: "PENDING", createdAt: new Date().toISOString() }];
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Entrar/ }));
+    expect(await screen.findByText(/aguardando o síndico/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar pedido" })).not.toBeInTheDocument();
+  });
+
+  it("shows how many messages from the front desk are unread", async () => {
+    unreadMessages = 3;
+    await openTab("Início");
+    expect(await screen.findByRole("button", { name: /Mensagens/ })).toHaveAttribute("title", "3 mensagens não lidas");
   });
 
   it("edits a pet of the unit", async () => {

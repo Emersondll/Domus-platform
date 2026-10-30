@@ -350,6 +350,21 @@ try:
         pan.get_by_role("button", name="Responder").click()
         expect(res.get_by_text("Combinado, avise o nome na portaria")).to_be_visible(timeout=20000)
         check("conversa morador <-> portaria nos dois sentidos", True)
+        res.get_by_role("button", name="Início", exact=True).click()
+        pan.get_by_label("Resposta").fill("Segunda resposta da portaria")
+        pan.get_by_role("button", name="Responder").click()
+        seen = False
+        for _ in range(12):
+            res.get_by_role("button", name="Encomendas", exact=True).click()
+            res.get_by_role("button", name="Início", exact=True).click()
+            if "não lida" in (res.get_by_role("button", name=re.compile("^Mensagens")).get_attribute("title") or ""):
+                seen = True
+                break
+            time.sleep(1)
+        check("o app mostra o contador de mensagens não lidas da portaria", seen)
+        res.get_by_role("button", name=re.compile("^Mensagens")).click()
+        expect(res.get_by_text("Segunda resposta da portaria")).to_be_visible(timeout=15000)
+        res.get_by_role("button", name="Início", exact=True).click()
 
         # cadastros do domicílio: o morador cadastra cônjuge e animal; a portaria enxerga nos cadastros
         more(res, "Minha casa")
@@ -466,10 +481,13 @@ try:
               pan.get_by_text(re.compile("a porta não é aberta")).count() == 1)
         pan.get_by_role("tab", name="Visitantes").click()
         expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_be_visible(timeout=15000)
-        row = pan.get_by_role("listitem").filter(has_text="Visitante Saida E2E")
-        row.get_by_role("button", name="Registrar saída").click()
+        row = pan.get_by_role("listitem").filter(has_text=re.compile("Ticket \\d+ · Visitante Saida E2E"))
+        ticket = re.search(r"Ticket (\d+)", row.inner_text()).group(1)
+        pan.get_by_label("Ticket de saída", exact=True).fill(ticket)
+        pan.get_by_role("button", name="Validar ticket").click()
+        expect(pan.get_by_text(re.compile(f"Saída registrada: Visitante Saida E2E \\(ticket {ticket}\\)"))).to_be_visible()
         expect(pan.get_by_text(re.compile("Visitante Saida E2E · unidade"))).to_have_count(0, timeout=15000)
-        check("visitante no local tem a saída registrada e some da lista", True)
+        check("o ticket numerado do visitante é validado na saída e ele some da lista", True)
 
         # prestador sem convite: a portaria avisa, o morador autoriza, a portaria registra a entrada e depois a saída
         pan.get_by_label("Unidade visitada").select_option(label="A / 101")
@@ -481,6 +499,8 @@ try:
         expect(res.get_by_text("Prestador E2E (Net)").first).to_be_visible(timeout=15000)
         res.get_by_role("button", name="Autorizar").click()
         pan.get_by_role("button", name="Registrar entrada de Prestador E2E (Net)").click()
+        expect(pan.get_by_text(re.compile("Entrega o ticket nº \\d+ a Prestador E2E"))).to_be_visible(timeout=15000)
+        check("ao registrar a entrada na portaria a tela mostra o número do ticket a entregar", True)
         expect(pan.get_by_text(re.compile("Prestador E2E \\(Net\\) · unidade A / 101"))).to_be_visible(timeout=15000)
         check("prestador autorizado pelo morador tem a entrada registrada e passa a contar no local", True)
         pan.get_by_role("button", name="Registrar saída de Prestador E2E (Net)").click()
@@ -765,6 +785,38 @@ try:
         with mgr.expect_download() as dl4:
             mgr.get_by_role("button", name="Exportar por unidade (CSV)").click()
         check("síndico baixa o CSV da atividade por unidade", open(dl4.value.path(), encoding="utf-8").read().strip() != "")
+        # associação: pessoa nova pede acesso com o código do síndico e o síndico aprova
+        mgr.get_by_role("tab", name="Cadastros").click()
+        mgr.get_by_role("button", name="Solicitações", exact=True).click()
+        mgr.get_by_role("button", name=re.compile("^Gerar")).click()
+        expect(mgr.get_by_label("Código de adesão")).to_be_visible(timeout=15000)
+        join_code = mgr.get_by_label("Código de adesão").inner_text()
+        novato = browser.new_context(viewport={"width": 390, "height": 900}, locale="pt-BR").new_page()
+        watch(novato, "novato")
+        novato.goto(f"http://localhost:5174/?devSubject=novato-{suf}")
+        novato.get_by_role("button", name="Entrar como morador de teste").click()
+        novato.locator("#join-code").fill("CODIGOERRADO")
+        novato.locator("#join-name").fill(f"Novato E2E {suf}")
+        novato.locator("#join-email").fill(f"novato-{suf}@example.invalid")
+        novato.locator("#join-unit").fill("Bloco A, 101")
+        novato.get_by_role("button", name="Enviar pedido").click()
+        expect(novato.get_by_role("alert")).to_be_visible(timeout=15000)
+        novato.locator("#join-code").fill(join_code)
+        novato.get_by_role("button", name="Enviar pedido").click()
+        expect(novato.get_by_text(re.compile("aguardando o síndico"))).to_be_visible(timeout=15000)
+        mgr.get_by_role("button", name="Moradores", exact=True).click()
+        mgr.get_by_role("button", name="Solicitações", exact=True).click()
+        mgr.get_by_label(f"Unidade de Novato E2E {suf}").select_option(label="A / 101")
+        mgr.get_by_role("button", name=f"Aprovar Novato E2E {suf}").click()
+        expect(mgr.get_by_text(f"Novato E2E {suf}")).to_have_count(0, timeout=15000)
+        novato.reload()
+        novato.get_by_role("button", name="Entrar como morador de teste").click()
+        expect(novato.get_by_text(re.compile("Unidade 101"))).to_be_visible(timeout=15000)
+        check("pessoa nova pede acesso com o código de adesão e o síndico aprova pela tela", True)
+        # respostas esperadas desse roteiro: 403 (ainda sem vínculo) e 404 (código errado); qualquer outra falha do novato continua valendo
+        expected = ("403 GET http://localhost:5174/api/v1/me/residencies", "404 POST http://localhost:5174/api/v1/association-requests")
+        failed_requests[:] = [r for r in failed_requests if not (r.startswith("novato:") and r.endswith(expected))]
+        errors[:] = [e for e in errors if not (e.startswith("novato:") and ("status of 403" in e or "status of 404" in e))]
         mtokens = mgr.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (síndico)", "eyJ" not in mtokens)
 
@@ -788,10 +840,25 @@ try:
         adm.get_by_label("Nome do novo agente").fill("Agente E2E")
         adm.get_by_role("button", name="Cadastrar agente").click()
         expect(adm.get_by_text("aparecem só agora")).to_be_visible()
+        agent_key = adm.locator("code").first.inner_text()
         adm.get_by_role("button", name="Já guardei").click()
         expect(adm.get_by_text("aparecem só agora")).to_have_count(0)
         expect(adm.get_by_text(re.compile("Agente E2E · "))).to_be_visible()
         check("administrador cadastra um agente; as credenciais aparecem uma só vez", True)
+        novo_id = next(c["id"] for c in api("GET", "/api/v1/condominiums?size=100", "alpha-admin")["items"] if c["name"] == novo)
+        agent_id = api("GET", f"/api/v1/condominiums/{novo_id}/agents", "alpha-admin")[0]["id"]
+        batch = {"events": [{"eventId": str(__import__("uuid").uuid4()), "type": "OFFLINE_ENTRY_UNCERTAIN",
+                             "credentialId": str(__import__("uuid").uuid4()),
+                             "occurredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "entrance": "portaria", "reason": "e2e"}]}
+        ev = urllib.request.Request("http://localhost:8081/api/v1/agent/events", method="POST", data=json.dumps(batch).encode(),
+                                    headers={"X-Agent-Id": agent_id, "X-Agent-Key": agent_key, "Content-Type": "application/json"})
+        urllib.request.urlopen(ev).read()
+        adm.get_by_role("tab", name="Condomínios").click()
+        adm.get_by_role("tab", name="Agentes e sincronização").click()
+        adm.get_by_label("Condomínio", exact=True).select_option(label=novo)
+        adm.get_by_role("button", name=re.compile("^Resolver conflito")).click()
+        expect(adm.get_by_text("resolvido", exact=True).first).to_be_visible(timeout=15000)
+        check("o administrador resolve um conflito de sincronização do agente pela tela", True)
         adm.get_by_role("button", name="Revogar agente Agente E2E").click()
         expect(adm.get_by_text(re.compile("Agente E2E · .*revogado"))).to_be_visible()
         check("administrador revoga o agente pela tela", True)
@@ -853,6 +920,22 @@ try:
         plat.get_by_role("button", name=f"Reativar condomínio {novo}").click()
         expect(plat.get_by_text("Condomínio reativado.")).to_be_visible()
         check("a plataforma suspende e reativa um condomínio pela tela", True)
+
+        # chamadas do condomínio: registrar uma chamada de balcão, atendê-la e transferi-la a outro operador de plantão
+        api("POST", "/api/v1/operator/shifts/start", "operator-multi")
+        pan.get_by_role("tab", name="Chamadas").click()
+        pan.get_by_label("Unidade (opcional)").select_option(label="A / 101")
+        pan.get_by_label("Nome de quem chamou (opcional)").fill("Balcão E2E")
+        pan.get_by_role("button", name="Registrar chamada").click()
+        expect(pan.get_by_text(re.compile("Balcão E2E"))).to_be_visible(timeout=15000)
+        check("a portaria registra e lista as chamadas do condomínio pela tela", True)
+        pan.get_by_role("button", name=re.compile("Voltar aos condomínios")).click()
+        take_next(pan)
+        pan.get_by_label("Operador de plantão").select_option(label="Operador Multi")
+        pan.get_by_label("Motivo", exact=True).fill("Passagem de turno E2E")
+        pan.get_by_role("button", name="Transferir", exact=True).click()
+        expect(pan.get_by_role("button", name="Encerrar atendimento")).to_have_count(0, timeout=15000)
+        check("o operador transfere o atendimento a outro operador de plantão pela tela", True)
 
         pan.get_by_role("button", name="Encerrar turno").click()
         expect(pan.get_by_text("Sem turno")).to_be_visible()

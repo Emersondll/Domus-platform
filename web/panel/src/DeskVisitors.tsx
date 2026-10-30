@@ -21,6 +21,9 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const [snapEntrance, setSnapEntrance] = useState("");
   const [snap, setSnap] = useState<{ id: string; camera: string } | null>(null);
   const [seeing, setSeeing] = useState<string | null>(null);
+  const [issuedTicket, setIssuedTicket] = useState<{ visitor: string; ticket: number } | null>(null);
+  const [ticketInput, setTicketInput] = useState("");
+  const [ticketMsg, setTicketMsg] = useState<string | null>(null);
 
   useEffect(() => {
     request<{ enabled: boolean; entrances: string[] }>(token, "GET", `${base}/entrance-snapshots/availability`)
@@ -82,7 +85,10 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   async function registerEntry(requestId: string) {
     setError(null);
     try {
-      await request(token, "POST", `${base}/visit-requests/${requestId}/entry`, { entrance: entrance.trim() || "portaria" });
+      const entry = await request<{ attemptId: string; exitTicket: number | null }>(token, "POST",
+        `${base}/visit-requests/${requestId}/entry`, { entrance: entrance.trim() || "portaria" });
+      const who = requests.items.find((q) => q.id === requestId)?.visitorName ?? "Visitante";
+      setIssuedTicket(entry?.exitTicket != null ? { visitor: who, ticket: entry.exitTicket } : null);
       await Promise.all([requests.reload(), onSite.reload(), attempts.reload()]);
     } catch (e) {
       setError(errorMessage(e));
@@ -100,17 +106,41 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
     }
   }
 
+  async function validateTicket(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setTicketMsg(null);
+    try {
+      const row = await request<AccessRow>(token, "POST", `${base}/access/exit-tickets/${encodeURIComponent(ticketInput.trim())}/validate`);
+      setTicketMsg(`Saída registrada: ${row?.visitorName ?? "visitante"} (ticket ${ticketInput.trim()}).`);
+      setTicketInput("");
+      await Promise.all([onSite.reload(), attempts.reload()]);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   return (
     <div aria-label="Visitantes">
       <h3>No local agora ({onSite.items.length})</h3>
       {error && <p role="alert" className="error">{error}</p>}
+      {issuedTicket && (
+        <p role="status" className="badge ok">Entrega o ticket nº {issuedTicket.ticket} a {issuedTicket.visitor}: ele é validado na saída.</p>
+      )}
+      <form onSubmit={validateTicket} aria-label="Validar ticket de saída">
+        <label htmlFor="exit-ticket">Ticket de saída</label>
+        <input id="exit-ticket" inputMode="numeric" pattern="[0-9]*" maxLength={9} value={ticketInput}
+          onChange={(e) => setTicketInput(e.target.value)} />
+        <button type="submit" disabled={!/^\d+$/.test(ticketInput.trim())}>Validar ticket</button>
+      </form>
+      {ticketMsg && <p role="status">{ticketMsg}</p>}
       <p className="hint">Quem entrou e ainda não saiu. Registre a saída quando a pessoa for embora; assim o número no resumo volta a refletir quem está no condomínio.</p>
       <ul>
         {onSite.items.map((r) => {
           const hours = (Date.now() - new Date(r.occurredAt).getTime()) / 3_600_000;
           return (
             <li key={r.attemptId}>
-              {r.visitorName ?? "Visitante"}{r.unitLabel ? ` · unidade ${r.unitLabel}` : ""} · entrou {new Date(r.occurredAt).toLocaleTimeString()} · {r.entrance}{" "}
+              {r.exitTicket != null && <strong>Ticket {r.exitTicket} · </strong>}{r.visitorName ?? "Visitante"}{r.unitLabel ? ` · unidade ${r.unitLabel}` : ""} · entrou {new Date(r.occurredAt).toLocaleTimeString()} · {r.entrance}{" "}
               {hours >= 12 && <span className="badge warn">no local há mais de 12 h: confirme</span>}{" "}
               <button aria-label={`Registrar saída de ${r.visitorName ?? "visitante"}`} onClick={() => registerExit(r.attemptId)}>Registrar saída</button>
             </li>

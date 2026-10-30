@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DeskAnnouncements } from "./DeskAnnouncements";
+import { DeskCalls } from "./DeskCalls";
 import { DeskCameras } from "./DeskCameras";
 import { DeskDoors } from "./DeskDoors";
 import { DeskParcels } from "./DeskParcels";
@@ -14,7 +15,7 @@ import { useCondoList } from "./useCondoList";
 
 /** Seções agrupadas por assunto, para a portaria achar cada coisa sem varrer uma lista longa. */
 const GROUPS = [
-  { label: "Rotina", tabs: ["Encomendas", "Visitantes", "Livro de turno"] },
+  { label: "Rotina", tabs: ["Chamadas", "Encomendas", "Visitantes", "Livro de turno"] },
   { label: "Segurança", tabs: ["Portas", "Câmeras", "Ocorrências"] },
   { label: "Comunicação", tabs: ["Mensagens", "Comunicados"] },
   { label: "Gestão", tabs: ["Cadastros", "Relatórios"] },
@@ -63,6 +64,7 @@ export function CondoDesk({ token, condominiumId, name, onBack }:
           </div>
         ))}
       </div>
+      {tab === "Chamadas" && <DeskCalls token={token} condominiumId={condominiumId} />}
       {tab === "Encomendas" && <DeskParcels token={token} condominiumId={condominiumId} />}
       {tab === "Visitantes" && <DeskVisitors token={token} condominiumId={condominiumId} />}
       {tab === "Portas" && <DeskDoors token={token} condominiumId={condominiumId} />}

@@ -77,6 +77,11 @@ recadastrar os agentes (o segredo de política de cada um é derivado dele).
 - Backup do Keycloak: seu banco (`keycloak`) está no mesmo PostgreSQL e entra no backup se `PGDB` for ajustado (rode o script
   também com `PGDB=keycloak`); a definição do realm está versionada em `deploy/keycloak/portaria-realm.json`.
 
+## Associação de moradores e ticket de saída (V26, V27)
+
+- **Código de adesão:** o síndico gera em Cadastros → Solicitações. Quem o tem só consegue **abrir um pedido**; o acesso nasce quando o síndico aprova. Trocar ou desligar o código vale na hora (pedidos já abertos continuam pendentes). Para o morador conseguir pedir, ele precisa ter conta no provedor de identidade: a política de auto-cadastro do Keycloak em produção é decisão de implantação (D6).
+- **Ticket de saída:** numeração por condomínio feita por gatilho no banco; o número nunca é reaproveitado. Entradas anteriores à V27 não têm número.
+
 ## Rotação de segredos e chaves
 - **Agente:** `java -jar agent.jar --rotate-key` (a chave antiga vale 24 h até a nova ser usada); revogar: `POST .../agents/{id}/revoke`.
 - **Dispositivo (ingestão de eventos):** `POST .../devices/{id}/rotate-key`.

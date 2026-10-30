@@ -42,6 +42,11 @@ public class AccessAttempt {
     @Column(name = "visit_request_id", updatable = false)
     private UUID visitRequestId;
 
+    /** Número do ticket de saída, dado pelo banco (gatilho) quando a entrada é concedida. */
+    @org.hibernate.annotations.Generated(event = org.hibernate.generator.EventType.INSERT)
+    @Column(name = "exit_ticket", insertable = false, updatable = false)
+    private Integer exitTicket;
+
     @Column(name = "exited_at")
     private Instant exitedAt;
 
@@ -112,6 +117,11 @@ public class AccessAttempt {
     /** Retorna o campo occurred at. */
     public Instant getOccurredAt() {
         return occurredAt;
+    }
+
+    /** Retorna o número do ticket de saída; nulo em entradas negadas e nas anteriores ao ticket. */
+    public Integer getExitTicket() {
+        return exitTicket;
     }
 
     /** Retorna o campo exited at. */

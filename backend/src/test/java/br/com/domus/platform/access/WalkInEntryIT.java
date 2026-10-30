@@ -127,4 +127,31 @@ class WalkInEntryIT extends AbstractIntegrationTest {
         mvc.perform(post(base() + "/me/visit-requests/" + id + "/deny").with(as("wi-res"))).andExpect(status().isOk());
         enter(id, "wi-operator").andExpect(status().isConflict());
     }
+
+    @Test
+    void numberedExitTicketIsIssuedOnEntryAndValidatedOnceAtTheExit() throws Exception {
+        String first = request("Ticket Um", "VISITOR");
+        String second = request("Ticket Dois", "VISITOR");
+        for (String id : new String[] {first, second}) {
+            mvc.perform(post(base() + "/me/visit-requests/" + id + "/approve").with(as("wi-res"))).andExpect(status().isOk());
+        }
+        int t1 = json.readTree(enter(first, "wi-operator").andExpect(status().isCreated()).andExpect(jsonPath("$.exitTicket").isNumber())
+                .andReturn().getResponse().getContentAsString()).get("exitTicket").asInt();
+        int t2 = json.readTree(enter(second, "wi-operator").andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("exitTicket").asInt();
+        org.junit.jupiter.api.Assertions.assertEquals(t1 + 1, t2);
+        mvc.perform(get(base() + "/access/on-site").with(as("wi-operator")))
+                .andExpect(jsonPath("$.items[?(@.exitTicket==" + t1 + ")].visitorName").value("Ticket Um"));
+
+        String validate = base() + "/access/exit-tickets/";
+        mvc.perform(post(validate + t1 + "/validate").with(as("wi-res"))).andExpect(status().isNotFound());
+        mvc.perform(post(validate + t1 + "/validate").with(as("wi-other-operator"))).andExpect(status().isNotFound());
+        mvc.perform(post(validate + (t2 + 1000) + "/validate").with(as("wi-operator"))).andExpect(status().isNotFound());
+        mvc.perform(post(validate + t1 + "/validate").with(as("wi-operator"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.visitorName").value("Ticket Um")).andExpect(jsonPath("$.exitedAt").isNotEmpty());
+        mvc.perform(post(validate + t1 + "/validate").with(as("wi-operator"))).andExpect(status().isConflict());
+        mvc.perform(get(base() + "/access/on-site").with(as("wi-operator")))
+                .andExpect(jsonPath("$.items[?(@.exitTicket==" + t1 + ")]").isEmpty())
+                .andExpect(jsonPath("$.items[?(@.exitTicket==" + t2 + ")]").isNotEmpty());
+    }
 }

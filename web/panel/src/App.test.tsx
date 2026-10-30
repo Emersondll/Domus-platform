@@ -49,11 +49,12 @@ function fakeApi() {
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (!init?.method || init.method === "GET") gets.push(url);
     if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
-    if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null }]);
+    if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null, exitTicket: 7 }]);
     if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null },
       { id: "vr10", unitId: "un1", callId: null, visitorName: "João Autorizado", kind: "SERVICE_PROVIDER", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: false, hasSnapshot: true },
       { id: "vr11", unitId: "un1", callId: null, visitorName: "Maria Já Entrou", kind: "VISITOR", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: true }]);
-    if (url.includes("/visit-requests/") && url.endsWith("/entry")) return json({ attemptId: "e50" });
+    if (url.endsWith("/access/exit-tickets/7/validate")) return json({ attemptId: "e1", visitorName: "Dona Rosa", exitedAt: new Date().toISOString(), exitTicket: 7 });
+    if (url.includes("/visit-requests/") && url.endsWith("/entry")) return json({ attemptId: "e50", exitTicket: 42 });
     if (url.endsWith("/visit-requests") && init?.method === "POST") return json({ id: "vr8" });
     if (url.endsWith("/access/validate")) return json({ granted: true, reason: "OK", unitId: "un1", visitorName: "Dona Rosa", attemptId: "e9" });
     if (url.endsWith("/exit") && init?.method === "POST") return json({ attemptId: "e1" });
@@ -95,6 +96,12 @@ function fakeApi() {
     if (url.endsWith("/residents/r1/photo-status")) return json({ hasPhoto: true });
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
+    if (url.includes("/calls?")) return pg([{ id: "cl1", condominiumId: "c1", unitId: "un1", source: "RESIDENT", callerName: "Seu Zé", status: "QUEUED", assignedUserId: null, createdAt: new Date().toISOString(), outcome: null, unitLabel: "A / 101" }]);
+    if (url.endsWith("/calls") && init?.method === "POST") return json({ id: "cl2" }, 201);
+    if (url.endsWith("/join-code")) return json({ code: init?.method === "POST" ? "NEWCODE234" : "ABCDE23456" });
+    if (url.endsWith("/association-requests")) return json([{ id: "ar1", fullName: "Ana Pedido", email: "ana@example.invalid", phone: null, type: "OWNER", unitText: "A 101", status: "PENDING", createdAt: new Date().toISOString() }]);
+    if (url.endsWith("/association-requests/ar1/approve")) return json({ id: "ar1", status: "APPROVED" });
+    if (url.endsWith("/association-requests/ar1/reject")) return json({ id: "ar1", status: "REJECTED" });
     if (url.endsWith("/residents/r1") && init?.method === "PUT") return json({ id: "r1" });
     if (url.endsWith("/residents/r1") && (init?.method ?? "GET") === "GET") return json({ id: "r1", unitId: "un1", fullName: "Joana Teste", email: "joana@example.invalid", phone: null, residentType: "OWNER", active: true });
     if (url.endsWith("/pets/p1") && init?.method === "PUT") return json({ id: "p1" });
@@ -432,6 +439,19 @@ describe("operator panel", () => {
     expect(screen.queryByRole("button", { name: "Registrar entrada de Maria Já Entrou" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Registrar entrada de João Autorizado" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visit-requests/vr10/entry"))?.body).toEqual({ entrance: "portaria" }));
+    expect(await screen.findByText(/ticket nº 42 a João Autorizado/)).toBeInTheDocument();
+  });
+
+  it("validates the numbered exit ticket at the gate", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    expect(await screen.findByText(/Ticket 7/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Validar ticket" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Ticket de saída"), "7");
+    await user.click(screen.getByRole("button", { name: "Validar ticket" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/access/exit-tickets/7/validate"))).toBe(true));
+    expect(await screen.findByText(/Saída registrada: Dona Rosa \(ticket 7\)/)).toBeInTheDocument();
   });
 
   it("keeps remote opening off until the manager enables it, then marks a door for residents", async () => {
@@ -538,6 +558,33 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Nome"), "Rex II");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/pets/p1"))?.body).toEqual({ unitId: "un1", name: "Rex II", species: "DOG", breed: null, notes: "sai com guia" }));
+  });
+
+  it("lists the condominium calls and registers one from outside the app", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Chamadas" }));
+    expect(await screen.findByText(/Seu Zé/)).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Unidade (opcional)"), "un1");
+    await user.type(screen.getByLabelText("Nome de quem chamou (opcional)"), "Entregador");
+    await user.click(screen.getByRole("button", { name: "Registrar chamada" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/calls"))?.body).toEqual({ unitId: "un1", callerName: "Entregador" }));
+  });
+
+  it("shows the join code and lets the síndico decide the access requests", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(screen.getByRole("button", { name: "Solicitações" }));
+    expect(await screen.findByLabelText("Código de adesão")).toHaveTextContent("ABCDE23456");
+    await user.click(screen.getByRole("button", { name: "Gerar novo código" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/join-code"))).toBe(true));
+    expect(screen.getByRole("button", { name: "Aprovar Ana Pedido" })).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Unidade de Ana Pedido"), "un1");
+    await user.click(screen.getByRole("button", { name: "Aprovar Ana Pedido" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/association-requests/ar1/approve"))?.body).toEqual({ unitId: "un1" }));
+    await user.click(screen.getByRole("button", { name: "Recusar Ana Pedido" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/association-requests/ar1/reject"))).toBe(true));
   });
 
   it("registers a common area and lets the staff cancel a resident reservation", async () => {

@@ -41,6 +41,15 @@ public class AccessService {
         this.audit = audit;
     }
 
+    /** Identificador (sub) do usuário autenticado no provedor de identidade; vale também para quem ainda não tem cadastro. */
+    public String currentSubject() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
+            throw new ForbiddenException("Authentication required");
+        }
+        return jwt.getSubject();
+    }
+
     /**
      * Identifica o usuário autenticado e suas associações.
      */

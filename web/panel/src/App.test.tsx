@@ -530,10 +530,30 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/access/validate"))?.body).toEqual({ token: "abc.def", entrance: "portaria" }));
   });
 
+  it("opens the registry as its own section, not as a desk tab", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    expect(await screen.findByRole("tab", { name: "Chamadas" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Cadastros" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Cadastros$/ }));
+    expect(await screen.findByRole("heading", { name: /Cadastros · Residencial Sol/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Tipos de cadastro" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Chamadas" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Início" }));
+    expect(screen.queryByRole("group", { name: "Tipos de cadastro" })).not.toBeInTheDocument();
+  });
+
+  it("asks for a condominium before opening the registry", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
+    expect(await screen.findByRole("region", { name: "Escolha um condomínio para os cadastros" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Tipos de cadastro" })).not.toBeInTheDocument();
+  });
+
   it("registers blocks, a spouse and a pet from the registry", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     expect(await screen.findByText((_, el) => el?.tagName === "LI" && el.textContent === "Bloco A: 101")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nome do bloco ou torre"), "Bloco B");
     await user.click(screen.getByRole("button", { name: "Cadastrar bloco" }));
@@ -587,7 +607,7 @@ describe("operator panel", () => {
   it("shows the join code and lets the síndico decide the access requests", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     await user.click(screen.getByRole("button", { name: "Solicitações" }));
     expect(await screen.findByLabelText("Código de adesão")).toHaveTextContent("ABCDE23456");
     await user.click(screen.getByRole("button", { name: "Gerar novo código" }));
@@ -603,7 +623,7 @@ describe("operator panel", () => {
   it("registers a common area and lets the staff cancel a resident reservation", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     await user.click(screen.getByRole("button", { name: "Áreas comuns" }));
     expect(await screen.findByText("Salão de festas", { selector: "strong" })).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nome da área"), "Churrasqueira");
@@ -618,7 +638,7 @@ describe("operator panel", () => {
   it("shows the staff by name, not by identifier", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     await user.click(screen.getByRole("button", { name: "Equipe" }));
     await user.click(screen.getByRole("button", { name: "Carregar equipe" }));
     expect(await screen.findByText(/Operador Teste · operador/)).toBeInTheDocument();
@@ -697,7 +717,7 @@ describe("operator panel", () => {
   it("lets the desk search residents' vehicles by plate", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     await user.click(await screen.findByRole("button", { name: "Veículos" }));
     expect(await screen.findByText(/ABC1D23 · unidade .*101 · Sedan · Prata/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Buscar por placa"), "abc1d23");
@@ -839,7 +859,7 @@ describe("operator panel", () => {
   it("registers an access means for a resident without ever showing the stored reference or the personal history", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
-    await user.click(await screen.findByRole("tab", { name: "Cadastros" }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
     await user.click(await screen.findByRole("button", { name: "Moradores" }));
     await user.selectOptions(screen.getByLabelText("Unidade"), "un1");
     await user.click(await screen.findByRole("button", { name: "Meios de acesso de Joana Teste" }));

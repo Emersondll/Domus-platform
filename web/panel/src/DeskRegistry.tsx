@@ -9,17 +9,20 @@ import { RegistryVehicles } from "./RegistryVehicles";
 
 const SECTIONS = ["Unidades", "Moradores", "Animais", "Veículos", "Áreas comuns", "Equipe", "Solicitações"] as const;
 
-/** Cadastros do condomínio. Escrever exige o síndico ou a administração; o operador consulta. */
-export function DeskRegistry({ token, condominiumId }: { token: string; condominiumId: string }) {
+/** Seção própria de cadastros do condomínio (fora da mesa). Escrever exige o síndico ou a administração; o operador consulta. */
+export function DeskRegistry({ token, condominiumId, name }: { token: string; condominiumId: string; name: string }) {
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Unidades");
   return (
-    <div aria-label="Cadastros">
-      <p className="hint">Cadastros do condomínio. Só o síndico ou a administração grava; o operador apenas consulta.</p>
-      <div className="tabs subtabs" role="group" aria-label="Tipos de cadastro">
+    <section aria-label="Cadastros do condomínio" className="registry">
+      <h2>Cadastros · {name}</h2>
+      <p className="hint">Só o síndico ou a administração grava; o operador apenas consulta.</p>
+      <div className="registry-body">
+      <div className="registry-menu" role="group" aria-label="Tipos de cadastro">
         {SECTIONS.map((s) => (
           <button key={s} aria-pressed={section === s} onClick={() => setSection(s)}>{s}</button>
         ))}
       </div>
+      <div className="registry-content">
       {section === "Unidades" && <RegistryUnits token={token} condominiumId={condominiumId} />}
       {section === "Moradores" && <RegistryResidents token={token} condominiumId={condominiumId} />}
       {section === "Animais" && <RegistryPets token={token} condominiumId={condominiumId} />}
@@ -27,6 +30,8 @@ export function DeskRegistry({ token, condominiumId }: { token: string; condomin
       {section === "Áreas comuns" && <RegistryAreas token={token} condominiumId={condominiumId} />}
       {section === "Solicitações" && <RegistryRequests token={token} condominiumId={condominiumId} />}
       {section === "Equipe" && <RegistryStaff token={token} condominiumId={condominiumId} />}
-    </div>
+      </div>
+      </div>
+    </section>
   );
 }

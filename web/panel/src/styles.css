@@ -100,3 +100,17 @@ button.back { margin: 8px 0 0; padding: 6px 10px; font-size: 14px; background: n
 .camera-tile:fullscreen video { max-width: none; height: 80vh; }
 li.inactive { opacity: .6; }
 label.required::after { content: " *"; color: var(--err); }
+
+/* Seção própria de Cadastros: menu lateral de um nível só ao lado do conteúdo. */
+.layout > .registry, .layout > .registry-empty { grid-column: 1 / -1; }
+.registry-body { display: grid; gap: 16px; margin-top: 12px; }
+.registry-menu { display: flex; flex-wrap: wrap; gap: 8px; }
+.registry-menu button { margin: 0; background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; font-weight: 600; text-align: left; }
+.registry-menu button[aria-pressed="true"] { background: var(--accent-strong); border-color: var(--accent); }
+.registry-content { min-width: 0; }
+@media (min-width: 800px) {
+  .registry-body { grid-template-columns: 200px minmax(0, 1fr); align-items: start; }
+  .registry-menu { flex-direction: column; flex-wrap: nowrap; position: sticky; top: 12px; }
+  .registry-menu button { width: 100%; }
+}
+header button[aria-pressed="true"] { background: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent); }

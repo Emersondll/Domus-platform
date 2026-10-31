@@ -6,6 +6,7 @@ import { AdminArea } from "./AdminArea";
 import { CallWorkbench } from "./CallWorkbench";
 import { CameraMonitor } from "./CameraMonitor";
 import { CondoDesk } from "./CondoDesk";
+import { DeskRegistry } from "./DeskRegistry";
 import { Login } from "./Login";
 import { OverviewPanel, StatusBar } from "./OverviewPanel";
 import { PanicAlerts } from "./PanicAlerts";
@@ -38,6 +39,7 @@ export function App() {
   const [adminScope, setAdminScope] = useState<AdminScope | null>(null);
   const [isOperator, setIsOperator] = useState<boolean | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [registryOpen, setRegistryOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
 
@@ -146,9 +148,10 @@ export function App() {
       <PanicAlerts token={session.token} onAttend={attendPanic} />
       <header>
         <strong>Domus Central</strong>
-        <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); setAdminOpen(false); }}>Início</button>
+        <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); setAdminOpen(false); setRegistryOpen(false); }}>Início</button>
+        <button aria-pressed={registryOpen} onClick={() => { setRegistryOpen((v) => !v); setAdminOpen(false); }}>Cadastros</button>
         {adminScope && (adminScope.platformAdmin || adminScope.companies.length > 0) && (
-          <button aria-pressed={adminOpen} onClick={() => setAdminOpen((v) => !v)}>Administração</button>
+          <button aria-pressed={adminOpen} onClick={() => { setAdminOpen((v) => !v); setRegistryOpen(false); }}>Administração</button>
         )}
         <span className="who">{session.subject}</span>
         <span className={shift ? "shift on" : "shift"}>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
@@ -192,6 +195,17 @@ export function App() {
       <StatusBar items={overview} />
       <OverviewPanel items={overview} selected={selectedCondo} onSelect={setSelectedCondo} />
 
+      {registryOpen ? (
+        selectedCondo ? (
+          <DeskRegistry key={selectedCondo} token={session.token} condominiumId={selectedCondo}
+            name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"} />
+        ) : (
+          <section className="desk-empty registry-empty" aria-label="Escolha um condomínio para os cadastros">
+            <h2>Cadastros</h2>
+            <p>Escolha um condomínio acima para abrir os cadastros (unidades, moradores, animais, veículos, áreas comuns, equipe e solicitações).</p>
+          </section>
+        )
+      ) : (<>
       <div className="col-main">
         <section aria-label="Meus atendimentos">
           <h2>Meus atendimentos</h2>
@@ -220,10 +234,11 @@ export function App() {
         ) : (
           <section className="desk-empty" aria-label="Nenhum condomínio selecionado">
             <h2>Mesa do condomínio</h2>
-            <p>Escolha um condomínio acima para ver encomendas, visitantes, portas, câmeras e cadastros.</p>
+            <p>Escolha um condomínio acima para ver encomendas, visitantes, portas, câmeras e relatórios.</p>
           </section>
         )}
       </div>
+      </>)}
       </>)}
     </div>
   );

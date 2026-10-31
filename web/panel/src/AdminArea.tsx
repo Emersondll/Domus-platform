@@ -195,7 +195,7 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
         {condos.length === 0 && <li>Nenhum condomínio.</li>}
       </ul>
       <h3>Criar condomínio</h3>
-      <p className="hint">Blocos, unidades e a equipe se cadastram na mesa do condomínio (aba Cadastros).</p>
+      <p className="hint">Blocos, unidades e a equipe se cadastram na seção Cadastros do condomínio (botão no topo da tela).</p>
       <label htmlFor="cd-company">Empresa operadora</label>
       <select id="cd-company" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
         {allCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

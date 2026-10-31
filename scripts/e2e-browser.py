@@ -26,6 +26,20 @@ def check(name, ok, detail=""):
     print(f"  {'ok  ' if ok else 'FAIL'} {name} {detail}")
     failed |= not ok
 
+def open_registry(page):
+    """Cadastros é uma seção própria (botão no cabeçalho): abre se ainda não estiver aberta."""
+    btn = page.get_by_role("button", name="Cadastros", exact=True)
+    if btn.get_attribute("aria-pressed") != "true":
+        btn.click()
+
+
+def close_registry(page):
+    """Volta à mesa do condomínio (o botão Cadastros alterna)."""
+    btn = page.get_by_role("button", name="Cadastros", exact=True)
+    if btn.get_attribute("aria-pressed") == "true":
+        btn.click()
+
+
 
 def node_path():
     """Diretório do Node >= 22 (nvm), se o do sistema for mais antigo."""
@@ -381,7 +395,7 @@ try:
         res.get_by_role("button", name="Salvar alterações do animal").click()
         expect(res.get_by_text(re.compile("Rex E2E II"))).to_be_visible()
         check("o morador edita o próprio animal pelo app", True)
-        pan.get_by_role("tab", name="Cadastros").click()
+        open_registry(pan)
         pan.get_by_role("button", name="Moradores").click()
         pan.get_by_label("Unidade", exact=True).select_option(label="A / 101")
         expect(pan.get_by_text("Conjuge E2E")).to_be_visible(timeout=15000)
@@ -404,6 +418,7 @@ try:
                                                               "entrance": "portaria", "config": {}})
         # a câmera simulada do hall é a câmera de entrada de visitas (imagem sintética, nunca parece real)
         api("POST", f"{base}/devices/{hall['id']}/visitor-entrance", "manager-sol", {"enabled": True})
+        close_registry(pan)
         pan.get_by_role("tab", name="Câmeras").click()
         expect(pan.locator("div[aria-label='Câmeras']").get_by_text("Câmera hall E2E")).to_be_visible(timeout=15000)
         expect(pan.get_by_text("sem vídeo configurado").first).to_be_visible()
@@ -650,7 +665,7 @@ try:
         expect(mgr.get_by_text(re.compile("Nova chave de"))).to_be_visible()
         mgr.get_by_role("button", name="Já guardei").click()
         check("síndico atualiza o estado, liga a abertura remota, libera a porta e gira a chave pela tela", True)
-        mgr.get_by_role("tab", name="Cadastros").click()
+        open_registry(mgr)
         mgr.get_by_role("button", name="Moradores", exact=True).click()
         mgr.locator("#res-unit").select_option(label="A / 101")
         mgr.get_by_role("button", name=re.compile("Meios de acesso de")).first.click()
@@ -666,6 +681,7 @@ try:
         mgr.get_by_role("button", name="Buscar", exact=True).click()
         expect(mgr.get_by_text(re.compile("E2E1A23"))).to_be_visible()
         check("síndico consulta e busca veículos dos moradores pela placa", True)
+        close_registry(mgr)
         mgr.get_by_role("tab", name="Ocorrências").click()
         mgr.get_by_label("Título").fill("Lâmpada queimada E2E")
         mgr.get_by_role("button", name="Abrir incidente").click()
@@ -675,7 +691,7 @@ try:
         check("síndico abre e resolve um incidente pela tela", True)
         # cadastros pelo síndico: bloco, unidade, morador, acesso ao app, desativar, exportar, anonimizar, equipe
         suf = secrets.token_hex(3)
-        mgr.get_by_role("tab", name="Cadastros").click()
+        open_registry(mgr)
         mgr.get_by_role("button", name="Unidades", exact=True).click()
         mgr.get_by_label("Nome do bloco ou torre").fill(f"Torre E2E {suf}")
         mgr.get_by_role("button", name="Cadastrar bloco").click()
@@ -776,6 +792,7 @@ try:
         mgr.get_by_role("button", name=f"Remover Pet Painel {suf} B").click()
         expect(mgr.get_by_text(f"Pet Painel {suf}")).to_have_count(0)
         check("síndico cadastra, edita e remove um animal pela tela", True)
+        close_registry(mgr)
         mgr.get_by_role("tab", name="Relatórios").click()
         mgr.get_by_role("button", name="Resumo da atividade").click()
         expect(mgr.get_by_role("region", name="Resumo da atividade")).to_be_visible()
@@ -789,7 +806,7 @@ try:
             mgr.get_by_role("button", name="Exportar por unidade (CSV)").click()
         check("síndico baixa o CSV da atividade por unidade", open(dl4.value.path(), encoding="utf-8").read().strip() != "")
         # associação: pessoa nova pede acesso com o código do síndico e o síndico aprova
-        mgr.get_by_role("tab", name="Cadastros").click()
+        open_registry(mgr)
         mgr.get_by_role("button", name="Solicitações", exact=True).click()
         mgr.get_by_role("button", name=re.compile("^Gerar")).click()
         expect(mgr.get_by_label("Código de adesão")).to_be_visible(timeout=15000)
@@ -868,7 +885,7 @@ try:
         # equipe do condomínio novo: só o administrador da empresa adiciona e revoga
         adm.get_by_role("button", name="Administração").click()
         adm.get_by_role("button", name=re.compile(re.escape(novo))).click()
-        adm.get_by_role("tab", name="Cadastros").click()
+        open_registry(adm)
         adm.get_by_role("button", name="Equipe", exact=True).click()
         adm.locator("#staff-subject").fill(f"e2e-rev-{suf}")
         adm.locator("#staff-email").fill(f"e2e-rev-{suf}@example.invalid")

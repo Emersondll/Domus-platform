@@ -9,7 +9,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 ## 1. Controle de acesso
 | Recurso | Situação | Observação |
 |---|---|---|
-| Cadastro de moradores (titular, cônjuge, dependentes), animais, visitantes e prestadores | Feito | Painel (aba Cadastros) e app do morador (Minha casa); visitantes via convite ou pedido de autorização no balcão |
+| Cadastro de moradores (titular, cônjuge, dependentes), animais, visitantes e prestadores | Feito | Painel (seção Cadastros, botão no cabeçalho) e app do morador (Minha casa); visitantes via convite ou pedido de autorização no balcão |
 | Pré-autorização de visitantes (QR Code, validade, usos) | Feito | Visitante recorrente = convite com vários usos |
 | Autorização de entrada pelo celular (visitante sem convite) | **Feito** | Operador pede, morador aprova ou nega no app (prazo de 5 min); a resposta não abre a porta |
 | Registro de entradas **e saídas** | **Feito** | A portaria registra a saída; a tela mostra quem está no local |
@@ -55,7 +55,7 @@ Legenda: **Feito** (com testes) · **Parcial** · **Falta** (dá para fazer só 
 ## 5. Gestão administrativa
 | Recurso | Situação | Observação |
 |---|---|---|
-| Moradores e unidades | Feito | Telas do síndico/portaria feitas (aba Cadastros) |
+| Moradores e unidades | Feito | Telas do síndico/portaria feitas (seção Cadastros, botão no cabeçalho) |
 | Reserva de áreas comuns | Feito | |
 | Livro de ocorrências | **Feito** | Ocorrências + livro de turno (registros e passagens, texto cifrado) |
 | Comunicados internos | **Feito** | Publica no painel; chega como aviso no app |

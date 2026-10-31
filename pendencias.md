@@ -1,6 +1,6 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-10-29. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-10-31. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
@@ -144,6 +144,23 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 **Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **#1 Grafana 13 e #7 Prometheus 3.15: aplicados em 2026-10-29 (com reteste).** **Adiado:** #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Aplicado depois:** #12 `actions/checkout` 7.
 
 **Depende de você, equipamento ou terceiros (sem mudança):** documentos jurídicos em `docs/juridico/` (D1, D16–D21), D3–D8, provedor de notificação (D5), infraestrutura (D6), câmera/controladora/celular/Safari reais (B6, B17, MA1, MA3, Fase 3), busca de marca (L1), varredura de proveniência (L3), parecer Grafana/AGPL (L5), RIPD/DPO, saída automática de visitante esquecido (decisão de produto), Redis para limitador, locks distribuídos, mTLS, réplica/PITR e pentest.
+
+## 1.4 Achados e pendências da revisão de telas (2026-10-30 e 2026-10-31)
+| # | Item | Gravidade | Estado |
+|---|---|---|---|
+| T1 | App do morador: o menu embutido usava `<nav>` e herdou a regra da barra fixa de baixo, empilhando os ícones | média (UX) | **corrigido**: o menu ficou na tela "Mais opções", aberta por um botão de ícone no cabeçalho |
+| T2 | App do morador: a tela de Reservas ficava vazia, sem explicar o motivo, quando não há área comum cadastrada | baixa | **corrigido**: mensagem explicando que o síndico precisa cadastrar as áreas |
+| T3 | Painel: os grupos de abas da mesa (Rotina, Segurança, Comunicação, Gestão) não tinham separação visual; o Gestão passava despercebido | baixa (UX) | **corrigido**: uma faixa por grupo, com cor própria |
+| T4 | Painel: Cadastros ficava em 3 níveis (grupo → aba → sub-aba, mais o detalhe do morador) | média (UX) | **corrigido**: seção própria no cabeçalho, com menu lateral de um nível. Visitantes continua com grupo → aba → Agora/Histórico (só duas opções) |
+| T5 | `scripts/dev-media.sh down` deixava laços de ffmpeg órfãos (o `.pid` se perdia ou o `up` rodava duas vezes) e os publicadores se derrubavam, quebrando o vídeo ao vivo e a captura de imagem (409) | baixa (ambiente de teste) | **corrigido**: os laços têm marca e `up`/`down` encerram todos; testado com `up` duas vezes. Laços de antes da marca não são reconhecidos (limpeza única à mão) |
+| T6 | CI: com o repositório **privado**, o CodeQL falha nos dois jobs: primeiro `Resource not accessible by integration` (faltava `actions: read`, já acrescentado) e depois `Code scanning is not enabled for this repository` (exige GitHub Advanced Security, pago) | média | **contornado**: o repositório voltou a ser público e a CI passou nos 8 jobs. Se for privado de novo: habilitar o Code Scanning ou retirar o CodeQL do fluxo |
+| T7 | A lista de câmeras liberadas ao morador caiu de 4 para 0 no banco de desenvolvimento | baixa | **sem defeito de código**: a auditoria mostra 4 chamadas `device.resident-viewable.false` de `manager-sol` em 4 segundos; o único código que envia `false` é o botão "Retirar" do painel. Não dá para provar se foram cliques ou uma chamada manual, porque a auditoria não guarda a origem. Liberadas de novo: Portão social e Portaria principal. O limite de 4 por condomínio foi mantido por decisão |
+| T8 | Painel em largura de celular (390 px): sem rolagem horizontal e sem controle pequeno, mas a mesa (abas) fica ~700 px abaixo, os três cartões de resumo ficam empilhados e o cabeçalho quebra de forma desalinhada | baixa (UX) | **aberto**. Só testado em emulação do Chromium, não em aparelho real |
+| T9 | App do morador: o botão "Ver" das câmeras quebra de linha na primeira linha | baixa (estética) | **aberto** |
+| T10 | "Meus acessos" do morador mostra repetições | baixa | **aberto, mas é dado de teste** (não foi tratado) |
+| T11 | Reforço de rastreio: a auditoria de liberação de câmera não guarda a origem da requisição | baixa | **aberto** (decidir se vale registrar origem) |
+| T12 | `load-test` e `restore-drill` não rodaram depois de 2026-10-29 | baixa | sem necessidade: não houve mudança de backend nem de esquema desde então |
+| T13 | A CI do push `2a79d27` (seção Cadastros, `dev-media.sh`, docs) não foi acompanhada | baixa | **aberto** |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.

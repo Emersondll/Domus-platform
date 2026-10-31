@@ -42,7 +42,10 @@ export function Reservations({ token, condo }: { token: string; condo: string })
   return (
     <section aria-label="Reservas">
       <h2>Reservas</h2>
-      <form onSubmit={reserve}>
+      {areas.loaded && areas.items.length === 0 && (
+        <p role="status">Nenhuma área comum disponível para reserva. O síndico precisa cadastrar as áreas do condomínio.</p>
+      )}
+      {areas.items.length > 0 && <form onSubmit={reserve}>
         <label htmlFor="r-area">Área</label>
         <select id="r-area" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
           {areas.items.map((a) => (
@@ -54,7 +57,7 @@ export function Reservations({ token, condo }: { token: string; condo: string })
         <label htmlFor="r-hours">Duração (horas, máx. 12)</label>
         <input id="r-hours" type="number" min={1} max={12} value={hours} onChange={(e) => setHours(Number(e.target.value))} />
         <button type="submit" disabled={areas.items.length === 0}>Reservar</button>
-      </form>
+      </form>}
       {msg && <p role="alert" className="error">{msg}</p>}
       <ul>
         {mine.items.map((r) => (
@@ -63,7 +66,7 @@ export function Reservations({ token, condo }: { token: string; condo: string })
             {r.status === "CONFIRMED" && <button onClick={() => cancel(r.id)}>Cancelar</button>}
           </li>
         ))}
-        {mine.items.length === 0 && <li>Nenhuma reserva.</li>}
+        {mine.items.length === 0 && <li className="empty">Nenhuma reserva.</li>}
       </ul>
     </section>
   );

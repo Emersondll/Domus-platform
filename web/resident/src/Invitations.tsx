@@ -100,7 +100,7 @@ export function Invitations({ token, condo }: { token: string; condo: string }) 
             {isExpected(i) && <button onClick={() => revoke(i.id)}>Revogar</button>}
           </li>
         ))}
-        {items.length === 0 && <li>Nenhum convite.</li>}
+        {items.length === 0 && <li className="empty">Nenhum convite.</li>}
       </ul>
     </section>
   );

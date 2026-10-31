@@ -103,7 +103,7 @@ export function Household({ token, condo }: { token: string; condo: string }) {
               onClick={() => run(() => request(token, "POST", `${base}/pets/${p.id}/remove`), pets.reload)}>Remover</button>
           </li>
         ))}
-        {pets.items.length === 0 && <li>Nenhum animal cadastrado.</li>}
+        {pets.items.length === 0 && <li className="empty">Nenhum animal cadastrado.</li>}
       </ul>
       <label htmlFor="pet-name">Nome do animal</label>
       <input id="pet-name" maxLength={60} value={petName} onChange={(e) => setPetName(e.target.value)} />

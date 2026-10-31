@@ -3,6 +3,7 @@ import { ApiError, devLogin, request, setUnauthorizedHandler } from "../../share
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { handleCallback, loadOidcConfig, logout, startLogin, type OidcConfig } from "../../shared/src/oidc";
 import { Home } from "./Home";
+import { IconCamera, IconHome, IconMenu, IconMessage, IconMore, IconParcel, IconVisits } from "./Icons";
 import { Visits } from "./Visits";
 import { Invitations } from "./Invitations";
 import { Parcels, Vehicles } from "./Lists";
@@ -20,6 +21,7 @@ import type { Residency } from "./types";
 /** Barra inferior com o que se usa todo dia; o resto fica em "Mais" para caber em tela de celular. */
 const PRIMARY = ["Início", "Visitas", "Encomendas", "Mensagens"] as const;
 const MORE = ["Avisos", "Meus acessos", "Câmeras", "Convites", "Reservas", "Veículos", "Minha casa", "Equipe", "Perfil"] as const;
+const NAV_ICON = { "Início": <IconHome />, Visitas: <IconVisits />, Encomendas: <IconParcel />, Mensagens: <IconMessage /> } as const;
 type Tab = (typeof PRIMARY)[number] | (typeof MORE)[number] | "Mais";
 const isMore = (t: Tab) => t === "Mais" || (MORE as readonly string[]).includes(t);
 
@@ -137,15 +139,17 @@ export function App() {
     <div className="app">
       <header>
         <strong>{current ? `${current.condominiumName} · Unidade ${current.unitNumber}` : "Domus"}</strong>
+        <button className="sign-out" onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {condo && (
-          <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início"
-            aria-current={tab === "Início"}>🏠</button>
+          <div className="header-actions">
+            <button className="home-shortcut" onClick={() => setTab("Início")} aria-label="Ir para o início" title="Início"
+              aria-current={tab === "Início"}><IconHome /></button>
+            <button className="home-shortcut" onClick={() => setTab("Mais")} aria-label="Abrir menu de opções"
+              title="Menu de opções" aria-current={tab === "Mais"}><IconMenu /></button>
+            <button className="home-shortcut" onClick={() => setTab("Câmeras")} aria-label="Ver câmeras da entrada"
+              title="Câmeras da entrada" aria-current={tab === "Câmeras"}><IconCamera /></button>
+          </div>
         )}
-        {condo && (
-          <button className="home-shortcut" onClick={() => setTab("Câmeras")} aria-label="Ver câmeras da entrada"
-            title="Câmeras da entrada" aria-current={tab === "Câmeras"}>📹</button>
-        )}
-        <button onClick={() => (oidc ? logout(oidc) : setToken(null))} aria-label="Sair">Sair</button>
         {residencies.length > 1 && (
           <select aria-label="Condomínio" value={condo ?? ""} onChange={(e) => setCondo(e.target.value)}>
             {residencies.map((r) => (
@@ -155,6 +159,7 @@ export function App() {
         )}
       </header>
       <main>
+        {condo && <h1 className="sr-only">Domus, app do morador</h1>}
         {!condo && error && <p role="alert" className="error">{error}</p>}
         {!condo && !error && needsJoin && <JoinCondominium token={token} onApproved={() => setReloadKey((k) => k + 1)} />}
         {!condo && !error && !needsJoin && <p>Nenhuma residência vinculada a este usuário.</p>}
@@ -169,9 +174,7 @@ export function App() {
           </section>
         )}
         {condo && tab !== "Início" && (
-          <button className="back" onClick={() => setTab(tab !== "Mais" && isMore(tab) ? "Mais" : "Início")}>
-            {tab !== "Mais" && isMore(tab) ? "← Voltar para Mais opções" : "← Voltar ao início"}
-          </button>
+          <button className="back" onClick={() => setTab("Início")}>← Voltar ao início</button>
         )}
         {condo && tab === "Início" && <Home token={token} condo={condo} onNavigate={setTab} />}
         {condo && tab === "Avisos" && <Notices token={token} condo={condo} />}
@@ -192,12 +195,15 @@ export function App() {
           <button key={t} aria-current={tab === t} onClick={() => setTab(t)}
             title={t === "Início" && unread > 0 ? `${unread} avisos não lidos`
               : t === "Mensagens" && unreadMessages > 0 ? `${unreadMessages} mensagens não lidas` : undefined}>
-            {t}
+            <span className="nav-icon">{NAV_ICON[t]}</span>
+            <span className="nav-label">{t}</span>
             {t === "Início" && unread > 0 && <span className="count" aria-hidden="true">{unread}</span>}
             {t === "Mensagens" && unreadMessages > 0 && <span className="count" aria-hidden="true">{unreadMessages}</span>}
           </button>
         ))}
-        <button aria-current={isMore(tab)} onClick={() => setTab("Mais")}>Mais</button>
+        <button aria-current={isMore(tab)} onClick={() => setTab("Mais")}>
+          <span className="nav-icon"><IconMore /></span><span className="nav-label">Mais</span>
+        </button>
       </nav>
     </div>
   );

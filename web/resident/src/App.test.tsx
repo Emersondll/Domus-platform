@@ -432,10 +432,19 @@ describe("resident app", () => {
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(screen.getByRole("button", { name: "Veículos" }));
-    await user.click(await screen.findByRole("button", { name: "← Voltar para Mais opções" }));
-    expect(await screen.findByRole("region", { name: "Mais opções" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "← Voltar ao início" }));
+    await user.click(await screen.findByRole("button", { name: "← Voltar ao início" }));
     expect(await screen.findByRole("region", { name: "Início" })).toBeInTheDocument();
+  });
+
+  it("opens the options menu from the header icon button", async () => {
+    const user = await openTab("Início");
+    await user.click(screen.getByRole("button", { name: "Abrir menu de opções" }));
+    const menu = await screen.findByRole("region", { name: "Mais opções" });
+    for (const t of ["Avisos", "Meus acessos", "Câmeras", "Convites", "Reservas", "Veículos", "Minha casa", "Equipe", "Perfil"]) {
+      expect(within(menu).getByRole("button", { name: t })).toBeInTheDocument();
+    }
+    await user.click(within(menu).getByRole("button", { name: "Reservas" }));
+    expect(await screen.findByRole("region", { name: "Reservas" })).toBeInTheDocument();
   });
 
   it("keeps the home shortcut always visible in the header", async () => {

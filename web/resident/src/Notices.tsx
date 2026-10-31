@@ -14,7 +14,7 @@ export function Notices({ token, condo }: { token: string; condo: string }) {
             <p>{a.body}</p>
           </li>
         ))}
-        {items.length === 0 && <li>Nenhum aviso publicado.</li>}
+        {items.length === 0 && <li className="empty">Nenhum aviso publicado.</li>}
       </ul>
     </section>
   );

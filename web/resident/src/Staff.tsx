@@ -27,7 +27,7 @@ export function Staff({ token, condo }: { token: string; condo: string }) {
         {(team ?? []).map((m) => (
           <li key={m.id}><strong>{m.displayName || "—"}</strong> · {ROLE_TEXT[m.role] ?? m.role}</li>
         ))}
-        {team !== null && team.length === 0 && <li>Nenhuma pessoa cadastrada na equipe.</li>}
+        {team !== null && team.length === 0 && <li className="empty">Nenhuma pessoa cadastrada na equipe.</li>}
       </ul>
     </section>
   );

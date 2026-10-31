@@ -17,7 +17,7 @@ export function Parcels({ token, condo }: { token: string; condo: string }) {
             <strong>{p.carrier ?? "Encomenda"}</strong> {p.description ?? ""} · chegou {new Date(p.receivedAt).toLocaleString()}
           </li>
         ))}
-        {pending.length === 0 && <li>Nada para retirar.</li>}
+        {pending.length === 0 && <li className="empty">Nada para retirar.</li>}
       </ul>
       <h3>Já retiradas</h3>
       <ul>
@@ -27,7 +27,7 @@ export function Parcels({ token, condo }: { token: string; condo: string }) {
             {p.pickedUpAt ? ` · retirada ${new Date(p.pickedUpAt).toLocaleString()}` : ""}
           </li>
         ))}
-        {done.length === 0 && <li>Nenhuma ainda.</li>}
+        {done.length === 0 && <li className="empty">Nenhuma ainda.</li>}
       </ul>
     </section>
   );
@@ -68,7 +68,7 @@ export function Vehicles({ token, condo }: { token: string; condo: string }) {
         {items.map((v) => (
           <li key={v.id}>{v.plate} {v.model ?? ""}</li>
         ))}
-        {items.length === 0 && <li>Nenhum veículo.</li>}
+        {items.length === 0 && <li className="empty">Nenhum veículo.</li>}
       </ul>
     </section>
   );

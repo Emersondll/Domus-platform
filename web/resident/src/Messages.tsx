@@ -35,7 +35,7 @@ export function Messages({ token, condo }: { token: string; condo: string }) {
             <p>{m.text}</p>
           </li>
         ))}
-        {items.length === 0 && <li>Nenhuma mensagem ainda.</li>}
+        {items.length === 0 && <li className="empty">Nenhuma mensagem ainda.</li>}
       </ul>
       <label htmlFor="msg-text">Nova mensagem</label>
       <textarea id="msg-text" maxLength={1000} rows={3} value={text} onChange={(e) => setText(e.target.value)} />

@@ -131,7 +131,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
         </span>
       </button>
 
-      <button onClick={callCentral} disabled={callActive}>Chamar a central</button>
+      <button className="call-action" onClick={callCentral} disabled={callActive}>Chamar a central</button>
       {confirmingPanic ? (
         <div className="panic-confirm" role="group" aria-label="Confirmar alerta de pânico">
           <p><strong>Enviar alerta de pânico para a central?</strong> Use apenas em emergência.</p>
@@ -139,7 +139,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
           <button onClick={() => setConfirmingPanic(false)}>Cancelar</button>
         </div>
       ) : (
-        <button className="danger" onClick={() => setConfirmingPanic(true)} disabled={panicActive}>Alerta de pânico</button>
+        <button className="danger panic-action" onClick={() => setConfirmingPanic(true)} disabled={panicActive}>Alerta de pânico</button>
       )}
       <RemoteDoors token={token} condo={condo} />
       {msg && <p role="alert" className="error">{msg}</p>}

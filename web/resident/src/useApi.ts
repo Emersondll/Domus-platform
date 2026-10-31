@@ -5,6 +5,7 @@ import { ApiError, request, type Page } from "../../shared/src/api";
 export function useList<T>(token: string, path: string, pollMs?: number) {
   const [items, setItems] = useState<T[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const reload = useCallback(async () => {
     try {
       setItems((await request<Page<T>>(token, "GET", path))?.items ?? []);
@@ -12,6 +13,7 @@ export function useList<T>(token: string, path: string, pollMs?: number) {
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : "Unexpected error");
     }
+    setLoaded(true);
   }, [token, path]);
   useEffect(() => {
     reload();
@@ -19,7 +21,7 @@ export function useList<T>(token: string, path: string, pollMs?: number) {
     const id = setInterval(reload, pollMs);
     return () => clearInterval(id);
   }, [reload, pollMs]);
-  return { items, error, reload };
+  return { items, error, reload, loaded };
 }
 
 export function errorText(e: unknown): string {

@@ -29,7 +29,7 @@ export function Visits({ token, condo }: { token: string; condo: string }) {
             {r.hasSnapshot && <AuthImage token={token} path={`${base}/visit-requests/${r.id}/snapshot`} alt={`Imagem da entrada: ${r.visitorName}`} />}
           </li>
         ))}
-        {asked.items.length === 0 && <li>Nenhum aviso da portaria.</li>}
+        {asked.items.length === 0 && <li className="empty">Nenhum aviso da portaria.</li>}
       </ul>
       <h3>Esperadas</h3>
       <ul>
@@ -39,7 +39,7 @@ export function Visits({ token, condo }: { token: string; condo: string }) {
             {i.maxUses - i.useCount} {i.maxUses - i.useCount === 1 ? "entrada restante" : "entradas restantes"}
           </li>
         ))}
-        {expected.length === 0 && <li>Nenhuma visita esperada. Crie um convite na aba Convites.</li>}
+        {expected.length === 0 && <li className="empty">Nenhuma visita esperada. Crie um convite na aba Convites.</li>}
       </ul>
       <h3>Já chegaram</h3>
       <ul>

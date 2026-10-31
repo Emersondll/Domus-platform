@@ -1,3 +1,4 @@
+import { MissingHint } from "./MissingHint";
 import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Parcel } from "./types";
@@ -62,6 +63,7 @@ export function DeskParcels({ token, condominiumId }: { token: string; condomini
       <input id="parcel-carrier" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
       <label htmlFor="parcel-desc">Descrição</label>
       <input id="parcel-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+      <MissingHint missing={unitId ? [] : ["a unidade"]} />
       <button
         disabled={!unitId}
         onClick={() =>

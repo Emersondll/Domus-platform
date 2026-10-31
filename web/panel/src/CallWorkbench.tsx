@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
+import { healthLabel, outcomeLabel } from "./labels";
+import { MissingHint } from "./MissingHint";
 import { VisitAuthorization } from "./VisitAuthorization";
 import { OUTCOMES, SENSITIVE_OUTCOMES, type Call, type CallEvent, type Command, type Device, type OnDuty } from "./types";
 
@@ -90,13 +92,14 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
         <option value="">Selecione</option>
         {devices.map((d) => (
           <option key={d.id} value={d.id}>
-            {d.name} ({d.entrance}) — {d.status}
+            {d.name} ({d.entrance}) — {healthLabel(d.status)}
           </option>
         ))}
       </select>
       <label htmlFor="door-reason">Justificativa da abertura</label>
       <input id="door-reason" value={doorReason} onChange={(e) => setDoorReason(e.target.value)} />
-      <button disabled={!deviceId || doorReason.trim().length < 5} onClick={openDoor}>
+      <MissingHint missing={[!deviceId && "o dispositivo", doorReason.trim().length < 5 && "o motivo (mín. 5 caracteres)"].filter(Boolean) as string[]} />
+      <button className="primary" disabled={!deviceId || doorReason.trim().length < 5} onClick={openDoor}>
         Abrir porta
       </button>
       {command && (
@@ -109,11 +112,11 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
         </p>
       )}
 
-      <h3>Desfecho</h3>
+      <h3>Encerrar</h3>
       <label htmlFor="outcome">Desfecho</label>
       <select id="outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
         {OUTCOMES.map((o) => (
-          <option key={o}>{o}</option>
+          <option key={o} value={o}>{outcomeLabel(o)}</option>
         ))}
       </select>
       <label htmlFor="justification">Justificativa do desfecho{needsJustification ? " (obrigatória)" : ""}</label>
@@ -135,6 +138,7 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
       </select>
       <label htmlFor="reason">Motivo</label>
       <input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+      <MissingHint missing={[!target && "o operador", !reason.trim() && "o motivo"].filter(Boolean) as string[]} />
       <button disabled={!target || !reason.trim()} onClick={() => act("transfer", { toUserId: target, reason })}>
         Transferir
       </button>

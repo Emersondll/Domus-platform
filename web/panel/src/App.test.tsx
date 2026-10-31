@@ -256,6 +256,7 @@ describe("operator panel", () => {
     parcelList = [{ id: "p1", unitId: "un1", carrier: "Correios", description: null, status: "RECEIVED", receivedAt: new Date().toISOString(), pickedUpAt: null, pickedUpByName: null }];
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Encomendas" }));
     await user.selectOptions(await screen.findByLabelText("Unidade"), "un1");
     await user.type(screen.getByLabelText("Transportadora"), "Loggi");
     await user.click(screen.getByRole("button", { name: "Registrar encomenda" }));
@@ -272,6 +273,7 @@ describe("operator panel", () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.click(screen.getByRole("button", { name: "Histórico" }));
     expect(await screen.findByText(/Tia Maria/)).toBeInTheDocument();
     expect(screen.getByText(/negada/)).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Portas" }));
@@ -299,6 +301,8 @@ describe("operator panel", () => {
     expect(screen.queryByRole("region", { name: "Monitoramento de câmeras" })).not.toBeInTheDocument(); // nada em foco
     await user.click(await screen.findByRole("button", { name: /Entregador/ }));
     const side = await screen.findByRole("complementary", { name: "Câmeras do condomínio em monitoramento" });
+    expect(within(side).queryByRole("button", { name: "Monitorar Câmera garagem" })).not.toBeInTheDocument(); // recolhido até pedir
+    await user.click(within(side).getByRole("button", { name: "Monitorar câmeras ao vivo" }));
     expect(within(side).queryByRole("button", { name: "Monitorar Câmera velha" })).not.toBeInTheDocument(); // desativada
     expect(posted.some((p) => p.url.endsWith("/stream-session"))).toBe(false); // nada abre sozinho
     await user.click(within(side).getByRole("button", { name: "Monitorar Câmera garagem" }));
@@ -307,6 +311,7 @@ describe("operator panel", () => {
     await user.click(screen.getByRole("button", { name: "Início" }));
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     const desk = await screen.findByRole("complementary", { name: "Câmeras do condomínio em monitoramento" });
+    await user.click(within(desk).getByRole("button", { name: "Monitorar câmeras ao vivo" }));
     await user.click(within(desk).getByRole("button", { name: "Abrir até 4 câmeras" }));
     const grid = await screen.findByLabelText("Câmeras monitoradas");
     expect(within(grid).getByRole("region", { name: "Vídeo de Câmera garagem" })).toBeInTheDocument();
@@ -706,6 +711,7 @@ describe("operator panel", () => {
     vi.stubGlobal("print", print);
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Encomendas" }));
     await user.click(await screen.findByRole("button", { name: "Imprimir comprovante" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
   });
@@ -735,12 +741,13 @@ describe("operator panel", () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     expect(await screen.findByRole("tab", { name: "Encomendas" })).toHaveTextContent("Encomendas (1)");
+    await user.click(screen.getByRole("tab", { name: "Encomendas" }));
     expect(within(screen.getByRole("status", { name: "Resumo da portaria" })).getByText("encomenda a retirar")).toBeInTheDocument();
     expect(await screen.findByText(/1 encomenda aguardando retirada na portaria/)).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /Lembrar morador/ }));
     await waitFor(() => expect(posted.some((p) => p.url.endsWith("/parcels/p1abcdef12/remind"))).toBe(true));
     expect(await screen.findByText(/lembrete enviado/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "← Voltar aos condomínios" }));
+    await user.click(screen.getByRole("button", { name: "Início" }));
     expect(screen.queryByRole("region", { name: "Mesa do condomínio" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Condomínios" })).toBeInTheDocument();
   });

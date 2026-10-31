@@ -1,3 +1,4 @@
+import { MissingHint } from "./MissingHint";
 import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Announcement } from "./types";
@@ -33,6 +34,7 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
       <input id="ann-title" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
       <label htmlFor="ann-body">Mensagem</label>
       <textarea id="ann-body" maxLength={2000} rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
+      <MissingHint missing={[!title.trim() && "o título", !body.trim() && "a mensagem"].filter(Boolean) as string[]} />
       <button disabled={!title.trim() || !body.trim()} onClick={publish}>Publicar para todos os moradores</button>
       {sent && <p role="status">Comunicado publicado.</p>}
       {error && <p role="alert" className="error">{error}</p>}

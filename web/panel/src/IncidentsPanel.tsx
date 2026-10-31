@@ -1,3 +1,5 @@
+import { severityLabel } from "./labels";
+import { MissingHint } from "./MissingHint";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
 import type { Incident } from "./types";
@@ -32,14 +34,15 @@ export function IncidentsPanel({ token, condominiumId }: { token: string; condom
   return (
     <section aria-label="Incidentes">
       <h2>Incidentes</h2>
-      <label htmlFor="inc-title">Título</label>
+      <label className="required" htmlFor="inc-title">Título</label>
       <input id="inc-title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <label htmlFor="inc-sev">Gravidade</label>
       <select id="inc-sev" value={severity} onChange={(e) => setSeverity(e.target.value)}>
-        <option>LOW</option>
-        <option>MEDIUM</option>
-        <option>HIGH</option>
+        <option value="LOW">{severityLabel("LOW")}</option>
+        <option value="MEDIUM">{severityLabel("MEDIUM")}</option>
+        <option value="HIGH">{severityLabel("HIGH")}</option>
       </select>
+      <MissingHint missing={title.trim() ? [] : ["o título"]} />
       <button
         disabled={!title.trim()}
         onClick={() =>
@@ -55,7 +58,7 @@ export function IncidentsPanel({ token, condominiumId }: { token: string; condom
       <ul>
         {items.map((i) => (
           <li key={i.id}>
-            [{i.severity}] {i.title} — {i.status}{" "}
+            [{severityLabel(i.severity)}] {i.title} — {i.status}{" "}
             {i.status === "OPEN" && (
               <button onClick={() => run(() => request(token, "POST", `${base}/${i.id}/resolve`))}>Resolver</button>
             )}

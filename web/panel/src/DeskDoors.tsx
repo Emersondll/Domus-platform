@@ -78,6 +78,16 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
     }
   }
 
+  async function refreshAll() {
+    setError(null);
+    try {
+      for (const d of doors) await request(token, "POST", `${base}/devices/${d.id}/refresh-status`);
+      await devices.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
   return (
     <div aria-label="Portas">
       <h3>Portas e controladoras</h3>
@@ -88,6 +98,7 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
           <button onClick={() => setNewKey(null)}>Já guardei</button>
         </p>
       )}
+      {doors.length > 1 && <button onClick={refreshAll}>Atualizar estado de todas</button>}
       <ul>
         {doors.map((d) => (
           <li key={d.id}>

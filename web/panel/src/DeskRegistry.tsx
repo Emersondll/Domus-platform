@@ -15,7 +15,7 @@ export function DeskRegistry({ token, condominiumId }: { token: string; condomin
   return (
     <div aria-label="Cadastros">
       <p className="hint">Cadastros do condomínio. Só o síndico ou a administração grava; o operador apenas consulta.</p>
-      <div className="tabs" role="group" aria-label="Tipos de cadastro">
+      <div className="tabs subtabs" role="group" aria-label="Tipos de cadastro">
         {SECTIONS.map((s) => (
           <button key={s} aria-pressed={section === s} onClick={() => setSection(s)}>{s}</button>
         ))}

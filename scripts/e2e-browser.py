@@ -9,7 +9,7 @@ O login aqui é o de desenvolvimento; o fluxo OIDC/PKCE contra o Keycloak real �
 Requisitos: `pip install playwright && playwright install chromium`, Postgres em 5433 (docker compose up -d postgres),
 jar do backend (mvn -f backend/pom.xml package -DskipTests), Node >= 22.12 e `npm install` em web/.
 """
-import glob, json, os, re, secrets, shutil, signal, subprocess, sys, time, urllib.request
+import glob, json, os, re, secrets, shutil, signal, subprocess, sys, time, urllib.error, urllib.request
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -157,7 +157,7 @@ try:
         watch(res, "morador")
         res.goto("http://localhost:5174")
         res.get_by_role("button", name="Entrar como morador de teste").click()
-        expect(res.get_by_role("heading", name="Início")).to_be_visible()
+        expect(res.get_by_role("heading", name="Início", exact=True)).to_be_visible()
         res.get_by_role("button", name="Chamar a central").click()
         expect(res.get_by_text("Aguardando um operador da central")).to_be_visible()
         check("morador chama a central e vê 'aguardando'", True)
@@ -297,6 +297,7 @@ try:
 
         # mesa do condomínio: encomendas, visitantes, portas e câmeras
         pan.get_by_role("button", name=re.compile("Residencial Sol")).click()
+        pan.get_by_role("tab", name="Encomendas").click()
         pan.get_by_label("Unidade").select_option(index=1)
         pan.get_by_label("Transportadora").fill("Correios")
         pan.get_by_role("button", name="Registrar encomenda").click()
@@ -423,6 +424,7 @@ try:
             check("vídeo ao vivo sem servidor de mídia: erro explícito, sem imagem simulada", True)
         pan.get_by_role("button", name="Fechar vídeo").click()
         # monitoramento na mesa: a câmera aparece junto das demais informações do condomínio e só abre quando o operador pede
+        pan.get_by_role("button", name="Monitorar câmeras ao vivo").click()
         monitor = pan.get_by_role("region", name="Monitoramento de câmeras")
         monitor.get_by_role("button", name="Monitorar Câmera RTSP E2E").click(timeout=40000)
         if os.environ.get("E2E_LIVE_VIDEO") == "1":
@@ -456,7 +458,10 @@ try:
             snap_req = urllib.request.Request(f"http://localhost:8081{base}/entrance-snapshots", method="POST",
                                               data=json.dumps({"entrance": "garagem"}).encode(),
                                               headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-            snap_id = json.load(urllib.request.urlopen(snap_req, timeout=30))["id"]
+            try:
+                snap_id = json.load(urllib.request.urlopen(snap_req, timeout=30))["id"]
+            except urllib.error.HTTPError as err:
+                raise SystemExit(f"captura de quadro recusada: HTTP {err.code} {err.read().decode()[:300]}")
             img_req = urllib.request.Request(f"http://localhost:8081{base}/entrance-snapshots/{snap_id}/image",
                                              headers={"Authorization": f"Bearer {token}"})
             img = urllib.request.urlopen(img_req).read()
@@ -554,7 +559,6 @@ try:
         res.get_by_role("button", name="Revogar consentimento").click()
         expect(res.get_by_role("button", name="Autorizar")).to_be_visible(timeout=15000)
         check("revogar o consentimento apaga a foto", res.get_by_role("img", name="Sua foto de cadastro").count() == 0)
-        res.get_by_role("button", name="← Voltar para Mais opções").click()
         res.get_by_role("button", name="← Voltar ao início").click()
         expect(res.get_by_role("button", name="Último acesso")).to_contain_text("portaria", timeout=15000)
         check("o início mostra o último acesso do morador", True)
@@ -563,7 +567,6 @@ try:
         expect(res.get_by_role("region", name="Equipe").get_by_role("listitem").first).to_be_visible(timeout=15000)
         check("o morador vê a equipe da portaria (nome e função)",
               res.get_by_role("region", name="Equipe").get_by_text(re.compile("Portaria remota|Síndico")).count() > 0)
-        res.get_by_role("button", name="← Voltar para Mais opções").click()
         res.get_by_role("button", name="← Voltar ao início").click()
 
         pan.get_by_role("tab", name="Relatórios").click()
@@ -929,7 +932,7 @@ try:
         pan.get_by_role("button", name="Registrar chamada").click()
         expect(pan.get_by_text(re.compile("Balcão E2E"))).to_be_visible(timeout=15000)
         check("a portaria registra e lista as chamadas do condomínio pela tela", True)
-        pan.get_by_role("button", name=re.compile("Voltar aos condomínios")).click()
+        pan.get_by_role("button", name="Início", exact=True).click()
         take_next(pan)
         pan.get_by_label("Operador de plantão").select_option(label="Operador Multi")
         pan.get_by_label("Motivo", exact=True).fill("Passagem de turno E2E")
@@ -938,6 +941,7 @@ try:
         check("o operador transfere o atendimento a outro operador de plantão pela tela", True)
 
         pan.get_by_role("button", name="Encerrar turno").click()
+        pan.get_by_role("button", name="Confirmar encerramento").click()
         expect(pan.get_by_text("Sem turno")).to_be_visible()
         check("o operador encerra o turno pela tela", True)
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")

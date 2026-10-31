@@ -1,47 +1,26 @@
+import { MissingHint } from "./MissingHint";
 import { useState } from "react";
-import { useEffect } from "react";
 import { request } from "../../shared/src/api";
 import { AuthImage } from "../../shared/src/AuthImage";
 import type { AccessRow, Attempt, VisitRequest, Visitor } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 import { useUnitLabels } from "./useUnitLabels";
+import { VisitRequestForm } from "./VisitRequestForm";
 
 /** Visitantes cadastrados e as últimas tentativas de entrada validadas na portaria. */
 export function DeskVisitors({ token, condominiumId }: { token: string; condominiumId: string }) {
   const base = `/api/v1/condominiums/${condominiumId}`;
   const visitors = useCondoList<Visitor>(token, `${base}/visitors?size=50&sort=createdAt,desc`, 10000);
   const attempts = useCondoList<Attempt>(token, `${base}/access/attempts?size=20&sort=occurredAt,desc`, 10000);
-  const { units, label, labelOf: unitNumber } = useUnitLabels(token, condominiumId);
+  const { labelOf: unitNumber } = useUnitLabels(token, condominiumId);
   const onSite = useCondoList<AccessRow>(token, `${base}/access/on-site?size=100`, 10000);
   const requests = useCondoList<VisitRequest>(token, `${base}/visit-requests?size=15`, 5000);
-  const [reqUnit, setReqUnit] = useState("");
-  const [reqName, setReqName] = useState("");
-  const [reqCompany, setReqCompany] = useState("");
-  const [avail, setAvail] = useState<{ enabled: boolean; entrances: string[] }>({ enabled: false, entrances: [] });
-  const [snapEntrance, setSnapEntrance] = useState("");
-  const [snap, setSnap] = useState<{ id: string; camera: string } | null>(null);
   const [seeing, setSeeing] = useState<string | null>(null);
   const [issuedTicket, setIssuedTicket] = useState<{ visitor: string; ticket: number } | null>(null);
   const [ticketInput, setTicketInput] = useState("");
   const [ticketMsg, setTicketMsg] = useState<string | null>(null);
+  const [view, setView] = useState<"now" | "history">("now");
 
-  useEffect(() => {
-    request<{ enabled: boolean; entrances: string[] }>(token, "GET", `${base}/entrance-snapshots/availability`)
-      .then((a) => setAvail(a ?? { enabled: false, entrances: [] })).catch(() => {});
-  }, [token, base]);
-
-  async function captureImage() {
-    setError(null);
-    try {
-      const c = await request<{ id: string; cameraName: string }>(token, "POST", `${base}/entrance-snapshots`,
-        { entrance: snapEntrance || null });
-      if (c) setSnap({ id: c.id, camera: c.cameraName });
-    } catch {
-      setSnap(null);
-      setError("Não foi possível capturar a imagem: confira se a câmera de entrada está ativa e com vídeo. O aviso pode ser enviado sem imagem.");
-    }
-  }
-  const [reqKind, setReqKind] = useState("VISITOR");
   const [error, setError] = useState<string | null>(null);
   const [token_, setToken] = useState("");
   const [entrance, setEntrance] = useState("portaria");
@@ -57,26 +36,6 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
       setToken("");
       await onSite.reload();
       await attempts.reload();
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }
-
-  /** Prestador chega com a empresa ou o serviço entre parênteses, para o morador reconhecer quem é. */
-  function visitorLabel() {
-    const company = reqCompany.trim();
-    return company ? `${reqName.trim()} (${company})` : reqName.trim();
-  }
-
-  async function askResident() {
-    setError(null);
-    try {
-      await request(token, "POST", `${base}/visit-requests`, { unitId: reqUnit, visitorName: visitorLabel(), kind: reqKind, callId: null,
-        ...(snap ? { snapshotId: snap.id } : {}) });
-      setSnap(null);
-      setReqName("");
-      setReqCompany("");
-      await requests.reload();
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -122,6 +81,11 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
 
   return (
     <div aria-label="Visitantes">
+      <div className="tabs subtabs" role="group" aria-label="Visão dos visitantes">
+        <button aria-pressed={view === "now"} onClick={() => setView("now")}>Agora</button>
+        <button aria-pressed={view === "history"} onClick={() => setView("history")}>Histórico</button>
+      </div>
+      {view === "now" && <>
       <h3>No local agora ({onSite.items.length})</h3>
       {error && <p role="alert" className="error">{error}</p>}
       {issuedTicket && (
@@ -153,53 +117,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
         O morador recebe a notificação com o nome de quem chegou, na aba Visitas do app, e autoriza ou nega. Vale para visita de pessoa
         conhecida e para prestador de serviço. A resposta do morador não abre a porta: quem libera é a portaria.
       </p>
-      <label htmlFor="rq-unit">Unidade visitada</label>
-      <select id="rq-unit" value={reqUnit} onChange={(e) => setReqUnit(e.target.value)}>
-        <option value="">Selecione</option>
-        {units.map((u) => <option key={u.id} value={u.id}>{label(u)}</option>)}
-      </select>
-      <label htmlFor="rq-name">Nome do visitante</label>
-      <input id="rq-name" maxLength={160} value={reqName} onChange={(e) => setReqName(e.target.value)} />
-      <label htmlFor="rq-kind">Tipo</label>
-      <select id="rq-kind" value={reqKind} onChange={(e) => setReqKind(e.target.value)}>
-        <option value="VISITOR">Visita (pessoa conhecida)</option>
-        <option value="SERVICE_PROVIDER">Prestador de serviço</option>
-      </select>
-      {reqKind === "SERVICE_PROVIDER" && (
-        <>
-          <label htmlFor="rq-company">Empresa ou serviço (opcional)</label>
-          <input id="rq-company" maxLength={80} placeholder="Ex.: Net, encanador, entrega de gás" value={reqCompany}
-            onChange={(e) => setReqCompany(e.target.value)} />
-        </>
-      )}
-      {avail.enabled && avail.entrances.length > 0 && (
-        <div aria-label="Imagem da entrada">
-          <h4>Imagem da entrada</h4>
-          <p className="hint">Capture a imagem da câmera de entrada e confira se mostra a pessoa certa: ela vai junto do aviso e o morador a vê no app. A imagem é apagada depois do prazo de retenção.</p>
-          {avail.entrances.length > 1 && (
-            <>
-              <label htmlFor="snap-entrance">Entrada</label>
-              <select id="snap-entrance" value={snapEntrance} onChange={(e) => { setSnapEntrance(e.target.value); setSnap(null); }}>
-                <option value="">Selecione</option>
-                {avail.entrances.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </>
-          )}
-          <button disabled={avail.entrances.length > 1 && !snapEntrance} onClick={captureImage}>
-            {snap ? "Capturar de novo" : "Capturar imagem da entrada"}
-          </button>
-          {snap && (
-            <div role="group" aria-label="Prévia da imagem">
-              <AuthImage token={token} path={`${base}/entrance-snapshots/${snap.id}/image`} alt={`Prévia da imagem de ${snap.camera}`} />
-              <p className="hint">Câmera: {snap.camera}. Esta imagem será enviada com o aviso.</p>
-              <button onClick={() => setSnap(null)}>Descartar imagem</button>
-            </div>
-          )}
-        </div>
-      )}
-      <button disabled={!reqUnit || !reqName.trim()} onClick={askResident}>
-        {snap ? "Pedir autorização ao morador (com imagem)" : "Pedir autorização ao morador"}
-      </button>
+      <VisitRequestForm token={token} condominiumId={condominiumId} onAsked={() => requests.reload()} />
       <h4>Pedidos recentes</h4>
       <ul>
         {requests.items.map((r) => (
@@ -231,12 +149,15 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
       <input id="inv-token" value={token_} onChange={(e) => setToken(e.target.value)} />
       <label htmlFor="inv-entrance">Entrada</label>
       <input id="inv-entrance" maxLength={60} value={entrance} onChange={(e) => setEntrance(e.target.value)} />
+      <MissingHint missing={[!token_.trim() && "o código do convite", !entrance.trim() && "a entrada"].filter(Boolean) as string[]} />
       <button disabled={!token_.trim() || !entrance.trim()} onClick={validate}>Validar</button>
       {verdict && (
         <p role="status" className={verdict.granted ? "badge ok" : "badge warn"}>
           {verdict.granted ? `Entrada liberada${verdict.visitorName ? `: ${verdict.visitorName}` : ""} (a porta não é aberta por esta ação)` : `Entrada negada (${verdict.reason})`}
         </p>
       )}
+      </>}
+      {view === "history" && <>
       <h3>Entradas recentes</h3>
       <ul>
         {attempts.items.map((a) => (
@@ -257,6 +178,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
         ))}
         {visitors.items.length === 0 && <li>Nenhum visitante cadastrado.</li>}
       </ul>
+      </>}
     </div>
   );
 }

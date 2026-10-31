@@ -1,3 +1,4 @@
+import { MissingHint } from "./MissingHint";
 import { useEffect, useState } from "react";
 import { CameraCredentials } from "./CameraCredentials";
 import { request } from "../../shared/src/api";
@@ -219,6 +220,7 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         onChange={(e) => setRtspEnv(e.target.value)} />
         </>
       )}
+      <MissingHint missing={[!name.trim() && "o nome", !entrance.trim() && "a entrada"].filter(Boolean) as string[]} />
       <button disabled={!name.trim() || !entrance.trim()} onClick={register}>Cadastrar câmera</button>
         </>
       )}

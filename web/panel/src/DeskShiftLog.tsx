@@ -1,3 +1,4 @@
+import { MissingHint } from "./MissingHint";
 import { useState } from "react";
 import { request } from "../../shared/src/api";
 import type { ShiftLogEntry } from "./types";
@@ -33,6 +34,7 @@ export function DeskShiftLog({ token, condominiumId }: { token: string; condomin
       <label htmlFor="log-text">Texto</label>
       <textarea id="log-text" maxLength={1000} rows={3} value={text} onChange={(e) => setText(e.target.value)} />
       <p className="hint">Registre fatos. Evite dados pessoais além do necessário: o texto fica cifrado, mas é lido por quem opera o condomínio.</p>
+      <MissingHint missing={text.trim() ? [] : ["o texto"]} />
       <button disabled={!text.trim()} onClick={write}>Registrar</button>
       {error && <p role="alert" className="error">{error}</p>}
       <h3>Histórico</h3>

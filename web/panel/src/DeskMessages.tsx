@@ -1,3 +1,4 @@
+import { MissingHint } from "./MissingHint";
 import { useCallback, useEffect, useState } from "react";
 import { request, type Page } from "../../shared/src/api";
 import type { DirectMessage, MessageThread } from "./types";
@@ -74,6 +75,7 @@ export function DeskMessages({ token, condominiumId }: { token: string; condomin
           </ul>
           <label htmlFor="reply-text">Resposta</label>
           <textarea id="reply-text" maxLength={1000} rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+      <MissingHint missing={text.trim() ? [] : ["a resposta"]} />
           <button disabled={!text.trim()} onClick={reply}>Responder</button>
         </section>
       )}

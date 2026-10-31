@@ -7,11 +7,24 @@ import { CallWorkbench } from "./CallWorkbench";
 import { CameraMonitor } from "./CameraMonitor";
 import { CondoDesk } from "./CondoDesk";
 import { Login } from "./Login";
-import { OverviewPanel } from "./OverviewPanel";
+import { OverviewPanel, StatusBar } from "./OverviewPanel";
 import { PanicAlerts } from "./PanicAlerts";
 import type { AdminScope, Call, Overview, Shift } from "./types";
 
 const POLL_MS = 5000;
+
+/** Atalho recolhido para o monitoramento ao vivo: o vídeo só abre quando o operador pede. Recomeça recolhido a cada condomínio. */
+function CameraShortcut({ token, condominiumId }: { token: string; condominiumId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <aside className="camera-shortcut" aria-label="Câmeras do condomínio em monitoramento">
+      <button aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {open ? "Ocultar monitoramento de câmeras" : "Monitorar câmeras ao vivo"}
+      </button>
+      {open && <CameraMonitor token={token} condominiumId={condominiumId} />}
+    </aside>
+  );
+}
 
 export function App() {
   const [session, setSession] = useState<{ token: string; subject: string } | null>(null);
@@ -26,6 +39,7 @@ export function App() {
   const [isOperator, setIsOperator] = useState<boolean | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // Descobre se há OIDC e, se a URL for um retorno do Keycloak, conclui o login.
   useEffect(() => {
@@ -113,6 +127,7 @@ export function App() {
   }
 
   const call = calls.find((c) => c.id === selectedCall) ?? null;
+  const queued = overview.reduce((n, o) => n + o.queuedCalls, 0);
   const monitoredCondo = call?.condominiumId ?? selectedCondo; // câmeras do condomínio em foco, ao lado da mesa/atendimento
 
   /** Decisão do operador diante de um alerta de pânico: assumir o alerta mais antigo (abre o turno se preciso). */
@@ -131,39 +146,50 @@ export function App() {
       <PanicAlerts token={session.token} onAttend={attendPanic} />
       <header>
         <strong>Domus Central</strong>
-        <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); }}>Início</button>
+        <button onClick={() => { setSelectedCondo(null); setSelectedCall(null); setMessage(null); setAdminOpen(false); }}>Início</button>
         {adminScope && (adminScope.platformAdmin || adminScope.companies.length > 0) && (
           <button aria-pressed={adminOpen} onClick={() => setAdminOpen((v) => !v)}>Administração</button>
         )}
-        <span>{session.subject}</span>
-        <span>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
-        {shift ? (
-          <button onClick={() => act(() => request(session.token, "POST", "/api/v1/operator/shifts/end"))}>
-            Encerrar turno
+        <span className="who">{session.subject}</span>
+        <span className={shift ? "shift on" : "shift"}>{shift ? `Turno aberto desde ${new Date(shift.startedAt).toLocaleTimeString()}` : "Sem turno"}</span>
+        <div className="header-end">
+          <button
+            className="primary next-call"
+            disabled={!shift}
+            onClick={() =>
+              act(async () => {
+                const next = await request<Call>(session.token, "POST", "/api/v1/operator/calls/next");
+                if (next) setSelectedCall(next.id);
+                else setMessage("Fila vazia");
+              })
+            }
+          >
+            Atender próxima
+            {queued > 0 && <span className="count" aria-hidden="true">{queued}</span>}
           </button>
-        ) : (
-          <button onClick={() => act(() => request(session.token, "POST", "/api/v1/operator/shifts/start"))}>
-            Iniciar turno
-          </button>
-        )}
-        <button
-          disabled={!shift}
-          onClick={() =>
-            act(async () => {
-              const next = await request<Call>(session.token, "POST", "/api/v1/operator/calls/next");
-              if (next) setSelectedCall(next.id);
-              else setMessage("Fila vazia");
-            })
-          }
-        >
-          Atender próxima
-        </button>
-        <button onClick={() => (oidc ? logout(oidc) : setSession(null))}>Sair</button>
+          {shift && !confirmEnd && (
+            <button className="ghost-danger" onClick={() => setConfirmEnd(true)}>Encerrar turno</button>
+          )}
+          {shift && confirmEnd && (
+            <span role="group" aria-label="Confirmar encerramento do turno" className="confirm-end">
+              <button className="danger" onClick={() => { setConfirmEnd(false); act(() => request(session.token, "POST", "/api/v1/operator/shifts/end")); }}>
+                Confirmar encerramento
+              </button>
+              <button onClick={() => setConfirmEnd(false)}>Cancelar</button>
+            </span>
+          )}
+          {!shift && (
+            <button onClick={() => act(() => request(session.token, "POST", "/api/v1/operator/shifts/start"))}>Iniciar turno</button>
+          )}
+          <button onClick={() => (oidc ? logout(oidc) : setSession(null))}>Sair</button>
+        </div>
       </header>
+      <h1 className="sr-only">Domus, central da portaria</h1>
 
       {message && <p role="status" className="message">{message}</p>}
 
       {adminOpen && adminScope ? <AdminArea token={session.token} scope={adminScope} /> : (<>
+      <StatusBar items={overview} />
       <OverviewPanel items={overview} selected={selectedCondo} onSelect={setSelectedCondo} />
 
       <div className="col-main">
@@ -183,17 +209,21 @@ export function App() {
 
         {call && <CallWorkbench key={call.id} token={session.token} call={call} onChanged={refresh}
           onBack={() => setSelectedCall(null)} />}
-        {selectedCondo && (
-          <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
-            name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"}
-            onBack={() => setSelectedCondo(null)} />
+        {monitoredCondo && (
+          <CameraShortcut key={monitoredCondo} token={session.token} condominiumId={monitoredCondo} />
         )}
       </div>
-      {monitoredCondo && (
-        <aside className="col-cameras" aria-label="Câmeras do condomínio em monitoramento">
-          <CameraMonitor key={monitoredCondo} token={session.token} condominiumId={monitoredCondo} />
-        </aside>
-      )}
+      <div className="col-desk">
+        {selectedCondo ? (
+          <CondoDesk key={selectedCondo} token={session.token} condominiumId={selectedCondo}
+            name={overview.find((o) => o.condominiumId === selectedCondo)?.name ?? "Condomínio"} />
+        ) : (
+          <section className="desk-empty" aria-label="Nenhum condomínio selecionado">
+            <h2>Mesa do condomínio</h2>
+            <p>Escolha um condomínio acima para ver encomendas, visitantes, portas, câmeras e cadastros.</p>
+          </section>
+        )}
+      </div>
       </>)}
     </div>
   );

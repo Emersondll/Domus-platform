@@ -3,7 +3,7 @@ import { request } from "../../shared/src/api";
 import type { Block, Unit } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 
-type Area = { id: string; name: string; capacity: number };
+type Area = { id: string; name: string; capacity: number; active?: boolean };
 type Reservation = { id: string; areaId: string; unitId: string; startAt: string; endAt: string; status: string };
 
 /** Áreas comuns do condomínio e as reservas dos moradores (a equipe pode cancelar). */
@@ -16,6 +16,9 @@ export function RegistryAreas({ token, condominiumId }: { token: string; condomi
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState(10);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCapacity, setEditCapacity] = useState(10);
   const areaName = (id: string) => areas.items.find((a) => a.id === id)?.name ?? "Área";
   const unitLabel = (id: string) => {
     const u = units.items.find((x) => x.id === id);
@@ -26,6 +29,7 @@ export function RegistryAreas({ token, condominiumId }: { token: string; condomi
     setError(null);
     try {
       await fn();
+      setEditing(null);
       await Promise.all([areas.reload(), reservations.reload()]);
     } catch (e) {
       setError(errorMessage(e));
@@ -36,7 +40,31 @@ export function RegistryAreas({ token, condominiumId }: { token: string; condomi
     <div aria-label="Áreas comuns">
       <h3>Áreas comuns</h3>
       <ul>
-        {areas.items.map((a) => <li key={a.id}><strong>{a.name}</strong> · até {a.capacity} pessoas</li>)}
+        {areas.items.map((a) => (
+          <li key={a.id}>
+            <strong>{a.name}</strong> · até {a.capacity} pessoas{a.active === false && " · desativada (não aceita reservas)"}{" "}
+            {editing !== a.id && (
+              <>
+                <button aria-label={`Corrigir área ${a.name}`} onClick={() => { setEditing(a.id); setEditName(a.name); setEditCapacity(a.capacity); }}>Corrigir</button>{" "}
+                <button aria-label={`${a.active === false ? "Reativar" : "Desativar"} área ${a.name}`}
+                  onClick={() => run(() => request(token, "POST", `${base}/common-areas/${a.id}/active`, { active: a.active === false }))}>
+                  {a.active === false ? "Reativar" : "Desativar"}
+                </button>
+              </>
+            )}
+            {editing === a.id && (
+              <div>
+                <label htmlFor={`area-edit-name-${a.id}`}>Nome da área</label>
+                <input id={`area-edit-name-${a.id}`} maxLength={80} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                <label htmlFor={`area-edit-cap-${a.id}`}>Capacidade (pessoas)</label>
+                <input id={`area-edit-cap-${a.id}`} type="number" min={1} value={editCapacity} onChange={(e) => setEditCapacity(Number(e.target.value))} />
+                <button disabled={!editName.trim() || editCapacity < 1}
+                  onClick={() => run(() => request(token, "PUT", `${base}/common-areas/${a.id}`, { name: editName.trim(), capacity: editCapacity }))}>Salvar</button>{" "}
+                <button onClick={() => setEditing(null)}>Cancelar</button>
+              </div>
+            )}
+          </li>
+        ))}
         {areas.items.length === 0 && <li>Nenhuma área cadastrada.</li>}
       </ul>
       <h3>Nova área</h3>

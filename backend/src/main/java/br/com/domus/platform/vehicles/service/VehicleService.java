@@ -7,6 +7,8 @@ import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.crypto.FieldCipher;
 import br.com.domus.platform.shared.error.ConflictException;
+import br.com.domus.platform.shared.error.NotFoundException;
+import br.com.domus.platform.shared.tenant.Actor;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.ResidentContext;
@@ -102,6 +104,73 @@ public class VehicleService {
         audit.record(me.actor().userId(), null, condominiumId, "vehicle.create", "vehicle",
                 vehicle.getId().toString(), AuditOutcome.SUCCESS);
         return vehicle;
+    }
+
+    /**
+     * Corrige um veículo da unidade do morador autenticado (placa errada, troca de cor).
+     *
+     * @param condominiumId condomínio
+     * @param vehicleId veículo
+     * @param plate placa
+     * @param model modelo
+     * @param color cor
+     */
+    @Transactional
+    public Vehicle updateMine(UUID condominiumId, UUID vehicleId, String plate, String model, String color) {
+        ResidentContext me = access.requireResident(condominiumId, "vehicle.update.self");
+        Vehicle vehicle = ownedBy(condominiumId, vehicleId, unitOf(me));
+        change(vehicle, condominiumId, plate, model, color);
+        audit.record(me.actor().userId(), null, condominiumId, "vehicle.update.self", "vehicle", vehicleId.toString(),
+                AuditOutcome.SUCCESS);
+        return vehicle;
+    }
+
+    /** Remove um veículo da unidade do morador autenticado (vendido, trocado). */
+    @Transactional
+    public void removeMine(UUID condominiumId, UUID vehicleId) {
+        ResidentContext me = access.requireResident(condominiumId, "vehicle.remove.self");
+        vehicles.delete(ownedBy(condominiumId, vehicleId, unitOf(me)));
+        audit.record(me.actor().userId(), null, condominiumId, "vehicle.remove.self", "vehicle", vehicleId.toString(),
+                AuditOutcome.SUCCESS);
+    }
+
+    /** Corrige um veículo de qualquer unidade do condomínio (síndico ou administração). */
+    @Transactional
+    public Vehicle update(UUID condominiumId, UUID vehicleId, String plate, String model, String color) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "vehicle.update");
+        Vehicle vehicle = vehicles.findByIdAndCondominiumId(vehicleId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+        change(vehicle, condominiumId, plate, model, color);
+        audit.record(actor.userId(), null, condominiumId, "vehicle.update", "vehicle", vehicleId.toString(), AuditOutcome.SUCCESS);
+        return vehicle;
+    }
+
+    /** Remove um veículo de qualquer unidade do condomínio (síndico ou administração). */
+    @Transactional
+    public void remove(UUID condominiumId, UUID vehicleId) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "vehicle.remove");
+        vehicles.delete(vehicles.findByIdAndCondominiumId(vehicleId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Vehicle not found")));
+        audit.record(actor.userId(), null, condominiumId, "vehicle.remove", "vehicle", vehicleId.toString(), AuditOutcome.SUCCESS);
+    }
+
+    private Vehicle ownedBy(UUID condominiumId, UUID vehicleId, UUID unitId) {
+        Vehicle vehicle = vehicles.findByIdAndCondominiumId(vehicleId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+        if (!vehicle.getUnitId().equals(unitId)) {
+            throw new NotFoundException("Vehicle not found");
+        }
+        return vehicle;
+    }
+
+    private void change(Vehicle vehicle, UUID condominiumId, String plate, String model, String color) {
+        String normalized = FieldCipher.normalizePlate(plate);
+        String plateHash = cipher.blindIndex(normalized);
+        boolean samePlate = plateHash.equals(vehicle.getPlateHash());
+        if (!samePlate && vehicles.existsByCondominiumIdAndPlateHash(condominiumId, plateHash)) {
+            throw new ConflictException("Vehicle plate already registered");
+        }
+        vehicle.update(normalized, plateHash, model, color);
     }
 
     private UUID unitOf(ResidentContext me) {

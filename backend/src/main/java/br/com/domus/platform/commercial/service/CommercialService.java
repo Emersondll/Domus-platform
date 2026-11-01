@@ -244,6 +244,34 @@ public class CommercialService {
         return block;
     }
 
+    /** Corrige o nome de um bloco (digitado errado, mudou de nome). */
+    @Transactional
+    public Block renameBlock(UUID condominiumId, UUID blockId, String name) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "block.update");
+        Block block = blocks.findByIdAndCondominiumId(blockId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Block not found"));
+        if (!block.getName().equals(name) && blocks.existsByCondominiumIdAndName(condominiumId, name)) {
+            throw new ConflictException("Block already exists");
+        }
+        block.rename(name);
+        audit.record(actor.userId(), null, condominiumId, "block.update", "block", blockId.toString(), AuditOutcome.SUCCESS);
+        return block;
+    }
+
+    /** Corrige o número de uma unidade (a unidade, os moradores e o histórico dela continuam os mesmos). */
+    @Transactional
+    public Unit renumberUnit(UUID condominiumId, UUID unitId, String number) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "unit.update");
+        Unit unit = units.findByIdAndCondominiumId(unitId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Unit not found"));
+        if (!unit.getNumber().equals(number) && units.existsByBlockIdAndNumber(unit.getBlockId(), number)) {
+            throw new ConflictException("Unit already exists in this block");
+        }
+        unit.renumber(number);
+        audit.record(actor.userId(), null, condominiumId, "unit.update", "unit", unitId.toString(), AuditOutcome.SUCCESS);
+        return unit;
+    }
+
     /**
      * Lista os blocos do condomínio.
      *

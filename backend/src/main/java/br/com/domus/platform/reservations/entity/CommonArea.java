@@ -23,6 +23,9 @@ public class CommonArea {
     @Column(nullable = false)
     private int capacity;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     protected CommonArea() {
     }
 
@@ -32,6 +35,22 @@ public class CommonArea {
         this.condominiumId = condominiumId;
         this.name = name;
         this.capacity = capacity;
+    }
+
+    /** Corrige nome e capacidade. */
+    public void update(String name, int capacity) {
+        this.name = name;
+        this.capacity = capacity;
+    }
+
+    /** Liga ou desliga a área para novas reservas (as já feitas continuam no histórico). */
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    /** A área aceita novas reservas? */
+    public boolean isActive() {
+        return active;
     }
 
     /** Retorna o identificador. */

@@ -3,8 +3,10 @@ package br.com.domus.platform.operations;
 import br.com.domus.platform.AbstractIntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,6 +131,49 @@ class CondominialOperationsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void vehiclesCanBeCorrectedAndRemovedByTheOwnerUnitOrByTheManagerOnly() throws Exception {
+        String mine = "/api/v1/condominiums/" + condoA + "/me/vehicles";
+        String all = "/api/v1/condominiums/" + condoA + "/vehicles";
+        String a = body(mine("EDT1A11", "p3-res-101")).get("id").asString();
+        mine("EDT2B22", "p3-res-101");
+        String put = "{\"plate\":\"%s\",\"model\":\"Gol\"}";
+
+        // placa já cadastrada no condomínio = conflito; unidade vizinha e outro condomínio = 404
+        mvc.perform(put(mine + "/" + a).with(as("p3-res-101")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT2B22")))
+                .andExpect(status().isConflict());
+        mvc.perform(put(mine + "/" + a).with(as("p3-res-102")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT9Z99")))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete(mine + "/" + a).with(as("p3-res-102"))).andExpect(status().isNotFound());
+        mvc.perform(put(all + "/" + a).with(as("p3-res-b")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT9Z99")))
+                .andExpect(status().isNotFound());
+        // operador da portaria não edita nem remove: é decisão do síndico
+        mvc.perform(put(all + "/" + a).with(as("p3-operator")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT9Z99")))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(all + "/" + a).with(as("p3-operator"))).andExpect(status().isForbidden());
+
+        mvc.perform(put(mine + "/" + a).with(as("p3-res-101")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("edt-3c33")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.plate").value("EDT3C33")).andExpect(jsonPath("$.model").value("Gol"));
+        mvc.perform(put(all + "/" + a).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT1A11")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.plate").value("EDT1A11"));
+        // mesma placa, outro modelo: não conflita consigo mesma
+        mvc.perform(put(mine + "/" + a).with(as("p3-res-101")).contentType(MediaType.APPLICATION_JSON).content(put.formatted("EDT1A11")))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete(mine + "/" + a).with(as("p3-res-101"))).andExpect(status().isNoContent());
+        mvc.perform(delete(mine + "/" + a).with(as("p3-res-101"))).andExpect(status().isNotFound());
+        mine("EDT1A11", "p3-res-102"); // a placa liberada pode ser cadastrada de novo
+        String b = body(mvc.perform(get(all + "?plate=EDT2B22").with(as("p3-manager"))).andReturn()).get("items").get(0).get("id").asString();
+        mvc.perform(delete(all + "/" + b).with(as("p3-manager"))).andExpect(status().isNoContent());
+        mvc.perform(get(all + "?plate=EDT2B22").with(as("p3-manager"))).andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    private MvcResult mine(String plate, String who) throws Exception {
+        return mvc.perform(post("/api/v1/condominiums/" + condoA + "/me/vehicles").with(as(who))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"plate\":\"" + plate + "\"}"))
+                .andExpect(status().isCreated()).andReturn();
+    }
+
+    @Test
     void residentOfAnotherCondominiumIsRejectedWith404() throws Exception {
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/me/vehicles").with(as("p3-res-b")))
                 .andExpect(status().isNotFound());
@@ -157,6 +202,66 @@ class CondominialOperationsIT extends AbstractIntegrationTest {
         mvc.perform(post("/api/v1/condominiums/" + condoA + "/parcels").with(as("p3-operator-b"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"unitId\":\"" + unitA101 + "\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void managerCorrectsBlocksUnitsAreasAndRemovesAnnouncementsButOperatorCannot() throws Exception {
+        String base = "/api/v1/condominiums/" + condoA;
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        // bloco e unidade: renomear não cria duplicado, e a unidade segue a mesma
+        String blockId = body(mvc.perform(post(base + "/blocks").with(as("p3-manager")).contentType(json)
+                .content("{\"name\":\"Torre Errada\"}")).andExpect(status().isCreated()).andReturn()).get("id").asString();
+        mvc.perform(post(base + "/blocks").with(as("p3-manager")).contentType(json).content("{\"name\":\"Torre Certa\"}"))
+                .andExpect(status().isCreated());
+        mvc.perform(put(base + "/blocks/" + blockId).with(as("p3-manager")).contentType(json).content("{\"name\":\"Torre Certa\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(put(base + "/blocks/" + blockId).with(as("p3-operator")).contentType(json).content("{\"name\":\"Torre X\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(base + "/blocks/" + blockId).with(as("p3-operator-b")).contentType(json).content("{\"name\":\"Torre X\"}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(base + "/blocks/" + blockId).with(as("p3-manager")).contentType(json).content("{\"name\":\"Torre Nova\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Torre Nova"));
+        String u1 = body(mvc.perform(post(base + "/units").with(as("p3-manager")).contentType(json)
+                .content("{\"blockId\":\"" + blockId + "\",\"number\":\"9O1\"}")).andExpect(status().isCreated()).andReturn()).get("id").asString();
+        mvc.perform(post(base + "/units").with(as("p3-manager")).contentType(json)
+                .content("{\"blockId\":\"" + blockId + "\",\"number\":\"902\"}")).andExpect(status().isCreated());
+        mvc.perform(put(base + "/units/" + u1).with(as("p3-manager")).contentType(json).content("{\"number\":\"902\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(put(base + "/units/" + u1).with(as("p3-manager")).contentType(json).content("{\"number\":\"901\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(u1)).andExpect(jsonPath("$.number").value("901"));
+        mvc.perform(put(base + "/units/" + unitB).with(as("p3-manager")).contentType(json).content("{\"number\":\"1\"}"))
+                .andExpect(status().isNotFound());
+
+        // área comum: corrigir, desativar (some para o morador e recusa reserva), reativar
+        String areaId = body(mvc.perform(post(base + "/common-areas").with(as("p3-manager")).contentType(json)
+                .content("{\"name\":\"Quadra\",\"capacity\":10}")).andExpect(status().isCreated()).andReturn()).get("id").asString();
+        mvc.perform(put(base + "/common-areas/" + areaId).with(as("p3-operator")).contentType(json)
+                .content("{\"name\":\"Quadra Coberta\",\"capacity\":20}")).andExpect(status().isForbidden());
+        mvc.perform(put(base + "/common-areas/" + areaId).with(as("p3-manager")).contentType(json)
+                .content("{\"name\":\"Quadra Coberta\",\"capacity\":20}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.capacity").value(20)).andExpect(jsonPath("$.active").value(true));
+        mvc.perform(post(base + "/common-areas/" + areaId + "/active").with(as("p3-manager")).contentType(json).content("{\"active\":false}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.active").value(false));
+        mvc.perform(get(base + "/me/common-areas?size=100").with(as("p3-res-101")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + areaId + "')]").isEmpty());
+        mvc.perform(get(base + "/common-areas?size=100").with(as("p3-manager")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + areaId + "')].active").value(false));
+        Instant start = Instant.now().plus(40, ChronoUnit.DAYS);
+        String reserve = "{\"areaId\":\"" + areaId + "\",\"startAt\":\"" + start + "\",\"endAt\":\"" + start.plusSeconds(3600) + "\"}";
+        mvc.perform(post(base + "/me/reservations").with(as("p3-res-101")).contentType(json).content(reserve)).andExpect(status().isConflict());
+        mvc.perform(post(base + "/common-areas/" + areaId + "/active").with(as("p3-manager")).contentType(json).content("{\"active\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(post(base + "/me/reservations").with(as("p3-res-101")).contentType(json).content(reserve)).andExpect(status().isCreated());
+
+        // comunicado: só o síndico apaga; some da lista
+        String ann = body(mvc.perform(post(base + "/announcements").with(as("p3-operator")).contentType(json)
+                .content("{\"title\":\"Engano\",\"body\":\"texto\"}")).andExpect(status().isCreated()).andReturn()).get("id").asString();
+        mvc.perform(delete(base + "/announcements/" + ann).with(as("p3-operator"))).andExpect(status().isForbidden());
+        mvc.perform(delete(base + "/announcements/" + ann).with(as("p3-operator-b"))).andExpect(status().isNotFound());
+        mvc.perform(delete(base + "/announcements/" + ann).with(as("p3-manager"))).andExpect(status().isNoContent());
+        mvc.perform(delete(base + "/announcements/" + ann).with(as("p3-manager"))).andExpect(status().isNotFound());
+        mvc.perform(get(base + "/announcements?size=100").with(as("p3-manager")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + ann + "')]").isEmpty());
     }
 
     @Test

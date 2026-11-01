@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -89,6 +90,12 @@ public class CommercialController {
         static BlockResponse from(Block b) {
             return new BlockResponse(b.getId(), b.getName());
         }
+    }
+
+    /**
+     * @param number novo número da unidade
+     */
+    public record RenumberUnitRequest(@NotBlank @Size(max = 20) String number) {
     }
 
     /**
@@ -230,6 +237,22 @@ public class CommercialController {
     @ResponseStatus(HttpStatus.CREATED)
     public BlockResponse createBlock(@PathVariable UUID condominiumId, @Valid @RequestBody CreateBlockRequest request) {
         return BlockResponse.from(service.createBlock(condominiumId, request.name()));
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/blocks/{blockId}`: corrige o nome do bloco. */
+    @PutMapping("/condominiums/{condominiumId}/blocks/{blockId}")
+    public BlockResponse renameBlock(@PathVariable UUID condominiumId, @PathVariable UUID blockId,
+                                     @Valid @RequestBody CreateBlockRequest r) {
+        Block b = service.renameBlock(condominiumId, blockId, r.name());
+        return new BlockResponse(b.getId(), b.getName());
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/units/{unitId}`: corrige o número da unidade. */
+    @PutMapping("/condominiums/{condominiumId}/units/{unitId}")
+    public UnitResponse renumberUnit(@PathVariable UUID condominiumId, @PathVariable UUID unitId,
+                                     @Valid @RequestBody RenumberUnitRequest r) {
+        Unit u = service.renumberUnit(condominiumId, unitId, r.number());
+        return new UnitResponse(u.getId(), u.getBlockId(), u.getNumber());
     }
 
     /**

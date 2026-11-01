@@ -30,6 +30,11 @@ public class Block {
         this.name = name;
     }
 
+    /** Corrige o nome do bloco. */
+    public void rename(String name) {
+        this.name = name;
+    }
+
     /** Retorna o identificador. */
     public UUID getId() {
         return id;

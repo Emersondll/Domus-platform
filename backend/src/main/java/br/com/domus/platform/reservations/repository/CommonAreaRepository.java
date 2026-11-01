@@ -20,5 +20,7 @@ public interface CommonAreaRepository extends JpaRepository<CommonArea, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CommonArea> findWithLockByIdAndCondominiumId(UUID id, UUID condominiumId);
 
+    Page<CommonArea> findByCondominiumIdAndActiveTrue(UUID condominiumId, Pageable pageable);
+
     boolean existsByCondominiumIdAndName(UUID condominiumId, String name);
 }

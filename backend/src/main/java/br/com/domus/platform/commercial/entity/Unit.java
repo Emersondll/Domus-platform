@@ -34,6 +34,11 @@ public class Unit {
         this.number = number;
     }
 
+    /** Corrige o número da unidade. */
+    public void renumber(String number) {
+        this.number = number;
+    }
+
     /** Retorna o identificador. */
     public UUID getId() {
         return id;

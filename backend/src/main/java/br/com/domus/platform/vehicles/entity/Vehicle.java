@@ -52,6 +52,14 @@ public class Vehicle {
         this.color = color;
     }
 
+    /** Corrige os dados do veículo (a placa nova já vem normalizada, com o índice cego dela). */
+    public void update(String plate, String plateHash, String model, String color) {
+        this.plate = plate;
+        this.plateHash = plateHash;
+        this.model = model;
+        this.color = color;
+    }
+
     /** Retorna o identificador. */
     public UUID getId() {
         return id;
@@ -65,6 +73,11 @@ public class Vehicle {
     /** Retorna o campo plate. */
     public String getPlate() {
         return plate;
+    }
+
+    /** Retorna o índice cego da placa. */
+    public String getPlateHash() {
+        return plateHash;
     }
 
     /** Retorna o campo model. */

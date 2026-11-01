@@ -11,7 +11,9 @@ import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -92,5 +94,33 @@ public class VehicleController {
     public VehicleResponse registerMine(@PathVariable UUID condominiumId,
                                         @Valid @RequestBody RegisterVehicleRequest r) {
         return VehicleResponse.from(service.registerMine(condominiumId, r.plate(), r.model(), r.color()));
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/me/vehicles/{vehicleId}`: corrige um veículo da própria unidade. */
+    @PutMapping("/me/vehicles/{vehicleId}")
+    public VehicleResponse updateMine(@PathVariable UUID condominiumId, @PathVariable UUID vehicleId,
+                                      @Valid @RequestBody RegisterVehicleRequest r) {
+        return VehicleResponse.from(service.updateMine(condominiumId, vehicleId, r.plate(), r.model(), r.color()));
+    }
+
+    /** Atende `DELETE /condominiums/{condominiumId}/me/vehicles/{vehicleId}`: remove um veículo da própria unidade. */
+    @DeleteMapping("/me/vehicles/{vehicleId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMine(@PathVariable UUID condominiumId, @PathVariable UUID vehicleId) {
+        service.removeMine(condominiumId, vehicleId);
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/vehicles/{vehicleId}`: síndico ou administração corrige um veículo. */
+    @PutMapping("/vehicles/{vehicleId}")
+    public VehicleResponse update(@PathVariable UUID condominiumId, @PathVariable UUID vehicleId,
+                                  @Valid @RequestBody RegisterVehicleRequest r) {
+        return VehicleResponse.from(service.update(condominiumId, vehicleId, r.plate(), r.model(), r.color()));
+    }
+
+    /** Atende `DELETE /condominiums/{condominiumId}/vehicles/{vehicleId}`: síndico ou administração remove um veículo. */
+    @DeleteMapping("/vehicles/{vehicleId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void remove(@PathVariable UUID condominiumId, @PathVariable UUID vehicleId) {
+        service.remove(condominiumId, vehicleId);
     }
 }

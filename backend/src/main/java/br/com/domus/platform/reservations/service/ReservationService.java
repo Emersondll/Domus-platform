@@ -70,6 +70,32 @@ public class ReservationService {
         return area;
     }
 
+    /** Corrige nome e capacidade de uma área comum. */
+    @Transactional
+    public CommonArea updateArea(UUID condominiumId, UUID areaId, String name, int capacity) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "area.update");
+        CommonArea area = areas.findByIdAndCondominiumId(areaId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Common area not found"));
+        if (!area.getName().equals(name) && areas.existsByCondominiumIdAndName(condominiumId, name)) {
+            throw new ConflictException("Common area already exists");
+        }
+        area.update(name, capacity);
+        audit.record(actor.userId(), null, condominiumId, "area.update", "common_area", areaId.toString(), AuditOutcome.SUCCESS);
+        return area;
+    }
+
+    /** Liga ou desliga uma área comum para novas reservas; as reservas já feitas não são tocadas. */
+    @Transactional
+    public CommonArea setAreaActive(UUID condominiumId, UUID areaId, boolean active) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, active ? "area.activate" : "area.deactivate");
+        CommonArea area = areas.findByIdAndCondominiumId(areaId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Common area not found"));
+        area.setActive(active);
+        audit.record(actor.userId(), null, condominiumId, active ? "area.activate" : "area.deactivate", "common_area",
+                areaId.toString(), AuditOutcome.SUCCESS);
+        return area;
+    }
+
     /**
      * Lista as áreas comuns do condomínio.
      *
@@ -93,7 +119,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public Page<CommonArea> listAreasAsResident(UUID condominiumId, Pageable pageable) {
         access.requireResident(condominiumId, "area.list.self");
-        return areas.findByCondominiumId(condominiumId, pageable);
+        return areas.findByCondominiumIdAndActiveTrue(condominiumId, pageable);
     }
 
     /**
@@ -110,8 +136,11 @@ public class ReservationService {
         validateWindow(startAt, endAt);
         // Trava a área: duas reservas concorrentes do mesmo espaço entravam em deadlock na verificação da exclusion constraint
         // (o Postgres abortava uma com 500). Serializadas, a segunda recebe a violação limpa e vira 409.
-        areas.findWithLockByIdAndCondominiumId(areaId, condominiumId)
+        CommonArea area = areas.findWithLockByIdAndCondominiumId(areaId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Common area not found"));
+        if (!area.isActive()) {
+            throw new ConflictException("Common area is not available for reservations");
+        }
         UUID unitId = residents.findByIdAndCondominiumId(me.residentId(), condominiumId).orElseThrow().getUnitId();
         // saveAndFlush: a violação da exclusion constraint precisa surgir aqui, dentro do caso de uso.
         Reservation saved = reservations.saveAndFlush(new Reservation(condominiumId, areaId, unitId, startAt, endAt));

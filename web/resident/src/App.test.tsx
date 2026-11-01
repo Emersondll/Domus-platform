@@ -47,6 +47,9 @@ function fakeApi() {
       return notRegistered ? json({ detail: "User is not registered or is inactive" }, 403) : json(residency);
     }
     if (url.endsWith("/me/messages/unread")) return json({ unread: unreadMessages });
+    if (url.endsWith("/me/vehicles/v1") && method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/me/vehicles/v1") && method === "PUT") return json({ id: "v1", plate: "XYZ9K88", model: "Sedan" });
+    if (url.endsWith("/me/vehicles")) return json(page([{ id: "v1", plate: "ABC1D23", model: "Sedan", color: "Prata" }]));
     if (url === "/api/v1/me/association-requests") return json(myRequests);
     if (url === "/api/v1/association-requests" && method === "POST") return json({ id: "ar1", condominiumName: "Residencial Sol", status: "PENDING", createdAt: new Date().toISOString() }, 201);
     if (url.endsWith("/me/notifications/unread-count")) return json({ unread: unreadCount });
@@ -424,6 +427,22 @@ describe("resident app", () => {
     expect(screen.getByText("Manutenção")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Mensagens" }));
     expect(screen.getByText("Nenhuma mensagem nova.")).toBeInTheDocument();
+  });
+
+  it("lets the resident correct a vehicle and remove it", async () => {
+    const user = await openTab("Veículos");
+    await user.click(await screen.findByRole("button", { name: "Corrigir ABC1D23" }));
+    const plate = screen.getByLabelText("Placa");
+    expect(plate).toHaveValue("ABC1D23");
+    await user.clear(plate);
+    await user.type(plate, "XYZ9K88");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => {
+      const put = calls.find((c) => c.method === "PUT" && c.url.endsWith("/me/vehicles/v1"));
+      expect(JSON.parse(put!.body!)).toEqual({ plate: "XYZ9K88", model: "Sedan", color: "Prata" });
+    });
+    await user.click(await screen.findByRole("button", { name: "Remover ABC1D23" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.url.endsWith("/me/vehicles/v1"))).toBe(true));
   });
 
   it("offers a way back to the home screen from every section", async () => {

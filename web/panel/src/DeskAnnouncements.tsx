@@ -1,5 +1,5 @@
 import { MissingHint } from "./MissingHint";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Announcement } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
@@ -12,6 +12,24 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // O servidor decide; a tela só esconde a ação para quem ele recusaria (síndico ou administração).
+  const [canManage, setCanManage] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  useEffect(() => {
+    request<{ canManage: boolean }>(token, "GET", `/api/v1/condominiums/${condominiumId}/devices/permissions`)
+      .then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+  }, [token, condominiumId]);
+
+  async function remove(id: string) {
+    setError(null);
+    try {
+      await request(token, "DELETE", `${base}/${id}`);
+      setRemoving(null);
+      await list.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   async function publish() {
     setError(null);
@@ -44,6 +62,14 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
           <li key={a.id}>
             <strong>{a.title}</strong> <small>{new Date(a.createdAt).toLocaleString()}</small>
             <p>{a.body}</p>
+            {canManage && removing !== a.id && <button aria-label={`Apagar comunicado ${a.title}`} onClick={() => setRemoving(a.id)}>Apagar</button>}
+            {removing === a.id && (
+              <>
+                <span>Apagar este comunicado? Quem já recebeu o aviso continua com ele. </span>
+                <button onClick={() => remove(a.id)}>Confirmar</button>{" "}
+                <button onClick={() => setRemoving(null)}>Cancelar</button>
+              </>
+            )}
           </li>
         ))}
         {list.items.length === 0 && <li>Nenhum comunicado.</li>}

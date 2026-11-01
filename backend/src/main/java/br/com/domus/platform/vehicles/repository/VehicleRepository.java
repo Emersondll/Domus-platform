@@ -1,6 +1,7 @@
 package br.com.domus.platform.vehicles.repository;
 
 import br.com.domus.platform.vehicles.entity.Vehicle;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,8 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     Page<Vehicle> findByCondominiumIdAndUnitId(UUID condominiumId, UUID unitId, Pageable pageable);
 
     Page<Vehicle> findByCondominiumIdAndPlateHash(UUID condominiumId, String plateHash, Pageable pageable);
+
+    Optional<Vehicle> findByIdAndCondominiumId(UUID id, UUID condominiumId);
 
     long countByCondominiumId(UUID condominiumId);
 

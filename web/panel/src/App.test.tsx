@@ -32,6 +32,7 @@ let visitStatus = "PENDING";
 let remoteEnabled = false;
 let videoDown = false;
 let devicePerms = "MANAGE";
+let callStatus = "QUEUED";
 let permsGate: Promise<void> | null = null;
 let staffOnly = false;
 let adminScope: unknown = { platformAdmin: false, operator: true, companies: [] };
@@ -48,7 +49,7 @@ function fakeApi() {
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
     const pg = (items: unknown[]) => json({ items, page: 0, size: 50, totalElements: items.length });
     if (!init?.method || init.method === "GET") gets.push(url);
-    if (init?.method === "POST" || init?.method === "PUT") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
+    if (init?.method === "POST" || init?.method === "PUT" || init?.method === "DELETE") posted.push({ url, body: init.body ? JSON.parse(init.body as string) : null });
     if (url.includes("/access/on-site?")) return pg([{ attemptId: "e1", occurredAt: new Date().toISOString(), entrance: "portaria", result: "GRANTED", reason: "OK", unitId: "un1", unitLabel: "A / 101", visitorName: "Dona Rosa", exitedAt: null, exitTicket: 7 }]);
     if (url.includes("/visit-requests?size=15")) return pg([{ id: "vr7", unitId: "un1", callId: null, visitorName: "Tia Balcão", kind: "VISITOR", status: "PENDING", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: null },
       { id: "vr10", unitId: "un1", callId: null, visitorName: "João Autorizado", kind: "SERVICE_PROVIDER", status: "APPROVED", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(), decidedAt: new Date().toISOString(), entered: false, hasSnapshot: true },
@@ -83,6 +84,7 @@ function fakeApi() {
     if (url.endsWith("/messages/threads")) return json([{ residentUserId: "ru1", residentName: "Maria Teste", lastAt: new Date().toISOString(), unread: 2 }]);
     if (url.endsWith("/messages/threads/ru1") && init?.method === "POST") return json({ id: "m9" });
     if (url.endsWith("/messages/threads/ru1")) return pg([{ id: "m1", fromResident: true, text: "Preciso de ajuda", createdAt: new Date().toISOString(), read: false }]);
+    if (/\/(vehicles\/vh1|blocks\/b1|units\/un1|common-areas\/ca1|common-areas\/ca1\/active|announcements\/an1)$/.test(url) && init?.method) return json({});
     if (url.includes("/announcements?")) return pg([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]);
     if (url.endsWith("/announcements") && init?.method === "POST") return json({ id: "an2" });
     if (url.includes("/shift-log?")) return pg([{ id: "sl1", shiftId: null, kind: "HANDOVER", text: "Portão social instável", createdAt: new Date().toISOString() }]);
@@ -96,7 +98,7 @@ function fakeApi() {
     if (url.endsWith("/residents/r1/photo-status")) return json({ hasPhoto: true });
     if (url.includes("/residents?unitId=")) return pg([{ id: "r1", unitId: "un1", fullName: "Joana Teste", email: null, phone: "+55 11 90000-0000", residentType: "OWNER", active: true }]);
     if (url.endsWith("/residents") && init?.method === "POST") return json({ id: "r2" });
-    if (url.includes("/calls?")) return pg([{ id: "cl1", condominiumId: "c1", unitId: "un1", source: "RESIDENT", callerName: "Seu Zé", status: "QUEUED", assignedUserId: null, createdAt: new Date().toISOString(), outcome: null, unitLabel: "A / 101" }]);
+    if (url.includes("/calls?")) return pg([{ id: "cl1", condominiumId: "c1", unitId: "un1", source: "RESIDENT", callerName: "Seu Zé", status: callStatus, assignedUserId: callStatus === "ASSIGNED" ? "u9" : null, createdAt: new Date().toISOString(), outcome: null, unitLabel: "A / 101" }]);
     if (url.endsWith("/calls") && init?.method === "POST") return json({ id: "cl2" }, 201);
     if (url.endsWith("/join-code")) return json({ code: init?.method === "POST" ? "NEWCODE234" : "ABCDE23456" });
     if (url.endsWith("/association-requests")) return json([{ id: "ar1", fullName: "Ana Pedido", email: "ana@example.invalid", phone: null, type: "OWNER", unitText: "A 101", status: "PENDING", createdAt: new Date().toISOString() }]);
@@ -171,6 +173,7 @@ describe("operator panel", () => {
     visitStatus = "PENDING";
     videoDown = false;
     devicePerms = "MANAGE";
+    callStatus = "QUEUED";
     permsGate = null;
     staffOnly = false;
     adminScope = { platformAdmin: false, operator: true, companies: [] };
@@ -530,6 +533,28 @@ describe("operator panel", () => {
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/access/validate"))?.body).toEqual({ token: "abc.def", entrance: "portaria" }));
   });
 
+  it("lets the manager return a stuck call to the queue, with a reason, and hides it from the operator", async () => {
+    callStatus = "ASSIGNED";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Chamadas" }));
+    await user.click(await screen.findByRole("button", { name: /Devolver à fila a chamada de Seu Zé/ }));
+    expect(screen.getByRole("button", { name: "Confirmar devolução" })).toBeDisabled();
+    await user.type(screen.getByLabelText(/Motivo/), "operador saiu");
+    await user.click(screen.getByRole("button", { name: "Confirmar devolução" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/calls/cl1/release"))?.body).toEqual({ reason: "operador saiu" }));
+  });
+
+  it("does not offer to return a call to the queue to an operator", async () => {
+    callStatus = "ASSIGNED";
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Chamadas" }));
+    expect(await screen.findByText(/em atendimento/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Devolver à fila/ })).not.toBeInTheDocument();
+  });
+
   it("opens the registry as its own section, not as a desk tab", async () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
@@ -554,7 +579,7 @@ describe("operator panel", () => {
     const user = await login();
     await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
     await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
-    expect(await screen.findByText((_, el) => el?.tagName === "LI" && el.textContent === "Bloco A: 101")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Corrigir número da unidade 101 do bloco Bloco A" })).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nome do bloco ou torre"), "Bloco B");
     await user.click(screen.getByRole("button", { name: "Cadastrar bloco" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/blocks"))?.body).toEqual({ name: "Bloco B" }));
@@ -712,6 +737,66 @@ describe("operator panel", () => {
     expect(within(perUnit).getByText("A / 101").parentElement).toHaveTextContent("4");
     expect(within(perUnit).getByText("B / 202")).toBeInTheDocument();
     expect(within(units).getByRole("button", { name: "Exportar por unidade (CSV)" })).toBeInTheDocument();
+  });
+
+  it("lets the manager correct and remove a resident's vehicle", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
+    await user.click(await screen.findByRole("button", { name: "Veículos" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir veículo ABC1D23" }));
+    const plate = screen.getByLabelText("Placa");
+    await user.clear(plate);
+    await user.type(plate, "XYZ9K88");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/vehicles/vh1") && p.body)?.body).toEqual({ plate: "XYZ9K88", model: "Sedan", color: "Prata" }));
+    await user.click(await screen.findByRole("button", { name: "Remover veículo ABC1D23" }));
+    expect(posted.some((p) => p.url.endsWith("/vehicles/vh1") && p.body === null)).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Confirmar remoção" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/vehicles/vh1") && p.body === null)).toBe(true));
+  });
+
+  it("lets the manager rename a block and a unit number", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir nome do bloco Bloco A" }));
+    const name = screen.getByLabelText("Nome do bloco");
+    await user.clear(name);
+    await user.type(name, "Torre A");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/blocks/b1"))?.body).toEqual({ name: "Torre A" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir número da unidade 101 do bloco Bloco A" }));
+    const number = screen.getByLabelText("Número da unidade");
+    await user.clear(number);
+    await user.type(number, "102");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/units/un1"))?.body).toEqual({ number: "102" }));
+  });
+
+  it("lets the manager correct and switch off a common area", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("button", { name: /^Cadastros$/ }));
+    await user.click(screen.getByRole("button", { name: "Áreas comuns" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir área Salão de festas" }));
+    const cap = screen.getByLabelText("Capacidade (pessoas)", { selector: "#area-edit-cap-ca1" });
+    await user.clear(cap);
+    await user.type(cap, "60");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/common-areas/ca1"))?.body).toEqual({ name: "Salão de festas", capacity: 60 }));
+    await user.click(await screen.findByRole("button", { name: "Desativar área Salão de festas" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/common-areas/ca1/active"))?.body).toEqual({ active: false }));
+  });
+
+  it("lets the manager delete an announcement after confirming", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Comunicados" }));
+    await user.click(await screen.findByRole("button", { name: "Apagar comunicado Manutenção" }));
+    expect(posted.some((p) => p.url.endsWith("/announcements/an1"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/announcements/an1"))).toBe(true));
   });
 
   it("lets the desk search residents' vehicles by plate", async () => {

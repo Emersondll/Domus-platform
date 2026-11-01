@@ -4,6 +4,7 @@ import br.com.domus.platform.notifications.entity.Announcement;
 import br.com.domus.platform.notifications.repository.AnnouncementRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
@@ -51,6 +52,19 @@ public class AnnouncementService {
                 a.getId().toString(), AuditOutcome.SUCCESS);
         notifications.notifyCondominium(condominiumId, NotificationService.ANNOUNCEMENT, title, body);
         return a;
+    }
+
+    /**
+     * Apaga um comunicado publicado por engano. Os avisos que os moradores já receberam continuam com eles (não se desfaz uma
+     * notificação entregue); o comunicado só deixa de aparecer na lista.
+     */
+    @Transactional
+    public void remove(UUID condominiumId, UUID announcementId) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "announcement.remove");
+        announcements.delete(announcements.findByIdAndCondominiumId(announcementId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Announcement not found")));
+        audit.record(actor.userId(), null, condominiumId, "announcement.remove", "announcement", announcementId.toString(),
+                AuditOutcome.SUCCESS);
     }
 
     /** Operadores e síndico consultam o histórico publicado. */

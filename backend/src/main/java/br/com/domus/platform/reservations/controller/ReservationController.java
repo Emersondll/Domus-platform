@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -45,10 +46,11 @@ public class ReservationController {
      * @param id       identificador da área
      * @param name     nome da área
      * @param capacity capacidade máxima
+     * @param active   aceita novas reservas
      */
-    public record AreaResponse(UUID id, String name, int capacity) {
+    public record AreaResponse(UUID id, String name, int capacity, boolean active) {
         static AreaResponse from(CommonArea a) {
-            return new AreaResponse(a.getId(), a.getName(), a.getCapacity());
+            return new AreaResponse(a.getId(), a.getName(), a.getCapacity(), a.isActive());
         }
     }
 
@@ -86,6 +88,26 @@ public class ReservationController {
     @ResponseStatus(HttpStatus.CREATED)
     public AreaResponse createArea(@PathVariable UUID condominiumId, @Valid @RequestBody CreateAreaRequest r) {
         return AreaResponse.from(service.createArea(condominiumId, r.name(), r.capacity()));
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/common-areas/{areaId}`: corrige nome e capacidade. */
+    @PutMapping("/common-areas/{areaId}")
+    public AreaResponse updateArea(@PathVariable UUID condominiumId, @PathVariable UUID areaId,
+                                   @Valid @RequestBody CreateAreaRequest r) {
+        return AreaResponse.from(service.updateArea(condominiumId, areaId, r.name(), r.capacity()));
+    }
+
+    /**
+     * @param active true liga a área para novas reservas; false a desliga
+     */
+    public record SetAreaActiveRequest(boolean active) {
+    }
+
+    /** Atende `POST /condominiums/{condominiumId}/common-areas/{areaId}/active`: liga ou desliga a área para reservas. */
+    @PostMapping("/common-areas/{areaId}/active")
+    public AreaResponse setAreaActive(@PathVariable UUID condominiumId, @PathVariable UUID areaId,
+                                      @RequestBody SetAreaActiveRequest r) {
+        return AreaResponse.from(service.setAreaActive(condominiumId, areaId, r.active()));
     }
 
     /**

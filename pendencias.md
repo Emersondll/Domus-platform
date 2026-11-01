@@ -162,6 +162,22 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 | T12 | `load-test` e `restore-drill` não rodaram depois de 2026-10-29 | baixa | sem necessidade: não houve mudança de backend nem de esquema desde então |
 | T13 | A CI do push `2a79d27` (seção Cadastros, `dev-media.sh`, docs) não foi acompanhada | baixa | **aberto** |
 
+## 1.5 Revalidação de conflitos, redundâncias e fluxos fora do app (2026-10-31)
+Levantamento por leitura de código e pelo rastreio de rotas do e2e (157 das 166 rotas são chamadas por alguma tela; as 9 restantes são de máquina ou ainda sem passo no roteiro). C1, C2, C3 e F2 foram corrigidos em 2026-11-01 (ver `docs/STATUS.md`); os demais seguem abertos. O e2e de navegador não exercita as ações novas (cobertas por testes de integração e de tela).
+| # | Item | Estado |
+|---|---|---|
+| C1 | Chamada em atendimento presa a um operador que sumiu (navegador fechado, conta revogada): só ele a encerrava/transferia e o turno dele não encerrava; um pânico preso poderia "engolir" novos pânicos | **corrigido em parte**: síndico/administração devolvem à fila (`/release`) e a revogação do operador devolve as chamadas dele. **Aberto:** liberação automática por tempo (decidir o prazo); o cenário do pânico preso foi deduzido do código, não reproduzido |
+| C2 | Mensagens de erro do servidor em inglês no painel; no app do morador todo 409 virava o mesmo texto | **corrigido** (dicionário em `web/shared/src/errors.ts`); mensagens novas do servidor precisam entrar no dicionário |
+| C3 | Encerrar o turno com chamada ativa só mostrava o erro | **corrigido em parte**: a mensagem agora orienta (encerrar/transferir, ou pedir ao síndico para devolver à fila) |
+| F2 | Cadastros sem correção/remoção: veículo, bloco, unidade, área comum, comunicado | **corrigido** (V28 para a área comum; comunicado só apaga, não edita) |
+| F1 | Dar acesso a equipe/administrador exige criar o usuário no Keycloak e copiar o `sub` | **aberto** (depende da decisão D6 sobre autocadastro) |
+| F3 | Editar empresa e condomínio (nome, CNPJ) | **aberto** |
+| F4 | Mover morador para outra unidade (hoje: desativar e criar de novo, perdendo o vínculo do histórico) | **aberto**: mexe em animais, familiares, pedidos e histórico; precisa de desenho |
+| F5 | Desativar controladora de acesso cadastrada errada (só câmera desativa) | **aberto** |
+| F6 | Editar visitante cadastrado; editar/expirar comunicado | **aberto** |
+| F7 | Retenção e limites só por variável de ambiente | **aberto** (por decisão: é configuração de instalação) |
+| R1 | Redundâncias por desenho: duas formas de encerrar uma entrada (saída e ticket numerado), abrir porta pela chamada/aba Portas/app do morador, câmeras ao vivo por atalho e aba, três canais de comunicação, conta com `sub` e associação por código | **aberto**: falta orientar na tela quando usar cada um; nada a corrigir no backend |
+
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.
 - Dispositivos: contrato de adaptadores, simulador, HTTP genérico, ONVIF, relé do agente e **Dahua/Intelbras** (comando + assinatura de eventos), com a regra "aceito ≠ aberto".

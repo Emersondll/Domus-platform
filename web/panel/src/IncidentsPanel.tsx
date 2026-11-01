@@ -1,7 +1,8 @@
 import { severityLabel } from "./labels";
+import { errorMessage } from "./useCondoList";
 import { MissingHint } from "./MissingHint";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, request, type Page } from "../../shared/src/api";
+import { request, type Page } from "../../shared/src/api";
 import type { Incident } from "./types";
 
 /** Incidentes do condomínio selecionado. */
@@ -27,7 +28,7 @@ export function IncidentsPanel({ token, condominiumId }: { token: string; condom
       await fn();
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+      setError(errorMessage(e));
     }
   }
 

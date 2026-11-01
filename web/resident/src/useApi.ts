@@ -1,3 +1,4 @@
+import { friendlyDetail, hasFriendlyDetail } from "../../shared/src/errors";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
 
@@ -11,7 +12,7 @@ export function useList<T>(token: string, path: string, pollMs?: number) {
       setItems((await request<Page<T>>(token, "GET", path))?.items ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+      setError(errorText(e));
     }
     setLoaded(true);
   }, [token, path]);
@@ -26,8 +27,8 @@ export function useList<T>(token: string, path: string, pollMs?: number) {
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.status === 409) return "Conflito: o recurso já existe ou o horário está indisponível.";
-    return e.detail;
+    if (e.status === 409 && !hasFriendlyDetail(e.detail)) return "Conflito: o recurso já existe ou o horário está indisponível.";
+    return friendlyDetail(e.detail);
   }
   return "Erro inesperado";
 }

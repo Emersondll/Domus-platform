@@ -1,3 +1,4 @@
+import { friendlyDetail } from "../../shared/src/errors";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, request, type Page } from "../../shared/src/api";
 
@@ -11,7 +12,7 @@ export function useCondoList<T>(token: string, path: string, pollMs?: number) {
       setItems((await request<Page<T>>(token, "GET", path))?.items ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+      setError(errorMessage(e));
     }
   }, [token, path]);
   useEffect(() => {
@@ -24,8 +25,5 @@ export function useCondoList<T>(token: string, path: string, pollMs?: number) {
 }
 
 export function errorMessage(e: unknown): string {
-  if (e instanceof ApiError && e.status === 403 && e.detail === "Access suspended") {
-    return "O acesso desta empresa ou condomínio está suspenso. Fale com a administração da plataforma.";
-  }
-  return e instanceof ApiError ? e.detail : "Unexpected error";
+  return e instanceof ApiError ? friendlyDetail(e.detail) : "Erro inesperado. Tente de novo.";
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ApiError, request, type Page } from "../../shared/src/api";
+import { errorMessage } from "./useCondoList";
+import { request, type Page } from "../../shared/src/api";
 import { healthLabel, outcomeLabel } from "./labels";
 import { MissingHint } from "./MissingHint";
 import { VisitAuthorization } from "./VisitAuthorization";
@@ -55,7 +56,7 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
       );
       setCommand(sent);
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+      setError(errorMessage(e));
     }
   }
 
@@ -65,7 +66,7 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
       await request(token, "POST", `${base}/${path}`, body);
       onChanged();
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : "Unexpected error");
+      setError(errorMessage(e));
     }
   }
 

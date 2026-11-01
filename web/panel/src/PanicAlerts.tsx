@@ -1,3 +1,4 @@
+import { errorMessage } from "./useCondoList";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, request } from "../../shared/src/api";
 import type { PanicAlert } from "./types";
@@ -93,7 +94,7 @@ export function PanicAlerts({ token, onAttend }: { token: string; onAttend: () =
     try {
       await onAttend();
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 403 ? "Somente operadores atendem alertas." : e instanceof ApiError ? e.detail : "Erro inesperado");
+      setError(e instanceof ApiError && e.status === 403 ? "Somente operadores atendem alertas." : errorMessage(e));
     } finally {
       setBusy(false);
     }

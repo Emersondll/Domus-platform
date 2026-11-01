@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { errorMessage } from "./useCondoList";
 import { ApiError, request, setUnauthorizedHandler, type Page } from "../../shared/src/api";
 import { useTokenRefresh } from "../../shared/src/useTokenRefresh";
 import { displayNameFrom, handleCallback, loadOidcConfig, logout, type OidcConfig } from "../../shared/src/oidc";
@@ -101,7 +102,7 @@ export function App() {
         }
       }
     } catch (e) {
-      setMessage(e instanceof ApiError ? e.detail : "Unexpected error");
+      setMessage(errorMessage(e));
     }
   }, [token, isOperator]);
 
@@ -116,7 +117,7 @@ export function App() {
     try {
       await fn();
     } catch (e) {
-      setMessage(e instanceof ApiError ? e.detail : "Unexpected error");
+      setMessage(errorMessage(e));
     }
     await refresh();
   }

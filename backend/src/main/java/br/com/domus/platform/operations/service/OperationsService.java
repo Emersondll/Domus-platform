@@ -16,6 +16,7 @@ import br.com.domus.platform.identity.entity.Role;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.ConnectivityLookup;
 import br.com.domus.platform.shared.DeviceHealthLookup;
+import br.com.domus.platform.shared.OperatorCallReleaser;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.notifications.service.NotificationService;
@@ -41,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Casos de uso da central: turnos, fila de atendimentos, decisões, incidentes e visão geral. */
 @Service
-public class OperationsService {
+public class OperationsService implements OperatorCallReleaser {
 
     /** Desfechos que liberam ou negam a entrada de alguém exigem justificativa registrada. */
     static final Set<String> SENSITIVE_OUTCOMES = Set.of("ENTRY_GRANTED", "ENTRY_DENIED");
@@ -302,6 +303,42 @@ public class OperationsService {
                 AuditOutcome.SUCCESS);
         notifyResident(call, NotificationService.CALL_CLOSED, "Sua chamada foi encerrada", OUTCOME_MESSAGES.get(outcome));
         return call;
+    }
+
+    /**
+     * Devolve à fila uma chamada presa a um operador que não a atende mais (navegador fechado, conta revogada). Só o síndico ou
+     * a administração da empresa; a chamada não é encerrada nem some: volta à fila para qualquer operador de plantão assumir.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param reason motivo (vai para a trilha da chamada)
+     */
+    @Transactional
+    public ServiceCall release(UUID condominiumId, UUID callId, String reason) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "call.release");
+        ServiceCall call = calls.findWithLockByIdAndCondominiumId(callId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Call not found"));
+        if (!ServiceCall.ASSIGNED.equals(call.getStatus())) {
+            throw new ConflictException("Call is not in progress");
+        }
+        UUID previous = call.getAssignedUserId();
+        call.releaseToQueue();
+        addEvent(call, actor.userId(), "RELEASED", "from " + previous + ": " + reason);
+        audit.record(actor.userId(), null, condominiumId, "call.release", "call", callId.toString(), AuditOutcome.SUCCESS);
+        return call;
+    }
+
+    /** O operador perdeu o vínculo: o que ele estava atendendo volta para a fila (nada é encerrado por ele). */
+    @Override
+    @Transactional
+    public int releaseCallsOf(UUID actorUserId, UUID userId, UUID condominiumId) {
+        List<ServiceCall> mine = calls.findByAssignedUserIdAndCondominiumIdAndStatus(userId, condominiumId, ServiceCall.ASSIGNED);
+        for (ServiceCall call : mine) {
+            call.releaseToQueue();
+            addEvent(call, actorUserId, "RELEASED", "from " + userId + ": operator access revoked");
+            audit.record(actorUserId, null, condominiumId, "call.release", "call", call.getId().toString(), AuditOutcome.SUCCESS);
+        }
+        return mine.size();
     }
 
     /** Chamadas da unidade do morador (as mais recentes primeiro), sem expor o operador nem a justificativa. */

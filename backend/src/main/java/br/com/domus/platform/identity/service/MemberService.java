@@ -10,6 +10,7 @@ import br.com.domus.platform.commercial.repository.OperatorCompanyRepository;
 import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
+import br.com.domus.platform.shared.OperatorCallReleaser;
 import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
@@ -42,11 +43,13 @@ public class MemberService implements ResidentAccessRevoker {
     private final AuditService audit;
     private final FieldCipher cipher;
     private final ViewSessionRevoker viewSessions;
+    private final OperatorCallReleaser callReleaser;
 
     /** Construtor para criação de um(a) member service. */
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
                          OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher,
-                         ViewSessionRevoker viewSessions) {
+                         ViewSessionRevoker viewSessions, OperatorCallReleaser callReleaser) {
+        this.callReleaser = callReleaser;
         this.cipher = cipher;
         this.viewSessions = viewSessions;
         this.users = users;
@@ -240,6 +243,10 @@ public class MemberService implements ResidentAccessRevoker {
         m.revoke();
         // O vínculo acabou: o vídeo que essa pessoa já tinha aberto também (o token sozinho não dá mais acesso).
         viewSessions.revokeForUser(m.getUserId(), condominiumId, "MEMBERSHIP_REVOKED");
+        if (m.getRole() == Role.OPERATOR) {
+            // O que o operador atendia não pode ficar preso a uma conta que não entra mais: volta para a fila.
+            callReleaser.releaseCallsOf(actor.userId(), m.getUserId(), condominiumId);
+        }
         audit.record(actor.userId(), null, condominiumId, "member.revoke", "membership", membershipId.toString(),
                 AuditOutcome.SUCCESS);
     }

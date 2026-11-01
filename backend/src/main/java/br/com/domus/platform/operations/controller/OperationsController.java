@@ -61,6 +61,25 @@ public class OperationsController {
     }
 
     /**
+     * @param reason motivo de devolver o atendimento à fila (fica na trilha da chamada)
+     */
+    public record ReleaseRequest(@NotBlank @Size(max = 300) String reason) {
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/calls/{callId}/release`: devolve à fila um atendimento preso a um operador.
+     *
+     * @param condominiumId condomínio
+     * @param callId atendimento
+     * @param r corpo da requisição (validado)
+     */
+    @PostMapping("/condominiums/{condominiumId}/calls/{callId}/release")
+    public CallResponse release(@PathVariable UUID condominiumId, @PathVariable UUID callId,
+                                @Valid @RequestBody ReleaseRequest r) {
+        return view(service.release(condominiumId, callId, r.reason()));
+    }
+
+    /**
      * @param toUserId usuário operador que receberá o atendimento
      * @param reason   motivo da transferência
      */

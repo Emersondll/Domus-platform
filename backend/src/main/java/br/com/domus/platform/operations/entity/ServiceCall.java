@@ -75,6 +75,13 @@ public class ServiceCall {
         this.assignedAt = when;
     }
 
+    /** Devolve o atendimento à fila, sem operador responsável (o operador sumiu, foi revogado ou o turno ficou preso). */
+    public void releaseToQueue() {
+        this.status = QUEUED;
+        this.assignedUserId = null;
+        this.assignedAt = null;
+    }
+
     /**
      * Encerra o atendimento com o desfecho informado.
      *

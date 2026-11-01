@@ -59,7 +59,7 @@ class OperationsCenterIT extends AbstractIntegrationTest {
     @Autowired AppUserRepository users;
     @Autowired MembershipRepository memberships;
 
-    UUID condo, other, queueCondo, unit, op1Id, op2Id;
+    UUID condo, other, queueCondo, releaseCondo, unit, op1Id, op2Id, companyId;
 
     @BeforeAll
     void seed() {
@@ -73,6 +73,14 @@ class OperationsCenterIT extends AbstractIntegrationTest {
         memberships.save(Membership.forResident(ru.getId(), condo, r.getId()));
         op1Id = operator("p4-op1", condo);
         op2Id = operator("p4-op2", condo);
+        companyId = c.getId();
+        releaseCondo = condominiums.save(new Condominium(c.getId(), "P4 Release", null)).getId();
+        operator("p4-rel-op", releaseCondo);
+        operator("p4-rel-op2", releaseCondo);
+        AppUser mgr = users.save(new AppUser("p4-rel-mgr", "p4-rel-mgr@example.invalid", "p4-rel-mgr"));
+        memberships.save(new Membership(mgr.getId(), Role.CONDO_MANAGER, null, releaseCondo));
+        AppUser adm = users.save(new AppUser("p4-rel-adm", "p4-rel-adm@example.invalid", "p4-rel-adm"));
+        memberships.save(new Membership(adm.getId(), Role.COMPANY_ADMIN, c.getId(), null));
         queueCondo = condominiums.save(new Condominium(c.getId(), "P4 Queue", null)).getId();
         operator("p4-q1", queueCondo);
         operator("p4-q2", queueCondo);
@@ -109,6 +117,16 @@ class OperationsCenterIT extends AbstractIntegrationTest {
     private JsonNode claim(String who) throws Exception {
         MvcResult r = mvc.perform(post("/api/v1/operator/calls/next").with(as(who))).andReturn();
         return r.getResponse().getStatus() == 200 ? body(r) : null;
+    }
+
+    /** A fila do condomínio é compartilhada entre os testes: encerra o que ficou de outros até assumir a chamada pedida. */
+    private JsonNode claimSpecific(String who, UUID c, String id) throws Exception {
+        JsonNode claimed = claim(who);
+        while (claimed != null && !claimed.get("id").asString().equals(id)) {
+            closeCall(who, c, claimed.get("id").asString(), "RESOLVED", null);
+            claimed = claim(who);
+        }
+        return claimed;
     }
 
     private void closeCall(String who, UUID c, String id, String outcome, String just) throws Exception {
@@ -211,6 +229,55 @@ class OperationsCenterIT extends AbstractIntegrationTest {
         mvc.perform(post(url).with(as("p4-op1")).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"toUserId\":\"" + op2Id + "\",\"reason\":\"de novo\"}")).andExpect(status().isForbidden());
         closeCall("p4-op2", condo, id, "RESOLVED", null);
+    }
+
+    @Test
+    void managerReleasesAbandonedCallToQueueAndAnotherOperatorTakesIt() throws Exception {
+        startShift("p4-rel-op");
+        startShift("p4-rel-op2");
+        String id = createCall(releaseCondo, "p4-rel-op");
+        assertThat(claimSpecific("p4-rel-op", releaseCondo, id)).isNotNull();
+        String url = "/api/v1/condominiums/" + releaseCondo + "/calls/" + id + "/release";
+        String body = "{\"reason\":\"operador sem resposta\"}";
+
+        // operador não libera chamada (nem a própria); sem motivo é inválido; quem decide é síndico/administração
+        mvc.perform(post(url).with(as("p4-rel-op")).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(url).with(as("p4-rel-mgr")).contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\" \"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(url).with(as("p4-op-other")).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNotFound());
+        mvc.perform(post(url).with(as("p4-rel-mgr")).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("QUEUED"))
+                .andExpect(jsonPath("$.assignedUserId").doesNotExist());
+        // já voltou para a fila: liberar de novo é conflito, e o antigo dono não consegue mais encerrar
+        mvc.perform(post(url).with(as("p4-rel-adm")).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/condominiums/" + releaseCondo + "/calls/" + id + "/close").with(as("p4-rel-op"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"RESOLVED\"}")).andExpect(status().isConflict());
+
+        JsonNode again = claim("p4-rel-op2");
+        assertThat(again).isNotNull();
+        assertThat(again.get("id").asString()).isEqualTo(id);
+        mvc.perform(get("/api/v1/condominiums/" + releaseCondo + "/calls/" + id + "/events").with(as("p4-rel-mgr")))
+                .andExpect(jsonPath("$[?(@.type=='RELEASED')].detail").isNotEmpty());
+        closeCall("p4-rel-op2", releaseCondo, id, "RESOLVED", null);
+    }
+
+    @Test
+    void revokingAnOperatorReturnsTheirActiveCallsToTheQueue() throws Exception {
+        UUID opId = operator("p4-rev-op", releaseCondo);
+        startShift("p4-rev-op");
+        String id = createCall(releaseCondo, "p4-rev-op");
+        JsonNode claimed = claimSpecific("p4-rev-op", releaseCondo, id);
+        assertThat(claimed).isNotNull();
+        UUID membershipId = memberships.findAll().stream()
+                .filter(m -> m.getUserId().equals(opId) && releaseCondo.equals(m.getCondominiumId())).findFirst().orElseThrow().getId();
+
+        mvc.perform(post("/api/v1/condominiums/" + releaseCondo + "/members/" + membershipId + "/revoke").with(as("p4-rel-adm")))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(get("/api/v1/condominiums/" + releaseCondo + "/calls?size=50").with(as("p4-rel-mgr")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + id + "')].status").value("QUEUED"));
     }
 
     @Test

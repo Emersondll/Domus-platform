@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { Call } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
@@ -15,6 +15,25 @@ export function DeskCalls({ token, condominiumId }: { token: string; condominium
   const [unitId, setUnitId] = useState("");
   const [callerName, setCallerName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // O servidor decide; a tela só esconde a ação para quem ele recusaria (síndico ou administração).
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    request<{ canManage: boolean }>(token, "GET", `${base}/devices/permissions`).then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+  }, [token, base]);
+  const [releasing, setReleasing] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+
+  async function release(callId: string) {
+    setError(null);
+    try {
+      await request(token, "POST", `${base}/calls/${callId}/release`, { reason: reason.trim() });
+      setReleasing(null);
+      setReason("");
+      await calls.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   async function register() {
     setError(null);
@@ -31,7 +50,8 @@ export function DeskCalls({ token, condominiumId }: { token: string; condominium
   return (
     <div aria-label="Chamadas">
       <h3>Chamadas do condomínio</h3>
-      <p className="hint">Todas as chamadas deste condomínio. A fila geral e o atendimento ficam na tela inicial da central.</p>
+      <p className="hint">Todas as chamadas deste condomínio. A fila geral e o atendimento ficam na tela inicial da central.
+        {canManage && " Se um operador deixou uma chamada presa (fechou o navegador, saiu), devolva-a à fila para outro assumir."}</p>
       <ul>
         {calls.items.map((c) => (
           <li key={c.id}>
@@ -39,6 +59,18 @@ export function DeskCalls({ token, condominiumId }: { token: string; condominium
             {c.callerName ? ` · ${c.callerName}` : ""}{c.unitId ? ` · unidade ${c.unitLabel ?? labelOf(c.unitId)}` : ""} ·{" "}
             <span className={c.status === "CLOSED" ? "badge ok" : "badge pending"}>{STATUS_TEXT[c.status] ?? c.status}</span>
             {c.outcome ? ` · ${c.outcome}` : ""}
+            {canManage && c.status === "ASSIGNED" && releasing !== c.id && (
+              <>{" "}<button onClick={() => { setReleasing(c.id); setReason(""); }}
+                aria-label={`Devolver à fila a chamada de ${c.callerName ?? "sem nome"}`}>Devolver à fila</button></>
+            )}
+            {releasing === c.id && (
+              <div>
+                <label htmlFor={`release-${c.id}`}>Motivo (fica no histórico da chamada)</label>
+                <input id={`release-${c.id}`} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+                <button onClick={() => release(c.id)} disabled={reason.trim().length === 0}>Confirmar devolução</button>{" "}
+                <button onClick={() => setReleasing(null)}>Cancelar</button>
+              </div>
+            )}
           </li>
         ))}
         {calls.items.length === 0 && <li>Nenhuma chamada.</li>}

@@ -11,6 +11,7 @@ import br.com.domus.platform.residents.entity.Resident;
 import br.com.domus.platform.residents.entity.ResidentType;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.OperatorCallReleaser;
+import br.com.domus.platform.shared.InvitationRevoker;
 import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.ViewSessionRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
@@ -44,11 +45,14 @@ public class MemberService implements ResidentAccessRevoker {
     private final FieldCipher cipher;
     private final ViewSessionRevoker viewSessions;
     private final OperatorCallReleaser callReleaser;
+    private final InvitationRevoker invitations;
 
     /** Construtor para criação de um(a) member service. */
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
                          OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher,
-                         ViewSessionRevoker viewSessions, OperatorCallReleaser callReleaser) {
+                         ViewSessionRevoker viewSessions, OperatorCallReleaser callReleaser,
+                         InvitationRevoker invitations) {
+        this.invitations = invitations;
         this.callReleaser = callReleaser;
         this.cipher = cipher;
         this.viewSessions = viewSessions;
@@ -263,6 +267,18 @@ public class MemberService implements ResidentAccessRevoker {
                 audit.record(actorUserId, null, condominiumId, "member.revoke", "membership", m.getId().toString(),
                         AuditOutcome.SUCCESS);
                 revoked++;
+            }
+        }
+        return revoked;
+    }
+
+    @Override
+    @Transactional
+    public int revokeResidentInvitations(UUID actorUserId, UUID condominiumId, UUID residentId, UUID previousUnitId) {
+        int revoked = 0;
+        for (Membership m : memberships.findByResidentId(residentId)) {
+            if (condominiumId.equals(m.getCondominiumId())) {
+                revoked += invitations.revokeActiveInvitations(actorUserId, condominiumId, previousUnitId, m.getUserId());
             }
         }
         return revoked;

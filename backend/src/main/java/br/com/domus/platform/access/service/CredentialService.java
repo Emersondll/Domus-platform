@@ -8,6 +8,7 @@ import br.com.domus.platform.access.repository.AccessAttemptRepository;
 import br.com.domus.platform.access.repository.AccessCredentialRepository;
 import br.com.domus.platform.access.repository.VisitorRepository;
 import br.com.domus.platform.notifications.service.NotificationService;
+import br.com.domus.platform.shared.InvitationRevoker;
 import br.com.domus.platform.shared.PolicyVersion;
 import io.micrometer.core.instrument.MeterRegistry;
 import br.com.domus.platform.residents.repository.ResidentRepository;
@@ -37,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
  * concluído com confirmação do dispositivo (Fase 6).
  */
 @Service
-public class CredentialService {
+public class CredentialService implements InvitationRevoker {
 
     static final Duration MAX_VALIDITY = Duration.ofDays(7);
     static final Duration START_TOLERANCE = Duration.ofMinutes(5);
@@ -333,6 +334,25 @@ public class CredentialService {
         audit.record(actor.userId(), null, condominiumId, "visitor.update", "visitor", visitorId.toString(),
                 AuditOutcome.SUCCESS);
         return visitor;
+    }
+
+    @Override
+    @Transactional
+    public int revokeActiveInvitations(UUID actorUserId, UUID condominiumId, UUID unitId, UUID createdByUserId) {
+        Instant now = Instant.now(clock);
+        int revoked = 0;
+        for (AccessCredential c : credentials.findByCondominiumIdAndCreatedByUserId(condominiumId, createdByUserId)) {
+            if (unitId.equals(c.getUnitId()) && AccessCredential.ACTIVE.equals(c.getStatus()) && c.getValidUntil().isAfter(now)) {
+                c.revoke(now);
+                audit.record(actorUserId, null, condominiumId, "invitation.revoke", "credential", c.getId().toString(),
+                        AuditOutcome.SUCCESS);
+                revoked++;
+            }
+        }
+        if (revoked > 0) {
+            policyVersion.bump(condominiumId);
+        }
+        return revoked;
     }
 
     private static String denialReason(AccessCredential c, Instant now) {

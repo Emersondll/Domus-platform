@@ -20,6 +20,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
   const [accessFor, setAccessFor] = useState<string | null>(null);
   const [identitiesFor, setIdentitiesFor] = useState<string | null>(null);
   const [detail, setDetail] = useState<Resident | null>(null);
+  const [moving, setMoving] = useState<{ id: string; toUnit: string; reason: string; dependents: boolean } | null>(null);
   const [subject, setSubject] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -36,6 +37,23 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
     } catch (e) {
       setError(errorMessage(e));
     }
+  }
+
+  const unitLabel = (id: string) => {
+    const u = units.items.find((x) => x.id === id);
+    return u ? `${blockName(u.blockId)} / ${u.number}` : "?";
+  };
+
+  async function confirmMove() {
+    if (!moving) return;
+    const r = residents.items.find((x) => x.id === moving.id);
+    await run(async () => {
+      const res = await request<{ dependentsMoved: number; invitationsRevoked: number }>(token, "POST",
+        `${base}/residents/${moving.id}/move`, { unitId: moving.toUnit, reason: moving.reason.trim(), moveDependents: moving.dependents });
+      setMoving(null);
+      setMessage(`${r?.fullName ?? "Morador"} mudou para ${unitLabel(moving.toUnit)}. Convites revogados: ${res?.invitationsRevoked ?? 0}`
+        + `; dependentes levados: ${res?.dependentsMoved ?? 0}. Veículos e animais continuam na unidade antiga.`);
+    });
   }
 
   const setActive = (r: Resident, active: boolean) => run(() => request(token, "PUT", `${base}/residents/${r.id}`,
@@ -59,6 +77,8 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
                 {r.active ? <button onClick={() => setActive(r, false)} aria-label={`Desativar ${r.fullName}`}>Desativar</button>
                   : <button onClick={() => setActive(r, true)} aria-label={`Reativar ${r.fullName}`}>Reativar</button>}{" "}
                 {r.active && r.residentType !== "DEPENDENT" && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
+                {r.active && <button onClick={() => { setMoving({ id: r.id, toUnit: "", reason: "", dependents: false }); setMessage(null); }}
+                  aria-label={`Mudar ${r.fullName} de unidade`}>Mudar de unidade</button>}{" "}
                 {r.active && <button onClick={() => setIdentitiesFor(r.id)} aria-label={`Meios de acesso de ${r.fullName}`}>Meios de acesso</button>}{" "}
                 <button onClick={async () => {
                   setError(null);
@@ -86,6 +106,30 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
             ))}
             {residents.items.length === 0 && <li>Nenhum morador nesta unidade.</li>}
           </ul>
+          {moving && residents.items.find((x) => x.id === moving.id) && (
+            <section aria-label="Mudar de unidade">
+              <h3>Mudar {residents.items.find((x) => x.id === moving.id)!.fullName} de unidade</h3>
+              <p className="hint">
+                O cadastro, o acesso ao app, os meios de acesso e o histórico dele vão junto. Os convites ativos que ele criou para a unidade
+                antiga são revogados. Veículos e animais continuam na unidade antiga (não têm dono individual): ajuste-os depois, se for o caso.
+              </p>
+              <label htmlFor="mv-unit">Nova unidade</label>
+              <select id="mv-unit" value={moving.toUnit} onChange={(e) => setMoving({ ...moving, toUnit: e.target.value })}>
+                <option value="">Selecione</option>
+                {units.items.filter((u) => u.id !== unitId).map((u) => <option key={u.id} value={u.id}>{blockName(u.blockId)} / {u.number}</option>)}
+              </select>
+              <label htmlFor="mv-reason">Motivo (sem dados pessoais)</label>
+              <input id="mv-reason" maxLength={200} value={moving.reason} onChange={(e) => setMoving({ ...moving, reason: e.target.value })} />
+              {residents.items.find((x) => x.id === moving.id)!.residentType !== "DEPENDENT" && (
+                <label className="check">
+                  <input type="checkbox" checked={moving.dependents} onChange={(e) => setMoving({ ...moving, dependents: e.target.checked })} />{" "}
+                  Levar também os dependentes ativos da unidade antiga
+                </label>
+              )}
+              <button disabled={!moving.toUnit || moving.reason.trim().length < 5} onClick={() => void confirmMove()}>Confirmar mudança</button>{" "}
+              <button onClick={() => setMoving(null)}>Cancelar</button>
+            </section>
+          )}
           {detail && (
             <section aria-label="Detalhe do morador">
               <h3>{detail.fullName}</h3>

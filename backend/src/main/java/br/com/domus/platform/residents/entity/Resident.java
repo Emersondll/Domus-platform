@@ -22,7 +22,7 @@ public class Resident {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(name = "unit_id", nullable = false, updatable = false)
+    @Column(name = "unit_id", nullable = false)
     private UUID unitId;
 
     @Convert(converter = EncryptedStringConverter.class)
@@ -66,6 +66,11 @@ public class Resident {
         this.email = null;
         this.phone = null;
         this.active = false;
+    }
+
+    /** Muda o morador de unidade (mesmo condomínio, garantido pela FK composta); o cadastro e o histórico continuam os mesmos. */
+    public void moveTo(UUID unitId) {
+        this.unitId = unitId;
     }
 
     /** Atualização cadastral feita pela administração do condomínio. */

@@ -749,6 +749,20 @@ try:
         mgr.get_by_role("button", name=f"Reativar Morador Sintetico {suf}").click()
         expect(mgr.get_by_role("button", name=f"Desativar Morador Sintetico {suf}")).to_be_visible()
         check("síndico desativa e reativa o morador pela tela", True)
+        # mudar o morador sintético de unidade (pede unidade nova e motivo) e conferir no servidor
+        mgr.get_by_role("button", name=f"Mudar Morador Sintetico {suf} de unidade").click()
+        expect(mgr.get_by_role("button", name="Confirmar mudança")).to_be_disabled()
+        mgr.get_by_label("Nova unidade").select_option(label="A / 101")
+        mgr.get_by_label("Motivo (sem dados pessoais)").fill("mudança de apartamento E2E")
+        mgr.get_by_role("button", name="Confirmar mudança").click()
+        expect(mgr.get_by_text(re.compile("mudou para A / 101"))).to_be_visible()
+        moved = [r for r in api("GET", f"{base}/residents?size=200", "manager-sol")["items"]
+                 if r["fullName"] == f"Morador Sintetico {suf}"]
+        units_ = {u["id"]: u["number"] for u in api("GET", f"{base}/units?size=200", "manager-sol")["items"]}
+        check("síndico muda o morador de unidade pela tela e o servidor registra a unidade nova",
+              len(moved) == 1 and units_.get(moved[0]["unitId"]) == "101")
+        mgr.locator("#res-unit").select_option(label="A / 101")
+        expect(mgr.get_by_text(f"Morador Sintetico {suf}").first).to_be_visible()
         mgr.once("dialog", lambda d: d.accept())
         mgr.get_by_role("button", name=f"Anonimizar Morador Sintetico {suf}").click()
         expect(mgr.get_by_text("Cadastro anonimizado.")).to_be_visible()

@@ -35,6 +35,7 @@ const TEXT: Record<string, string> = {
   "Only a granted entry can have an exit": "Só uma entrada autorizada pode ter saída.",
   "Only an approved request can have an entry": "Só um pedido aprovado pode ter entrada registrada.",
   "Visitor not found": "Visitante não encontrado.",
+  "Resident is already in this unit": "O morador já está nesta unidade.",
   "Announcement not found": "Comunicado não encontrado.",
   "Device is deactivated": "Este equipamento está desativado. Reative-o para usá-lo.",
   "Parcel already picked up": "A encomenda já foi retirada.",

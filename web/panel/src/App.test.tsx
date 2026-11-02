@@ -117,7 +117,8 @@ function fakeApi() {
     if (url.includes("/vehicles?")) return pg([{ id: "vh1", unitId: "un1", plate: "ABC1D23", model: "Sedan", color: "Prata" }]);
     if (url.includes("/pets?")) return pg([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: "sai com guia" }]);
     if (url.endsWith("/pets") && init?.method === "POST") return json({ id: "p2" });
-    if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }]);
+    if (url.includes("/units?")) return pg([{ id: "un1", blockId: "b1", number: "101" }, { id: "un2", blockId: "b1", number: "102" }]);
+    if (url.endsWith("/residents/r1/move")) return json({ resident: { id: "r1", unitId: "un2" }, dependentsMoved: 1, invitationsRevoked: 2 });
     if (url.endsWith("/parcels") && init?.method === "POST") return json({ id: "p9" });
     if (url.includes("/parcels/") && url.endsWith("/pickup")) return json({ id: "p1" });
     if (url.includes("/parcels?")) return pg(parcelList);
@@ -843,6 +844,24 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("button", { name: "Histórico" }));
     expect(await screen.findByText(/Tia Maria/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Corrigir visitante Tia Maria" })).not.toBeInTheDocument();
+  });
+
+  it("moves a resident to another unit with a reason, asking whether dependents go along", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(screen.getByRole("button", { name: "Cadastros" }));
+    await user.click(screen.getByRole("button", { name: "Moradores" }));
+    await user.selectOptions(screen.getByLabelText("Unidade"), "un1");
+    await user.click(await screen.findByRole("button", { name: "Mudar Joana Teste de unidade" }));
+    const confirm = screen.getByRole("button", { name: "Confirmar mudança" });
+    expect(confirm).toBeDisabled(); // sem unidade nova e sem motivo
+    await user.selectOptions(screen.getByLabelText("Nova unidade"), "un2");
+    await user.type(screen.getByLabelText("Motivo (sem dados pessoais)"), "mudança de apartamento");
+    await user.click(screen.getByLabelText(/Levar também os dependentes/));
+    await user.click(confirm);
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents/r1/move"))?.body)
+      .toEqual({ unitId: "un2", reason: "mudança de apartamento", moveDependents: true }));
+    expect(await screen.findByText(/Convites revogados: 2; dependentes levados: 1/)).toBeInTheDocument();
   });
 
   it("lets the desk search residents' vehicles by plate", async () => {

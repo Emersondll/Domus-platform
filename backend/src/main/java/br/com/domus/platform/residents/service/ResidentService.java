@@ -7,6 +7,7 @@ import br.com.domus.platform.commercial.service.CommercialService;
 import br.com.domus.platform.shared.ResidentAccessRevoker;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
@@ -92,6 +93,51 @@ public class ResidentService {
         audit.record(actor.userId(), null, condominiumId, "resident.update", "resident",
                 residentId.toString(), AuditOutcome.SUCCESS);
         return resident;
+    }
+
+    /** Resultado de uma mudança de unidade. */
+    public record Moved(Resident resident, int dependentsMoved, int invitationsRevoked) {
+    }
+
+    /**
+     * Muda um morador de unidade. Só gestão (síndico ou administração) e com motivo. O cadastro, o acesso ao app, os meios de acesso,
+     * a foto e o histórico de passagens acompanham o morador. Veículos e animais ficam na unidade antiga (não têm dono individual) e os
+     * convites ativos que ele criou para ela são revogados. Os dependentes da unidade antiga só vão junto se pedido.
+     *
+     * @param condominiumId condomínio
+     * @param residentId morador
+     * @param toUnitId unidade de destino, do mesmo condomínio
+     * @param reason motivo, registrado na auditoria (sem dado pessoal)
+     * @param moveDependents verdadeiro para levar também os dependentes ativos da unidade antiga
+     */
+    @Transactional
+    public Moved move(UUID condominiumId, UUID residentId, UUID toUnitId, String reason, boolean moveDependents) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "resident.move");
+        Resident resident = residents.findByIdAndCondominiumId(residentId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Resident not found"));
+        if (!resident.isActive()) {
+            throw new ConflictException("Resident is inactive");
+        }
+        commercial.requireUnit(condominiumId, toUnitId);
+        UUID fromUnitId = resident.getUnitId();
+        if (fromUnitId.equals(toUnitId)) {
+            throw new ConflictException("Resident is already in this unit");
+        }
+        resident.moveTo(toUnitId);
+        int dependents = 0;
+        if (moveDependents && resident.getResidentType() != ResidentType.DEPENDENT) {
+            for (Resident d : residents.findByCondominiumIdAndUnitIdAndActiveTrueOrderByFullName(condominiumId, fromUnitId)) {
+                if (d.getResidentType() == ResidentType.DEPENDENT) {
+                    d.moveTo(toUnitId);
+                    dependents++;
+                }
+            }
+        }
+        int invitations = accessRevoker.revokeResidentInvitations(actor.userId(), condominiumId, residentId, fromUnitId);
+        audit.record(actor.userId(), null, condominiumId, "resident.move", "resident", residentId.toString(),
+                AuditOutcome.SUCCESS, "unit " + fromUnitId + " -> " + toUnitId + "; dependents moved: " + dependents
+                        + "; invitations revoked: " + invitations + "; reason: " + reason);
+        return new Moved(resident, dependents, invitations);
     }
 
     /**

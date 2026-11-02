@@ -14,4 +14,15 @@ public interface ResidentAccessRevoker {
      * @return quantidade de vínculos revogados (zero se o morador nunca recebeu conta)
      */
     int revokeResidentAccess(UUID actorUserId, UUID condominiumId, UUID residentId);
+
+    /**
+     * Revoga os convites ativos que as contas deste morador criaram para a unidade que ele deixa.
+     *
+     * @param actorUserId quem moveu o morador, para a auditoria
+     * @param condominiumId condomínio
+     * @param residentId morador que mudou de unidade
+     * @param previousUnitId unidade que ele deixou
+     * @return quantidade de convites revogados (zero se ele nunca teve conta)
+     */
+    int revokeResidentInvitations(UUID actorUserId, UUID condominiumId, UUID residentId, UUID previousUnitId);
 }

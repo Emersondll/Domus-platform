@@ -112,6 +112,32 @@ public class ResidentController {
     }
 
     /**
+     * @param unitId         unidade de destino (do mesmo condomínio)
+     * @param reason         motivo da mudança; vai para a auditoria, sem dado pessoal
+     * @param moveDependents verdadeiro leva também os dependentes ativos da unidade antiga
+     */
+    public record MoveResidentRequest(@NotNull UUID unitId, @NotBlank @Size(min = 5, max = 200) String reason,
+                                      boolean moveDependents) {
+    }
+
+    /**
+     * @param resident          morador já na unidade nova
+     * @param dependentsMoved   quantos dependentes foram junto
+     * @param invitationsRevoked quantos convites ativos dele para a unidade antiga foram revogados
+     */
+    public record MoveResidentResponse(ResidentResponse resident, int dependentsMoved, int invitationsRevoked) {
+    }
+
+    /** Atende `POST /condominiums/{condominiumId}/residents/{residentId}/move`: síndico ou administração muda o morador de unidade. */
+    @PostMapping("/{residentId}/move")
+    public MoveResidentResponse move(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
+                                     @Valid @RequestBody MoveResidentRequest r) {
+        ResidentService.Moved moved = service.move(condominiumId, residentId, r.unitId(), r.reason().trim(), r.moveDependents());
+        return new MoveResidentResponse(ResidentResponse.from(moved.resident()), moved.dependentsMoved(),
+                moved.invitationsRevoked());
+    }
+
+    /**
      * Atende `GET /condominiums/{condominiumId}/residents/{residentId}`.
      *
      * @param condominiumId condomínio

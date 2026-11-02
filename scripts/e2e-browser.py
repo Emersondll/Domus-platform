@@ -1012,6 +1012,13 @@ try:
         tokens = pan.evaluate("() => JSON.stringify([localStorage, sessionStorage])")
         check("nenhum token guardado em localStorage/sessionStorage (painel)", "eyJ" not in tokens)
         # síndico e administrador não são operadores: o escopo (me/admin-scope) evita a consulta de atendimentos, então nenhum 403 é tolerado
+        # a auditoria diz de onde veio cada ação: as telas se identificam como PANEL (o teste de integração cobre API, SYSTEM e a ausência de IP)
+        origins = subprocess.run(["docker", "compose", "exec", "-T", "postgres", "psql", "-U", "portaria", "-d", DB, "-At", "-c",
+            "select client_origin, count(*) from audit_log where action in ('device.deactivate','announcement.update','visitor.update',"
+            "'resident.move','condominium.update') group by 1 order by 1"], capture_output=True, text=True).stdout
+        by_origin = dict(line.split("|") for line in origins.strip().splitlines() if "|" in line)
+        check("a auditoria registra o painel como canal das ações feitas pela tela",
+              int(by_origin.get("PANEL", "0")) >= 4, str(by_origin))
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]) + (" | requisições com erro: " + str(failed_requests[:6]) if errors else ""))
         if os.environ.get("E2E_TRACE_REQUESTS"):
             with open(os.environ["E2E_TRACE_REQUESTS"], "w") as f:

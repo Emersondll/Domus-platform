@@ -1,5 +1,6 @@
 package br.com.domus.platform.shared.audit;
 
+import br.com.domus.platform.shared.config.ClientOriginFilter;
 import br.com.domus.platform.shared.config.CorrelationIdFilter;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
@@ -29,8 +30,8 @@ public class AuditService {
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
     private static final String INSERT = """
             INSERT INTO audit_log (id, occurred_at, actor_user_id, operator_company_id, condominium_id, action,
-                                   resource_type, resource_id, outcome, correlation_id, detail)
-            VALUES (:id, :at, :actor, :company, :condo, :action, :rtype, :rid, :outcome, :corr, :detail)
+                                   resource_type, resource_id, outcome, correlation_id, detail, client_origin, client_kind)
+            VALUES (:id, :at, :actor, :company, :condo, :action, :rtype, :rid, :outcome, :corr, :detail, :origin, :kind)
             """;
 
     private final JdbcClient inTransaction;
@@ -93,6 +94,9 @@ public class AuditService {
                     .param("rid", resourceId)
                     .param("outcome", outcome.name())
                     .param("corr", MDC.get(CorrelationIdFilter.MDC_KEY))
+                    // fora de uma requisição (agendamento, tarefa interna) o fato é do próprio sistema
+                    .param("origin", MDC.get(ClientOriginFilter.MDC_ORIGIN) == null ? "SYSTEM" : MDC.get(ClientOriginFilter.MDC_ORIGIN))
+                    .param("kind", MDC.get(ClientOriginFilter.MDC_KIND))
                     .param("detail", detail == null ? null : detail.substring(0, Math.min(detail.length(), 500)))
                     .update();
         } catch (RuntimeException e) {

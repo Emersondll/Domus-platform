@@ -6,6 +6,18 @@ export class ApiError extends Error {
   }
 }
 
+let clientName: "PANEL" | "RESIDENT_APP" | null = null;
+
+/** Cada app diz quem é; a API grava o canal na auditoria (sem IP) para distinguir clique de chamada manual. */
+export function setClientName(name: "PANEL" | "RESIDENT_APP"): void {
+  clientName = name;
+}
+
+/** Cabeçalho que identifica o canal; vazio se o app não se identificou. */
+export function clientHeaders(): Record<string, string> {
+  return clientName ? { "X-Domus-Client": clientName } : {};
+}
+
 let onUnauthorized: (() => void) | null = null;
 
 /** O app registra o que fazer quando a API responde 401 (token expirado ou inválido): normalmente, novo login. */
@@ -67,6 +79,7 @@ async function send<T>(token: string, method: string, path: string, body: unknow
     method,
     headers: {
       Authorization: `Bearer ${token}`,
+      ...clientHeaders(),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -91,7 +104,7 @@ async function send<T>(token: string, method: string, path: string, body: unknow
 
 /** Baixa uma imagem protegida (o cabeçalho Authorization não vai em `<img>`) e devolve uma URL local para exibi-la. */
 export async function requestImageUrl(token: string, path: string): Promise<string> {
-  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}`, ...clientHeaders() } });
   if (res.status === 401) onUnauthorized?.();
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return URL.createObjectURL(await res.blob());
@@ -101,7 +114,7 @@ export async function requestImageUrl(token: string, path: string): Promise<stri
 export async function uploadFile<T>(token: string, path: string, file: Blob): Promise<T | null> {
   const res = await fetch(path, {
     method: "PUT",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type || "application/octet-stream" },
+    headers: { Authorization: `Bearer ${token}`, ...clientHeaders(), "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
   if (res.status === 401) onUnauthorized?.();

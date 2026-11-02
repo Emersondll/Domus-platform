@@ -158,7 +158,7 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 | T8 | Painel em largura de celular (390 px): sem rolagem horizontal e sem controle pequeno, mas a mesa (abas) fica ~700 px abaixo, os três cartões de resumo ficam empilhados e o cabeçalho quebra de forma desalinhada | baixa (UX) | **CSS ajustado em 2026-11-02 (cartões em 3 colunas, cabeçalho em coluna), NÃO verificado em navegador nem em aparelho** |
 | T9 | App do morador: o botão "Ver" das câmeras quebra de linha na primeira linha | baixa (estética) | **CSS ajustado em 2026-11-02 (linha flex), não visto em tela** |
 | T10 | "Meus acessos" do morador mostra repetições | baixa | **sem ação**: é dado de teste (eventos repetidos do simulador), não defeito de código |
-| T11 | Reforço de rastreio: a auditoria de liberação de câmera não guarda a origem da requisição | baixa | **aberto** (decidir se vale registrar origem) |
+| T11 | Reforço de rastreio: a auditoria de liberação de câmera não guarda a origem da requisição | baixa | **corrigido (2026-11-02, V31)** para toda ação auditada: canal (painel, app, API, sistema) e tipo de cliente, **sem IP** porque a auditoria não expira. O canal é declarado pelo cliente (não é prova). **Aberto:** IP, se o jurídico (D1) aprovar com prazo de descarte |
 | T12 | `load-test` e `restore-drill` não rodaram depois de 2026-10-29 | baixa | sem necessidade: não houve mudança de backend nem de esquema desde então |
 | T13 | A CI do push `2a79d27` (seção Cadastros, `dev-media.sh`, docs) não foi acompanhada | baixa | **fechado (2026-11-02)**: a CI de `2a79d27` e a de `1949bff` passaram (`gh run list`) |
 

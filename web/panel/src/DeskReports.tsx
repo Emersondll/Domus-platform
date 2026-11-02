@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError, request, type Page } from "../../shared/src/api";
+import { ApiError, clientHeaders, request, type Page } from "../../shared/src/api";
 import { BarChart } from "./BarChart";
 import type { AccessRow, ActivityReport, UnitActivity } from "./types";
 import { errorMessage } from "./useCondoList";
@@ -64,7 +64,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
   async function exportActivityCsv() {
     setError(null);
     try {
-      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity.csv?${query()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity.csv?${query()}`, { headers: { Authorization: `Bearer ${token}`, ...clientHeaders() } });
       if (!res.ok) throw new ApiError(res.status, res.status === 400 ? "Período inválido: use no máximo 31 dias." : res.statusText);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(await res.blob());
@@ -79,7 +79,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
   async function exportByUnitCsv() {
     setError(null);
     try {
-      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity/by-unit.csv?${query()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/v1/condominiums/${condominiumId}/reports/activity/by-unit.csv?${query()}`, { headers: { Authorization: `Bearer ${token}`, ...clientHeaders() } });
       if (!res.ok) throw new ApiError(res.status, res.status === 400 ? "Período inválido: use no máximo 31 dias." : res.statusText);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(await res.blob());
@@ -94,7 +94,7 @@ export function DeskReports({ token, condominiumId }: { token: string; condomini
   async function exportCsv() {
     setError(null);
     try {
-      const res = await fetch(`${base}/report.csv?${query()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${base}/report.csv?${query()}`, { headers: { Authorization: `Bearer ${token}`, ...clientHeaders() } });
       if (!res.ok) throw new ApiError(res.status, res.status === 400 ? "Período inválido ou grande demais: reduza o período." : res.statusText);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(await res.blob());

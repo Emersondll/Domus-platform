@@ -155,12 +155,12 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 | T5 | `scripts/dev-media.sh down` deixava laços de ffmpeg órfãos (o `.pid` se perdia ou o `up` rodava duas vezes) e os publicadores se derrubavam, quebrando o vídeo ao vivo e a captura de imagem (409) | baixa (ambiente de teste) | **corrigido**: os laços têm marca e `up`/`down` encerram todos; testado com `up` duas vezes. Laços de antes da marca não são reconhecidos (limpeza única à mão) |
 | T6 | CI: com o repositório **privado**, o CodeQL falha nos dois jobs: primeiro `Resource not accessible by integration` (faltava `actions: read`, já acrescentado) e depois `Code scanning is not enabled for this repository` (exige GitHub Advanced Security, pago) | média | **contornado**: o repositório voltou a ser público e a CI passou nos 8 jobs. Se for privado de novo: habilitar o Code Scanning ou retirar o CodeQL do fluxo |
 | T7 | A lista de câmeras liberadas ao morador caiu de 4 para 0 no banco de desenvolvimento | baixa | **sem defeito de código**: a auditoria mostra 4 chamadas `device.resident-viewable.false` de `manager-sol` em 4 segundos; o único código que envia `false` é o botão "Retirar" do painel. Não dá para provar se foram cliques ou uma chamada manual, porque a auditoria não guarda a origem. Liberadas de novo: Portão social e Portaria principal. O limite de 4 por condomínio foi mantido por decisão |
-| T8 | Painel em largura de celular (390 px): sem rolagem horizontal e sem controle pequeno, mas a mesa (abas) fica ~700 px abaixo, os três cartões de resumo ficam empilhados e o cabeçalho quebra de forma desalinhada | baixa (UX) | **aberto**. Só testado em emulação do Chromium, não em aparelho real |
-| T9 | App do morador: o botão "Ver" das câmeras quebra de linha na primeira linha | baixa (estética) | **aberto** |
-| T10 | "Meus acessos" do morador mostra repetições | baixa | **aberto, mas é dado de teste** (não foi tratado) |
+| T8 | Painel em largura de celular (390 px): sem rolagem horizontal e sem controle pequeno, mas a mesa (abas) fica ~700 px abaixo, os três cartões de resumo ficam empilhados e o cabeçalho quebra de forma desalinhada | baixa (UX) | **CSS ajustado em 2026-11-02 (cartões em 3 colunas, cabeçalho em coluna), NÃO verificado em navegador nem em aparelho** |
+| T9 | App do morador: o botão "Ver" das câmeras quebra de linha na primeira linha | baixa (estética) | **CSS ajustado em 2026-11-02 (linha flex), não visto em tela** |
+| T10 | "Meus acessos" do morador mostra repetições | baixa | **sem ação**: é dado de teste (eventos repetidos do simulador), não defeito de código |
 | T11 | Reforço de rastreio: a auditoria de liberação de câmera não guarda a origem da requisição | baixa | **aberto** (decidir se vale registrar origem) |
 | T12 | `load-test` e `restore-drill` não rodaram depois de 2026-10-29 | baixa | sem necessidade: não houve mudança de backend nem de esquema desde então |
-| T13 | A CI do push `2a79d27` (seção Cadastros, `dev-media.sh`, docs) não foi acompanhada | baixa | **aberto** |
+| T13 | A CI do push `2a79d27` (seção Cadastros, `dev-media.sh`, docs) não foi acompanhada | baixa | **fechado (2026-11-02)**: a CI de `2a79d27` e a de `1949bff` passaram (`gh run list`) |
 
 ## 1.5 Revalidação de conflitos, redundâncias e fluxos fora do app (2026-10-31)
 Levantamento por leitura de código e pelo rastreio de rotas do e2e (157 das 166 rotas são chamadas por alguma tela; as 9 restantes são de máquina ou ainda sem passo no roteiro). C1, C2, C3 e F2 foram corrigidos em 2026-11-01 (ver `docs/STATUS.md`); os demais seguem abertos. O e2e de navegador não exercita as ações novas (cobertas por testes de integração e de tela).
@@ -173,10 +173,10 @@ Levantamento por leitura de código e pelo rastreio de rotas do e2e (157 das 166
 | F1 | Dar acesso a equipe/administrador exige criar o usuário no Keycloak e copiar o `sub` | **aberto** (depende da decisão D6 sobre autocadastro) |
 | F3 | Editar empresa e condomínio (nome, CNPJ) | **aberto** |
 | F4 | Mover morador para outra unidade (hoje: desativar e criar de novo, perdendo o vínculo do histórico) | **aberto**: mexe em animais, familiares, pedidos e histórico; precisa de desenho |
-| F5 | Desativar controladora de acesso cadastrada errada (só câmera desativa) | **aberto** |
-| F6 | Editar visitante cadastrado; editar/expirar comunicado | **aberto** |
+| F5 | Desativar controladora de acesso cadastrada errada (só câmera desativa) | **corrigido (2026-11-02)**: desativar/reativar também vale para controladora (ver STATUS); comandos já entregues ao agente não são recolhidos |
+| F6 | Editar visitante cadastrado; editar/expirar comunicado | **corrigido em parte (2026-11-02)**: corrige nome/tipo do visitante e título/texto do comunicado; **aberto:** expirar comunicado por prazo e mudar a unidade do visitante |
 | F7 | Retenção e limites só por variável de ambiente | **aberto** (por decisão: é configuração de instalação) |
-| R1 | Redundâncias por desenho: duas formas de encerrar uma entrada (saída e ticket numerado), abrir porta pela chamada/aba Portas/app do morador, câmeras ao vivo por atalho e aba, três canais de comunicação, conta com `sub` e associação por código | **aberto**: falta orientar na tela quando usar cada um; nada a corrigir no backend |
+| R1 | Redundâncias por desenho: duas formas de encerrar uma entrada (saída e ticket numerado), abrir porta pela chamada/aba Portas/app do morador, câmeras ao vivo por atalho e aba, três canais de comunicação, conta com `sub` e associação por código | **corrigido em parte (2026-11-02)**: textos de orientação para saída, câmeras e portas; **aberto:** os três canais de comunicação e a conta com `sub` × associação por código |
 
 ## 2. Melhorias já aplicadas (resumo)
 - Plataforma multi-tenant com auditoria imutável, central de operações, app do morador, painel, agente de contingência offline com sincronização idempotente.

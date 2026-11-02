@@ -15,6 +15,7 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
   // O servidor decide; a tela só esconde a ação para quem ele recusaria (síndico ou administração).
   const [canManage, setCanManage] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; title: string; body: string } | null>(null);
   useEffect(() => {
     request<{ canManage: boolean }>(token, "GET", `/api/v1/condominiums/${condominiumId}/devices/permissions`)
       .then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
@@ -25,6 +26,18 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
     try {
       await request(token, "DELETE", `${base}/${id}`);
       setRemoving(null);
+      await list.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setError(null);
+    try {
+      await request(token, "PUT", `${base}/${editing.id}`, { title: editing.title.trim(), body: editing.body.trim() });
+      setEditing(null);
       await list.reload();
     } catch (e) {
       setError(errorMessage(e));
@@ -60,9 +73,28 @@ export function DeskAnnouncements({ token, condominiumId }: { token: string; con
       <ul>
         {list.items.map((a) => (
           <li key={a.id}>
-            <strong>{a.title}</strong> <small>{new Date(a.createdAt).toLocaleString()}</small>
-            <p>{a.body}</p>
-            {canManage && removing !== a.id && <button aria-label={`Apagar comunicado ${a.title}`} onClick={() => setRemoving(a.id)}>Apagar</button>}
+            {editing?.id === a.id ? (
+              <div role="group" aria-label={`Corrigir comunicado ${a.title}`}>
+                <label htmlFor={`ann-edit-title-${a.id}`}>Título</label>
+                <input id={`ann-edit-title-${a.id}`} maxLength={120} value={editing.title}
+                  onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
+                <label htmlFor={`ann-edit-body-${a.id}`}>Mensagem</label>
+                <textarea id={`ann-edit-body-${a.id}`} maxLength={2000} rows={4} value={editing.body}
+                  onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
+                <p className="hint">Corrige o texto na lista. Quem já recebeu o aviso continua com o texto antigo, e ninguém é avisado de novo.</p>
+                <button disabled={!editing.title.trim() || !editing.body.trim()} onClick={saveEdit}>Salvar correção</button>{" "}
+                <button onClick={() => setEditing(null)}>Cancelar</button>
+              </div>
+            ) : (
+              <>
+                <strong>{a.title}</strong> <small>{new Date(a.createdAt).toLocaleString()}</small>
+                <p>{a.body}</p>
+                {canManage && removing !== a.id && (
+                  <button aria-label={`Corrigir comunicado ${a.title}`} onClick={() => setEditing({ id: a.id, title: a.title, body: a.body })}>Corrigir</button>
+                )}{" "}
+              </>
+            )}
+            {canManage && !editing && removing !== a.id && <button aria-label={`Apagar comunicado ${a.title}`} onClick={() => setRemoving(a.id)}>Apagar</button>}
             {removing === a.id && (
               <>
                 <span>Apagar este comunicado? Quem já recebeu o aviso continua com ele. </span>

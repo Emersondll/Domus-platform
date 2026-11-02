@@ -45,6 +45,12 @@ public class Visitor {
         this.kind = kind;
     }
 
+    /** Corrige o nome e o tipo (a unidade e o vínculo com os convites não mudam). */
+    public void correct(String fullName, String kind) {
+        this.fullName = fullName;
+        this.kind = kind;
+    }
+
     /** Retorna o condomínio dono do registro. */
     public UUID getCondominiumId() {
         return condominiumId;

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -62,6 +63,13 @@ public class AnnouncementController {
     @ResponseStatus(HttpStatus.CREATED)
     public AnnouncementResponse publish(@PathVariable UUID condominiumId, @Valid @RequestBody PublishRequest r) {
         return AnnouncementResponse.from(service.publish(condominiumId, r.title(), r.body()));
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/announcements/{announcementId}`: síndico ou administração corrige título e texto, sem notificar de novo. */
+    @PutMapping("/announcements/{announcementId}")
+    public AnnouncementResponse correct(@PathVariable UUID condominiumId, @PathVariable UUID announcementId,
+                                        @Valid @RequestBody PublishRequest r) {
+        return AnnouncementResponse.from(service.correct(condominiumId, announcementId, r.title(), r.body()));
     }
 
     /** Atende `DELETE /condominiums/{condominiumId}/announcements/{announcementId}`: síndico ou administração apaga o comunicado. */

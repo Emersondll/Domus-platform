@@ -67,6 +67,21 @@ public class AnnouncementService {
                 AuditOutcome.SUCCESS);
     }
 
+    /**
+     * Corrige o título e o texto de um comunicado. Os avisos que os moradores já receberam continuam com o texto antigo (não se
+     * reescreve uma notificação entregue); a lista de comunicados passa a mostrar o texto corrigido. Não notifica de novo.
+     */
+    @Transactional
+    public Announcement correct(UUID condominiumId, UUID announcementId, String title, String body) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "announcement.update");
+        Announcement a = announcements.findByIdAndCondominiumId(announcementId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Announcement not found"));
+        a.correct(title, body);
+        audit.record(actor.userId(), null, condominiumId, "announcement.update", "announcement", announcementId.toString(),
+                AuditOutcome.SUCCESS);
+        return a;
+    }
+
     /** Operadores e síndico consultam o histórico publicado. */
     @Transactional(readOnly = true)
     public Page<Announcement> list(UUID condominiumId, Pageable pageable) {

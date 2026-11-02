@@ -18,10 +18,10 @@ public class Announcement {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private String body;
 
     @Column(name = "author_user_id", nullable = false, updatable = false)
@@ -41,6 +41,12 @@ public class Announcement {
         this.body = body;
         this.authorUserId = authorUserId;
         this.createdAt = createdAt;
+    }
+
+    /** Corrige o título e o texto (o comunicado continua o mesmo; avisos já entregues não mudam). */
+    public void correct(String title, String body) {
+        this.title = title;
+        this.body = body;
     }
 
     /** Retorna o identificador. */

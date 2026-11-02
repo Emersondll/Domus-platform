@@ -34,6 +34,8 @@ const TEXT: Record<string, string> = {
   "Only access controllers can be opened by residents": "O morador só abre controladoras de acesso.",
   "Only a granted entry can have an exit": "Só uma entrada autorizada pode ter saída.",
   "Only an approved request can have an entry": "Só um pedido aprovado pode ter entrada registrada.",
+  "Visitor not found": "Visitante não encontrado.",
+  "Announcement not found": "Comunicado não encontrado.",
   "Device is deactivated": "Este equipamento está desativado. Reative-o para usá-lo.",
   "Parcel already picked up": "A encomenda já foi retirada.",
   "Parcel is not waiting for pickup": "A encomenda não está aguardando retirada.",

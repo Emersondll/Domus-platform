@@ -265,6 +265,46 @@ class CondominialOperationsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void managerCorrectsAnnouncementsAndVisitorsButOperatorAndOtherCondominiumCannot() throws Exception {
+        String base = "/api/v1/condominiums/" + condoA;
+        // comunicado: só o síndico corrige; o texto da lista muda; outro condomínio = 404
+        String ann = body(mvc.perform(post(base + "/announcements").with(as("p3-operator")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Agua\",\"body\":\"Sem agua amanha\"}")).andExpect(status().isCreated()).andReturn()).get("id").asString();
+        String fix = "{\"title\":\"Água\",\"body\":\"Sem água amanhã\"}";
+        mvc.perform(put(base + "/announcements/" + ann).with(as("p3-operator")).contentType(MediaType.APPLICATION_JSON).content(fix))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(base + "/announcements/" + ann).with(as("p3-operator-b")).contentType(MediaType.APPLICATION_JSON).content(fix))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(base + "/announcements/" + ann).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"\",\"body\":\"x\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put(base + "/announcements/" + ann).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON).content(fix))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("Água"));
+        mvc.perform(get(base + "/me/announcements?size=100").with(as("p3-res-101")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + ann + "')].body").value("Sem água amanhã"));
+
+        // visitante cadastrado por convite: só o síndico corrige nome e tipo
+        invite("p3-res-101", condoA, 1);
+        var visitors = body(mvc.perform(get(base + "/visitors?size=100").with(as("p3-manager"))).andReturn()).get("items");
+        String visitorId = visitors.get(0).get("id").asString();
+        String vfix = "{\"fullName\":\"Maria Correta\",\"kind\":\"SERVICE_PROVIDER\"}";
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-operator")).contentType(MediaType.APPLICATION_JSON).content(vfix))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-res-101")).contentType(MediaType.APPLICATION_JSON).content(vfix))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-operator-b")).contentType(MediaType.APPLICATION_JSON).content(vfix))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fullName\":\"Maria\",\"kind\":\"OTHER\"}")).andExpect(status().isBadRequest());
+        mvc.perform(put(base + "/visitors/" + UUID.randomUUID()).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON).content(vfix))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON).content(vfix))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fullName").value("Maria Correta"))
+                .andExpect(jsonPath("$.kind").value("SERVICE_PROVIDER"));
+        mvc.perform(get(base + "/visitors?size=100").with(as("p3-manager")))
+                .andExpect(jsonPath("$.items[?(@.id=='" + visitorId + "')].fullName").value("Maria Correta"));
+    }
+
+    @Test
     void parcelCannotTargetUnitOfAnotherCondominium() throws Exception {
         mvc.perform(post("/api/v1/condominiums/" + condoA + "/parcels").with(as("p3-operator"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"unitId\":\"" + unitB + "\"}"))

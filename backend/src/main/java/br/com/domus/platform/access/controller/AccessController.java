@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -200,6 +201,21 @@ public class AccessController {
     public PageResponse<VisitorResponse> visitors(@PathVariable UUID condominiumId,
             @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
         return PageResponse.of(service.listVisitors(condominiumId, pageable), VisitorResponse::from);
+    }
+
+    /**
+     * @param fullName nome corrigido do visitante
+     * @param kind     VISITOR ou SERVICE_PROVIDER
+     */
+    public record CorrectVisitorRequest(@NotBlank @Size(max = 200) String fullName,
+                                        @NotNull @Pattern(regexp = "VISITOR|SERVICE_PROVIDER") String kind) {
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}/visitors/{visitorId}`: síndico ou administração corrige nome e tipo. */
+    @PutMapping("/visitors/{visitorId}")
+    public VisitorResponse correctVisitor(@PathVariable UUID condominiumId, @PathVariable UUID visitorId,
+                                          @Valid @RequestBody CorrectVisitorRequest r) {
+        return VisitorResponse.from(service.correctVisitor(condominiumId, visitorId, r.fullName(), r.kind()));
     }
 
     private static InvitationResponse toResponse(AccessCredential c, String visitorName, String token) {

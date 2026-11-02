@@ -1,5 +1,5 @@
 import { MissingHint } from "./MissingHint";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import { AuthImage } from "../../shared/src/AuthImage";
 import type { AccessRow, Attempt, VisitRequest, Visitor } from "./types";
@@ -20,6 +20,25 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const [ticketInput, setTicketInput] = useState("");
   const [ticketMsg, setTicketMsg] = useState<string | null>(null);
   const [view, setView] = useState<"now" | "history">("now");
+  // O servidor decide; a tela só esconde a correção de quem ele recusaria (síndico ou administração).
+  const [canManage, setCanManage] = useState(false);
+  const [editingVisitor, setEditingVisitor] = useState<{ id: string; fullName: string; kind: string } | null>(null);
+  useEffect(() => {
+    request<{ canManage: boolean }>(token, "GET", `${base}/devices/permissions`)
+      .then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
+  }, [token, base]);
+
+  async function saveVisitor() {
+    if (!editingVisitor) return;
+    setError(null);
+    try {
+      await request(token, "PUT", `${base}/visitors/${editingVisitor.id}`, { fullName: editingVisitor.fullName.trim(), kind: editingVisitor.kind });
+      setEditingVisitor(null);
+      await visitors.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   const [error, setError] = useState<string | null>(null);
   const [token_, setToken] = useState("");
@@ -173,7 +192,29 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
       <ul>
         {visitors.items.map((v) => (
           <li key={v.id}>
-            {v.fullName} · {v.kind === "SERVICE_PROVIDER" ? "prestador" : "visitante"} · unidade {unitNumber(v.unitId)}
+            {editingVisitor?.id === v.id ? (
+              <span role="group" aria-label={`Corrigir visitante ${v.fullName}`}>
+                <label htmlFor={`visitor-name-${v.id}`}>Nome</label>
+                <input id={`visitor-name-${v.id}`} maxLength={200} value={editingVisitor.fullName}
+                  onChange={(e) => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })} />
+                <label htmlFor={`visitor-kind-${v.id}`}>Tipo</label>
+                <select id={`visitor-kind-${v.id}`} value={editingVisitor.kind}
+                  onChange={(e) => setEditingVisitor({ ...editingVisitor, kind: e.target.value })}>
+                  <option value="VISITOR">visitante</option>
+                  <option value="SERVICE_PROVIDER">prestador</option>
+                </select>{" "}
+                <button disabled={!editingVisitor.fullName.trim()} onClick={saveVisitor}>Salvar correção</button>{" "}
+                <button onClick={() => setEditingVisitor(null)}>Cancelar</button>
+              </span>
+            ) : (
+              <>
+                {v.fullName} · {v.kind === "SERVICE_PROVIDER" ? "prestador" : "visitante"} · unidade {unitNumber(v.unitId)}{" "}
+                {canManage && (
+                  <button aria-label={`Corrigir visitante ${v.fullName}`}
+                    onClick={() => setEditingVisitor({ id: v.id, fullName: v.fullName, kind: v.kind })}>Corrigir</button>
+                )}
+              </>
+            )}
           </li>
         ))}
         {visitors.items.length === 0 && <li>Nenhum visitante cadastrado.</li>}

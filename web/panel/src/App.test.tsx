@@ -84,7 +84,7 @@ function fakeApi() {
     if (url.endsWith("/messages/threads")) return json([{ residentUserId: "ru1", residentName: "Maria Teste", lastAt: new Date().toISOString(), unread: 2 }]);
     if (url.endsWith("/messages/threads/ru1") && init?.method === "POST") return json({ id: "m9" });
     if (url.endsWith("/messages/threads/ru1")) return pg([{ id: "m1", fromResident: true, text: "Preciso de ajuda", createdAt: new Date().toISOString(), read: false }]);
-    if (/\/(vehicles\/vh1|blocks\/b1|units\/un1|common-areas\/ca1|common-areas\/ca1\/active|announcements\/an1)$/.test(url) && init?.method) return json({});
+    if (/\/(vehicles\/vh1|blocks\/b1|units\/un1|common-areas\/ca1|common-areas\/ca1\/active|announcements\/an1|visitors\/v1)$/.test(url) && init?.method) return json({});
     if (url.includes("/announcements?")) return pg([{ id: "an1", title: "Manutenção", body: "Caixa d'água na sexta", createdAt: new Date().toISOString() }]);
     if (url.endsWith("/announcements") && init?.method === "POST") return json({ id: "an2" });
     if (url.includes("/shift-log?")) return pg([{ id: "sl1", shiftId: null, kind: "HANDOVER", text: "Portão social instável", createdAt: new Date().toISOString() }]);
@@ -797,6 +797,45 @@ describe("operator panel", () => {
     expect(posted.some((p) => p.url.endsWith("/announcements/an1"))).toBe(false);
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
     await waitFor(() => expect(posted.some((p) => p.url.endsWith("/announcements/an1"))).toBe(true));
+  });
+
+  it("lets the manager correct an announcement without publishing it again", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Comunicados" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir comunicado Manutenção" }));
+    const title = screen.getByLabelText("Título", { selector: "#ann-edit-title-an1" });
+    await user.clear(title);
+    await user.type(title, "Manutenção geral");
+    await user.click(screen.getByRole("button", { name: "Salvar correção" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/announcements/an1"))?.body)
+      .toEqual({ title: "Manutenção geral", body: "Caixa d'água na sexta" }));
+    expect(posted.some((p) => p.url.endsWith("/announcements"))).toBe(false);
+  });
+
+  it("lets the manager correct a registered visitor but not the operator", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.click(await screen.findByRole("button", { name: "Histórico" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir visitante Tia Maria" }));
+    const name = screen.getByLabelText("Nome");
+    await user.clear(name);
+    await user.type(name, "Maria Silva");
+    await user.selectOptions(screen.getByLabelText("Tipo"), "SERVICE_PROVIDER");
+    await user.click(screen.getByRole("button", { name: "Salvar correção" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visitors/v1"))?.body)
+      .toEqual({ fullName: "Maria Silva", kind: "SERVICE_PROVIDER" }));
+  });
+
+  it("does not offer visitor correction to the operator", async () => {
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Visitantes" }));
+    await user.click(await screen.findByRole("button", { name: "Histórico" }));
+    expect(await screen.findByText(/Tia Maria/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Corrigir visitante Tia Maria" })).not.toBeInTheDocument();
   });
 
   it("lets the desk search residents' vehicles by plate", async () => {

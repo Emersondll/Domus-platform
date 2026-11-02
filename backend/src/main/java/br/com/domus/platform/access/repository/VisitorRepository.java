@@ -9,5 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Acesso a visitantes, sempre escopado por condomínio. */
 public interface VisitorRepository extends JpaRepository<Visitor, UUID> {
 
+    java.util.Optional<Visitor> findByIdAndCondominiumId(UUID id, UUID condominiumId);
+
     Page<Visitor> findByCondominiumId(UUID condominiumId, Pageable pageable);
 }

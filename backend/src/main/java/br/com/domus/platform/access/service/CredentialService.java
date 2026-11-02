@@ -315,6 +315,26 @@ public class CredentialService {
         return visitors.findByCondominiumId(condominiumId, pageable);
     }
 
+    /**
+     * Corrige o nome ou o tipo de um visitante cadastrado (erro de digitação). Só gestão; a unidade e os convites já emitidos
+     * continuam os mesmos, e o histórico passa a mostrar o nome corrigido.
+     *
+     * @param condominiumId condomínio
+     * @param visitorId visitante
+     * @param fullName nome corrigido
+     * @param kind VISITOR ou SERVICE_PROVIDER
+     */
+    @Transactional
+    public Visitor correctVisitor(UUID condominiumId, UUID visitorId, String fullName, String kind) {
+        Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "visitor.update");
+        Visitor visitor = visitors.findByIdAndCondominiumId(visitorId, condominiumId)
+                .orElseThrow(() -> new NotFoundException("Visitor not found"));
+        visitor.correct(fullName.trim(), kind);
+        audit.record(actor.userId(), null, condominiumId, "visitor.update", "visitor", visitorId.toString(),
+                AuditOutcome.SUCCESS);
+        return visitor;
+    }
+
     private static String denialReason(AccessCredential c, Instant now) {
         if (AccessCredential.REVOKED.equals(c.getStatus())) {
             return "REVOKED";

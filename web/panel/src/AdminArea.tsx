@@ -41,6 +41,7 @@ function Companies({ token }: { token: string }) {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [admins, setAdmins] = useState<{ membershipId: string; displayName: string }[]>([]);
+  const [editing, setEditing] = useState<{ id: string; name: string; taxId: string; oldTaxId: string } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +76,30 @@ function Companies({ token }: { token: string }) {
       <h3>Empresas operadoras</h3>
       <ul>
         {companies.map((c) => (
-          <li key={c.id}>{c.name} · CNPJ {c.taxId}{c.status === "SUSPENDED" && <span className="badge warn"> suspensa</span>}{" "}
+          <li key={c.id}>
+            {editing?.id === c.id ? (
+              <span role="group" aria-label={`Corrigir empresa ${c.name}`}>
+                <label htmlFor={`co-edit-name-${c.id}`}>Nome</label>
+                <input id={`co-edit-name-${c.id}`} maxLength={160} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                <label htmlFor={`co-edit-tax-${c.id}`}>CNPJ</label>
+                <input id={`co-edit-tax-${c.id}`} maxLength={20} value={editing.taxId} onChange={(e) => setEditing({ ...editing, taxId: e.target.value })} />{" "}
+                <button disabled={!editing.name.trim() || !editing.taxId.trim()} onClick={() => {
+                  if (editing.taxId.trim() !== editing.oldTaxId
+                    && !window.confirm(`Trocar o CNPJ de ${c.name}? O valor antigo fica na auditoria.`)) return;
+                  void run(async () => {
+                    await request(token, "PUT", `/api/v1/companies/${editing.id}`, { name: editing.name.trim(), taxId: editing.taxId.trim() });
+                    setEditing(null);
+                  }, "Empresa corrigida.");
+                }}>Salvar correção</button>{" "}
+                <button onClick={() => setEditing(null)}>Cancelar</button>
+              </span>
+            ) : (
+              <>
+                {c.name} · CNPJ {c.taxId}{c.status === "SUSPENDED" && <span className="badge warn"> suspensa</span>}{" "}
+                <button aria-label={`Corrigir empresa ${c.name}`}
+                  onClick={() => setEditing({ id: c.id, name: c.name, taxId: c.taxId, oldTaxId: c.taxId })}>Corrigir</button>{" "}
+              </>
+            )}
             <button className={c.status === "SUSPENDED" ? "" : "danger"}
               aria-label={`${c.status === "SUSPENDED" ? "Reativar" : "Suspender"} empresa ${c.name}`} onClick={() => {
                 const suspend = c.status !== "SUSPENDED";
@@ -148,8 +172,23 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
   const [name, setName] = useState("");
   const [taxId, setTaxId] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string; taxId: string } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function saveEdit() {
+    if (!editing) return;
+    setError(null);
+    setDone(null);
+    try {
+      await request(token, "PUT", `/api/v1/condominiums/${editing.id}`, { name: editing.name.trim(), taxId: editing.taxId.trim() || null });
+      setEditing(null);
+      setDone("Condomínio corrigido.");
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -186,7 +225,22 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
       <h3>Condomínios</h3>
       <ul>
         {condos.map((c) => (
-          <li key={c.id}>{c.name}{platformAdmin ? ` · ${companyName(c.operatorCompanyId)}` : ""} · {c.status === "SUSPENDED" ? "suspenso" : "ativo"}{" "}
+          <li key={c.id}>
+            {editing?.id === c.id ? (
+              <span role="group" aria-label={`Corrigir condomínio ${c.name}`}>
+                <label htmlFor={`cd-edit-name-${c.id}`}>Nome</label>
+                <input id={`cd-edit-name-${c.id}`} maxLength={160} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                <label htmlFor={`cd-edit-tax-${c.id}`}>CNPJ (em branco mantém o atual)</label>
+                <input id={`cd-edit-tax-${c.id}`} maxLength={20} value={editing.taxId} onChange={(e) => setEditing({ ...editing, taxId: e.target.value })} />{" "}
+                <button disabled={!editing.name.trim()} onClick={saveEdit}>Salvar correção</button>{" "}
+                <button onClick={() => setEditing(null)}>Cancelar</button>
+              </span>
+            ) : (
+              <>
+                {c.name}{platformAdmin ? ` · ${companyName(c.operatorCompanyId)}` : ""} · {c.status === "SUSPENDED" ? "suspenso" : "ativo"}{" "}
+                <button aria-label={`Corrigir condomínio ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name, taxId: "" })}>Corrigir</button>{" "}
+              </>
+            )}
             <button className={c.status === "SUSPENDED" ? "" : "danger"}
               aria-label={`${c.status === "SUSPENDED" ? "Reativar" : "Suspender"} condomínio ${c.name}`} onClick={() => toggle(c)}>
               {c.status === "SUSPENDED" ? "Reativar" : "Suspender"}</button>

@@ -57,6 +57,20 @@ public class CommercialController {
     }
 
     /**
+     * @param name  nome corrigido da empresa operadora
+     * @param taxId CNPJ corrigido (único entre as empresas)
+     */
+    public record UpdateCompanyRequest(@NotBlank @Size(max = 160) String name, @NotBlank @Size(max = 20) String taxId) {
+    }
+
+    /**
+     * @param name  nome corrigido do condomínio (único dentro da empresa)
+     * @param taxId CNPJ corrigido; em branco ou ausente mantém o atual
+     */
+    public record UpdateCondominiumRequest(@NotBlank @Size(max = 160) String name, @Size(max = 20) String taxId) {
+    }
+
+    /**
      * @param operatorCompanyId empresa operadora responsável; validada contra as associações do chamador
      * @param name              nome do condomínio
      * @param taxId             CNPJ do condomínio, opcional
@@ -171,6 +185,20 @@ public class CommercialController {
     @PostMapping("/companies/{companyId}/reactivate")
     public CompanyResponse reactivateCompany(@PathVariable UUID companyId) {
         return CompanyResponse.from(service.setCompanySuspended(companyId, false));
+    }
+
+    /** Atende `PUT /companies/{companyId}`: só a plataforma corrige nome e CNPJ da empresa. */
+    @PutMapping("/companies/{companyId}")
+    public CompanyResponse updateCompany(@PathVariable UUID companyId, @Valid @RequestBody UpdateCompanyRequest request) {
+        return CompanyResponse.from(service.updateCompany(companyId, request.name().trim(), request.taxId().trim()));
+    }
+
+    /** Atende `PUT /condominiums/{condominiumId}`: plataforma ou administrador da empresa dona corrige nome e CNPJ. */
+    @PutMapping("/condominiums/{condominiumId}")
+    public CondominiumResponse updateCondominium(@PathVariable UUID condominiumId,
+                                                 @Valid @RequestBody UpdateCondominiumRequest request) {
+        return CondominiumResponse.from(service.updateCondominium(condominiumId, request.name().trim(),
+                request.taxId() == null ? null : request.taxId().trim()));
     }
 
     /**

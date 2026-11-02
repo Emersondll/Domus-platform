@@ -43,6 +43,12 @@ public class Condominium {
         this.taxId = taxId;
     }
 
+    /** Corrige o nome e o CNPJ (a empresa dona do condomínio e o vínculo com o histórico não mudam). */
+    public void correct(String name, String taxId) {
+        this.name = name;
+        this.taxId = taxId;
+    }
+
     /** Retorna o identificador. */
     public UUID getId() {
         return id;

@@ -881,6 +881,14 @@ try:
         expect(adm.get_by_text("Condomínio criado.")).to_be_visible()
         expect(adm.get_by_text(novo).first).to_be_visible()
         check("administrador da empresa cria um condomínio pela tela", True)
+        corrigido = f"{novo} corrigido"
+        adm.get_by_role("button", name=f"Corrigir condomínio {novo}").click()
+        adm.get_by_label("Nome", exact=True).last.fill(corrigido)
+        adm.get_by_role("button", name="Salvar correção").click()
+        expect(adm.get_by_text("Condomínio corrigido.")).to_be_visible()
+        expect(adm.get_by_text(corrigido).first).to_be_visible()
+        novo = corrigido  # os passos seguintes procuram o condomínio pelo nome novo
+        check("administrador da empresa corrige o nome de um condomínio pela tela", True)
         adm.get_by_role("tab", name="Agentes e sincronização").click()
         adm.get_by_label("Condomínio", exact=True).select_option(label=novo)
         adm.get_by_label("Nome do novo agente").fill("Agente E2E")

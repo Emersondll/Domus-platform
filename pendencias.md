@@ -171,7 +171,7 @@ Levantamento por leitura de código e pelo rastreio de rotas do e2e (157 das 166
 | C3 | Encerrar o turno com chamada ativa só mostrava o erro | **corrigido em parte**: a mensagem agora orienta (encerrar/transferir, ou pedir ao síndico para devolver à fila) |
 | F2 | Cadastros sem correção/remoção: veículo, bloco, unidade, área comum, comunicado | **corrigido** (V28 para a área comum; comunicado só apaga, não edita) |
 | F1 | Dar acesso a equipe/administrador exige criar o usuário no Keycloak e copiar o `sub` | **aberto** (depende da decisão D6 sobre autocadastro) |
-| F3 | Editar empresa e condomínio (nome, CNPJ) | **aberto** |
+| F3 | Editar empresa e condomínio (nome, CNPJ) | **corrigido (2026-11-02, V30)**: empresa só pela plataforma, condomínio pela plataforma ou administrador da empresa; auditoria guarda o valor antigo e o novo. **Aberto:** validar dígito verificador do CNPJ; mudar a empresa dona de um condomínio |
 | F4 | Mover morador para outra unidade (hoje: desativar e criar de novo, perdendo o vínculo do histórico) | **aberto**: mexe em animais, familiares, pedidos e histórico; precisa de desenho |
 | F5 | Desativar controladora de acesso cadastrada errada (só câmera desativa) | **corrigido (2026-11-02)**: desativar/reativar também vale para controladora (ver STATUS); comandos já entregues ao agente não são recolhidos |
 | F6 | Editar visitante cadastrado; editar/expirar comunicado | **corrigido em parte (2026-11-02)**: corrige nome/tipo do visitante e título/texto do comunicado; **aberto:** expirar comunicado por prazo e mudar a unidade do visitante |

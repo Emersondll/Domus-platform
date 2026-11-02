@@ -141,6 +141,7 @@ function fakeApi() {
     if (url.startsWith("/api/v1/companies?")) return pg([{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }]);
     if (url === "/api/v1/condominiums/c1" && (init?.method ?? "GET") === "GET") return json({ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" });
     if (url.endsWith("/suspend") || url.endsWith("/reactivate")) return json({ id: "x" });
+    if ((url === "/api/v1/companies/co1" || url === "/api/v1/condominiums/c1") && init?.method === "PUT") return json({ id: "x" });
     if (url.startsWith("/api/v1/condominiums?")) return pg([{ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" }]);
     if (url.endsWith("/agents") && (!init?.method || init.method === "GET")) return json([{ id: "ag1", name: "Servidor portaria", status: "ACTIVE", online: true, lastSeenAt: new Date().toISOString(), lastPolicyVersion: 7, backlog: 2 }]);
     if (url.endsWith("/agents") && init?.method === "POST") return json({ id: "ag2", name: "Novo", apiKey: "KEY-ONCE", policySecret: "SECRET-ONCE" }, 201);
@@ -1008,6 +1009,37 @@ describe("operator panel", () => {
     await login();
     await screen.findByText("Meus atendimentos");
     expect(screen.queryByRole("button", { name: "Administração" })).not.toBeInTheDocument();
+  });
+
+  it("lets the platform correct a company's name and tax id, asking before changing the tax id", async () => {
+    adminScope = { platformAdmin: true, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir empresa Alfa Portaria" }));
+    const name = screen.getByLabelText("Nome", { selector: "#co-edit-name-co1" });
+    await user.clear(name);
+    await user.type(name, "Alfa Portaria Ltda");
+    const tax = screen.getByLabelText("CNPJ", { selector: "#co-edit-tax-co1" });
+    await user.clear(tax);
+    await user.type(tax, "33333333000133");
+    await user.click(screen.getByRole("button", { name: "Salvar correção" }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Trocar o CNPJ"));
+    await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/companies/co1")?.body)
+      .toEqual({ name: "Alfa Portaria Ltda", taxId: "33333333000133" }));
+  });
+
+  it("lets the company administrator correct a condominium name and keep the tax id when left blank", async () => {
+    adminScope = { platformAdmin: false, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    await user.click(await screen.findByRole("button", { name: "Corrigir condomínio Residencial Sol" }));
+    const name = screen.getByLabelText("Nome", { selector: "#cd-edit-name-c1" });
+    await user.clear(name);
+    await user.type(name, "Residencial Sol Nascente");
+    await user.click(screen.getByRole("button", { name: "Salvar correção" }));
+    await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/condominiums/c1")?.body)
+      .toEqual({ name: "Residencial Sol Nascente", taxId: null }));
   });
 
   it("lets the platform administrator manage companies and create condominiums", async () => {

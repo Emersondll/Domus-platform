@@ -9,5 +9,7 @@ public interface OperatorCompanyRepository extends JpaRepository<OperatorCompany
 
     boolean existsByTaxId(String taxId);
 
+    boolean existsByTaxIdAndIdNot(String taxId, java.util.UUID id);
+
     boolean existsByIdAndStatus(UUID id, String status);
 }

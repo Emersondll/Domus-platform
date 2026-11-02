@@ -29,8 +29,8 @@ public class AuditService {
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
     private static final String INSERT = """
             INSERT INTO audit_log (id, occurred_at, actor_user_id, operator_company_id, condominium_id, action,
-                                   resource_type, resource_id, outcome, correlation_id)
-            VALUES (:id, :at, :actor, :company, :condo, :action, :rtype, :rid, :outcome, :corr)
+                                   resource_type, resource_id, outcome, correlation_id, detail)
+            VALUES (:id, :at, :actor, :company, :condo, :action, :rtype, :rid, :outcome, :corr, :detail)
             """;
 
     private final JdbcClient inTransaction;
@@ -69,6 +69,17 @@ public class AuditService {
      */
     public void record(UUID actorUserId, UUID operatorCompanyId, UUID condominiumId, String action,
                        String resourceType, String resourceId, AuditOutcome outcome) {
+        record(actorUserId, operatorCompanyId, condominiumId, action, resourceType, resourceId, outcome, null);
+    }
+
+    /**
+     * Igual a {@link #record(UUID, UUID, UUID, String, String, String, AuditOutcome)}, com um detalhe curto (até 500 caracteres;
+     * o excedente é cortado). Nunca coloque dado pessoal de morador aqui.
+     *
+     * @param detail detalhe do fato, por exemplo o valor antigo e o novo de um campo corrigido
+     */
+    public void record(UUID actorUserId, UUID operatorCompanyId, UUID condominiumId, String action,
+                       String resourceType, String resourceId, AuditOutcome outcome, String detail) {
         boolean sameTransaction = outcome == AuditOutcome.SUCCESS;
         try {
             (sameTransaction ? inTransaction : isolated).sql(INSERT)
@@ -82,6 +93,7 @@ public class AuditService {
                     .param("rid", resourceId)
                     .param("outcome", outcome.name())
                     .param("corr", MDC.get(CorrelationIdFilter.MDC_KEY))
+                    .param("detail", detail == null ? null : detail.substring(0, Math.min(detail.length(), 500)))
                     .update();
         } catch (RuntimeException e) {
             if (sameTransaction) {

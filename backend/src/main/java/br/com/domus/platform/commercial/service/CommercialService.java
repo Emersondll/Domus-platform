@@ -74,6 +74,70 @@ public class CommercialService {
     }
 
     /**
+     * Corrige o nome e o CNPJ de uma empresa operadora. Só a plataforma: trocar o CNPJ do contratante é decisão contratual. A
+     * auditoria guarda o valor antigo e o novo.
+     *
+     * @param companyId empresa
+     * @param name nome corrigido
+     * @param taxId CNPJ corrigido
+     */
+    @Transactional
+    public OperatorCompany updateCompany(UUID companyId, String name, String taxId) {
+        Actor actor = access.requirePlatformAdmin("company.update");
+        OperatorCompany company = companies.findById(companyId).orElseThrow(() -> new NotFoundException("Company not found"));
+        if (companies.existsByTaxIdAndIdNot(taxId, companyId)) {
+            throw new ConflictException("A company with this tax id already exists");
+        }
+        String detail = changes(company.getName(), name, company.getTaxId(), taxId);
+        company.correct(name, taxId);
+        audit.record(actor.userId(), companyId, null, "company.update", "company", companyId.toString(),
+                AuditOutcome.SUCCESS, detail);
+        return company;
+    }
+
+    /**
+     * Corrige o nome e (se informado) o CNPJ de um condomínio. Plataforma ou administrador da empresa dona; qualquer outro
+     * recebe 404. CNPJ em branco mantém o atual. A auditoria guarda o valor antigo e o novo.
+     *
+     * @param condominiumId condomínio
+     * @param name nome corrigido
+     * @param taxId CNPJ corrigido, ou nulo para manter
+     */
+    @Transactional
+    public Condominium updateCondominium(UUID condominiumId, String name, String taxId) {
+        Actor actor = access.currentActor();
+        Condominium condominium = condominiums.findById(condominiumId).orElse(null);
+        boolean allowed = condominium != null && (access.isPlatformAdmin(actor)
+                || access.companyIdsAdministeredBy(actor).contains(condominium.getOperatorCompanyId()));
+        if (!allowed) {
+            audit.record(actor.userId(), null, condominiumId, "condominium.update", "condominium", condominiumId.toString(),
+                    AuditOutcome.DENIED);
+            throw new NotFoundException("Condominium not found");
+        }
+        if (condominiums.existsByOperatorCompanyIdAndNameAndIdNot(condominium.getOperatorCompanyId(), name, condominiumId)) {
+            throw new ConflictException("A condominium with this name already exists for the company");
+        }
+        String newTaxId = taxId == null || taxId.isBlank() ? condominium.getTaxId() : taxId;
+        String detail = changes(condominium.getName(), name, condominium.getTaxId(), newTaxId);
+        condominium.correct(name, newTaxId);
+        audit.record(actor.userId(), condominium.getOperatorCompanyId(), condominiumId, "condominium.update", "condominium",
+                condominiumId.toString(), AuditOutcome.SUCCESS, detail);
+        return condominium;
+    }
+
+    /** Texto curto com o antes e o depois do que mudou (só nome e CNPJ de pessoa jurídica, nunca dado de morador). */
+    private static String changes(String oldName, String newName, String oldTaxId, String newTaxId) {
+        StringBuilder sb = new StringBuilder();
+        if (!java.util.Objects.equals(oldName, newName)) {
+            sb.append("name: '").append(oldName).append("' -> '").append(newName).append("'");
+        }
+        if (!java.util.Objects.equals(oldTaxId, newTaxId)) {
+            sb.append(sb.length() == 0 ? "" : "; ").append("taxId: '").append(oldTaxId).append("' -> '").append(newTaxId).append("'");
+        }
+        return sb.length() == 0 ? "no change" : sb.toString();
+    }
+
+    /**
      * Lista as empresas operadoras visíveis ao usuário.
      *
      * @param pageable paginação

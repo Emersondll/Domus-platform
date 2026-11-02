@@ -18,6 +18,8 @@ public interface CondominiumRepository extends JpaRepository<Condominium, UUID> 
 
     boolean existsByOperatorCompanyIdAndName(UUID operatorCompanyId, String name);
 
+    boolean existsByOperatorCompanyIdAndNameAndIdNot(UUID operatorCompanyId, String name, UUID id);
+
     java.util.List<Condominium> findByOperatorCompanyId(UUID operatorCompanyId);
 
     @Query("select count(c) > 0 from Condominium c, OperatorCompany o where c.id = :id and o.id = c.operatorCompanyId "

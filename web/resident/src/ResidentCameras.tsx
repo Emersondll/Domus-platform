@@ -36,8 +36,8 @@ export function ResidentCameras({ token, condo }: { token: string; condo: string
       {!error && cameras.length === 0 && <p>Nenhuma câmera foi liberada para os moradores neste condomínio.</p>}
       <ul>
         {cameras.map((c) => (
-          <li key={c.id}>
-            <strong>{c.name}</strong> ({c.entrance}){" "}
+          <li key={c.id} className="camera-row">
+            <span><strong>{c.name}</strong> ({c.entrance})</span>
             <button disabled={!aware || watching.some((w) => w.id === c.id) || watching.length >= MAX_LIVE}
               onClick={() => setWatching((list) => [...list, c])} aria-label={`Ver ${c.name}`}>Ver</button>
           </li>

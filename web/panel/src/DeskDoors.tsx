@@ -163,7 +163,7 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
           <p className="hint">Opcional e desligada por padrão. Só o síndico altera. Mesmo habilitada, só abre as portas marcadas abaixo; cada abertura é registrada e só vale como "aberta" com a confirmação do equipamento.</p>
         </div>
       )}
-      <p className="hint">Para abrir uma porta, use o botão "Abrir porta" dentro do atendimento: é lá que a justificativa e a base de autorização são registradas.</p>
+      <p className="hint">Para abrir uma porta, use o botão "Abrir porta" dentro do atendimento: é lá que a justificativa e a base de autorização são registradas. Esta aba serve para ver o estado, desativar e liberar a abertura pelo morador; o morador, quando liberado, abre pelo app e a abertura também fica registrada.</p>
       <h3>Últimos comandos</h3>
       <ul>
         {commands.items.map((c) => (

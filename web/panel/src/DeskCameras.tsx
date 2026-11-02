@@ -125,6 +125,10 @@ export function DeskCameras({ token, condominiumId }: { token: string; condomini
         servidor de mídia ligado (docs/cameras.md). Ver a imagem fica registrado na auditoria. Nenhuma imagem é simulada.
       </p>
       <section aria-label="Câmeras para moradores" className="camera-monitor">
+        <p className="hint">
+          Esta aba é para gerir as câmeras (ver ao vivo, desativar, liberar aos moradores). Para acompanhar a entrada enquanto atende,
+          use o monitor de câmeras ao lado da mesa.
+        </p>
         <h4>Câmeras para moradores: {released.length} liberadas</h4>
         {released.length === 0 && <p className="hint">Nenhuma câmera liberada: os moradores não veem vídeo. Confira o vídeo com "Ver ao vivo" antes de liberar.</p>}
         <ul>

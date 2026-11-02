@@ -114,3 +114,13 @@ label.required::after { content: " *"; color: var(--err); }
   .registry-menu button { width: 100%; }
 }
 header button[aria-pressed="true"] { background: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent); }
+
+/* Celular (T8): cabeçalho em coluna alinhada e faixa de estado compacta, para a mesa não ficar ~700 px abaixo. */
+@media (max-width: 640px) {
+  header .header-end { margin-left: 0; width: 100%; }
+  header .next-call { flex: 1 1 100%; }
+  header .ghost-danger, header .confirm-end { margin-left: 0; }
+  .status-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .status-bar .stat { flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; }
+  .status-bar .stat strong { font-size: 22px; }
+}

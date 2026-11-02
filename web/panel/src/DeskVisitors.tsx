@@ -118,6 +118,10 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
       </form>
       {ticketMsg && <p role="status">{ticketMsg}</p>}
       <p className="hint">Quem entrou e ainda não saiu. Registre a saída quando a pessoa for embora; assim o número no resumo volta a refletir quem está no condomínio.</p>
+      <p className="hint">
+        Dois jeitos de encerrar uma entrada, com o mesmo efeito: se a pessoa recebeu um ticket numerado, digite o número acima (ele só vale uma vez);
+        se a entrada não tem ticket, use "Registrar saída" na linha dela. Nenhum dos dois abre porta.
+      </p>
       <ul>
         {onSite.items.map((r) => {
           const hours = (Date.now() - new Date(r.occurredAt).getTime()) / 3_600_000;

@@ -63,3 +63,7 @@ section li button { min-height: 44px; padding: 9px 18px; font-size: 14px; margin
 li.empty { display: flex; align-items: center; gap: 12px; color: var(--muted); background: transparent; border-style: dashed; }
 li.empty::before { content: ""; flex: none; width: 22px; height: 22px; border: 2px dashed var(--muted); border-radius: 50%; opacity: .7; }
 .camera-tile button { margin-left: 8px; }
+
+/* Linha de câmera: nome à esquerda e o botão "Ver" inteiro à direita, sem quebrar numa segunda linha. */
+section li.camera-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+section li.camera-row button { flex-shrink: 0; white-space: nowrap; margin-top: 0; }

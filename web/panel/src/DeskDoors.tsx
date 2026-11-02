@@ -23,6 +23,7 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
   // só síndico ou administração gira a chave de um equipamento (o servidor é quem decide)
   const [canManage, setCanManage] = useState(false);
   const [rotating, setRotating] = useState<string | null>(null);
+  const [deactivating, setDeactivating] = useState<string | null>(null);
   const [newKey, setNewKey] = useState<{ name: string; apiKey: string } | null>(null);
   useEffect(() => {
     request<{ canManage: boolean }>(token, "GET", `${base}/devices/permissions`)
@@ -38,6 +39,18 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
       setError(errorMessage(e));
     } finally {
       setRotating(null);
+    }
+  }
+
+  async function setActive(d: DeviceFull, active: boolean) {
+    setError(null);
+    try {
+      await request(token, "POST", `${base}/devices/${d.id}/active`, { active });
+      await devices.reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setDeactivating(null);
     }
   }
 
@@ -101,12 +114,28 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
       {doors.length > 1 && <button onClick={refreshAll}>Atualizar estado de todas</button>}
       <ul>
         {doors.map((d) => (
-          <li key={d.id}>
+          <li key={d.id} className={d.active === false ? "inactive" : ""}>
             <strong>{d.name}</strong> ({d.entrance}) ·{" "}
-            <span className={d.status === "ONLINE" ? "badge ok" : "badge warn"}>{d.status === "ONLINE" ? "online" : d.status === "OFFLINE" ? "offline" : "desconhecido"}</span>
-            {d.lastSeenAt && <small> visto {new Date(d.lastSeenAt).toLocaleString()}</small>}{" "}
-            <button onClick={() => refreshStatus(d.id)}>Atualizar estado</button>
-            {canManage && (rotating === d.id ? (
+            {d.active === false ? (
+              <span className="badge warn">desativada</span>
+            ) : (
+              <span className={d.status === "ONLINE" ? "badge ok" : "badge warn"}>{d.status === "ONLINE" ? "online" : d.status === "OFFLINE" ? "offline" : "desconhecido"}</span>
+            )}
+            {d.active !== false && d.lastSeenAt && <small> visto {new Date(d.lastSeenAt).toLocaleString()}</small>}{" "}
+            {d.active !== false && <button onClick={() => refreshStatus(d.id)}>Atualizar estado</button>}
+            {canManage && d.active === false && (
+              <button aria-label={`Reativar ${d.name}`} onClick={() => setActive(d, true)}>Reativar</button>
+            )}
+            {canManage && d.active !== false && (deactivating === d.id ? (
+              <span role="group" aria-label={`Confirmar desativação de ${d.name}`}>
+                <small>Desativada, não recebe comando nem evento e sai da política do agente. Nada é apagado.</small>{" "}
+                <button onClick={() => setActive(d, false)}>Confirmar desativação</button>{" "}
+                <button onClick={() => setDeactivating(null)}>Cancelar</button>
+              </span>
+            ) : (
+              <button aria-label={`Desativar ${d.name}`} onClick={() => setDeactivating(d.id)}>Desativar</button>
+            ))}
+            {canManage && d.active !== false && (rotating === d.id ? (
               <span role="group" aria-label={`Confirmar troca de chave de ${d.name}`}>
                 <small>A chave atual deixa de valer; o equipamento ou agente para até receber a nova.</small>{" "}
                 <button onClick={() => rotateKey(d)}>Confirmar troca</button>{" "}
@@ -115,7 +144,7 @@ export function DeskDoors({ token, condominiumId }: { token: string; condominium
             ) : (
               <button aria-label={`Girar chave de ${d.name}`} onClick={() => setRotating(d.id)}>Girar chave</button>
             ))}
-            {remoteOpen && d.kind === "ACCESS_CONTROLLER" && (
+            {remoteOpen && d.active !== false && d.kind === "ACCESS_CONTROLLER" && (
               <button onClick={() => toggleDevice(d)} aria-pressed={!!d.residentOpenable}>
                 {d.residentOpenable ? "Bloquear abertura pelo morador" : "Liberar abertura pelo morador"}
               </button>

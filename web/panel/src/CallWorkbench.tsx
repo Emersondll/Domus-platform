@@ -31,7 +31,7 @@ export function CallWorkbench({ token, call, onChanged, onBack }:
       setOperators(o ?? []),
     );
     request<Page<Device>>(token, "GET", `/api/v1/condominiums/${call.condominiumId}/devices`).then((p) =>
-      setDevices((p?.items ?? []).filter((d) => d.kind === "ACCESS_CONTROLLER")),
+      setDevices((p?.items ?? []).filter((d) => d.kind === "ACCESS_CONTROLLER" && (d as { active?: boolean }).active !== false)),
     );
   }, [token, base, call.condominiumId]);
 

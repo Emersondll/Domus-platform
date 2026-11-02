@@ -181,16 +181,16 @@ public class DeviceService implements DeviceHealthLookup {
         return device;
     }
 
-    /** Desativa ou reativa uma câmera (equipamentos de acesso não se desativam por aqui). */
+    /**
+     * Desativa ou reativa um dispositivo (câmera ou controladora de acesso cadastrada errada). Desativada, a
+     * controladora deixa de receber comando, de aceitar evento e de entrar na política do agente; nada é apagado.
+     */
     @Transactional
     public Device setActive(UUID condominiumId, UUID deviceId, boolean active) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "device.active");
         Device device = find(condominiumId, deviceId);
-        if (!"CAMERA".equals(device.getKind())) {
-            throw new ConflictException("Only cameras can be deactivated");
-        }
         device.setActive(active);
-        if (!active) {
+        if (!active && "CAMERA".equals(device.getKind())) {
             viewSessions.revokeByDevice(deviceId, false, "DEVICE_DEACTIVATED", clock.instant());
         }
         audit.record(actor.userId(), null, condominiumId, active ? "device.activate" : "device.deactivate", "device",
@@ -309,7 +309,7 @@ public class DeviceService implements DeviceHealthLookup {
     @Override
     @Transactional(readOnly = true)
     public String healthSummary(UUID condominiumId) {
-        List<Device> all = devices.findByCondominiumId(condominiumId);
+        List<Device> all = devices.findByCondominiumId(condominiumId).stream().filter(Device::isActive).toList();
         if (all.isEmpty()) {
             return "NO_DEVICES";
         }

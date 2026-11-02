@@ -111,6 +111,6 @@ public class RemoteOpenService {
             return List.of();
         }
         return devices.findByCondominiumId(condominiumId).stream()
-                .filter(d -> d.isResidentOpenable() && "ACCESS_CONTROLLER".equals(d.getKind())).toList();
+                .filter(d -> d.isActive() && d.isResidentOpenable() && "ACCESS_CONTROLLER".equals(d.getKind())).toList();
     }
 }

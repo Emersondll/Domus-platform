@@ -128,7 +128,6 @@ class CameraAdminIT extends AbstractIntegrationTest {
         send(devices() + "/" + c + "/visitor-entrance", "ca-manager", "{\"enabled\":true}").andExpect(status().isOk());
         send(devices() + "/" + b + "/visitor-entrance", "ca-manager", "{\"enabled\":true}").andExpect(status().isOk());
         send(devices() + "/" + door + "/visitor-entrance", "ca-manager", "{\"enabled\":true}").andExpect(status().isConflict());
-        send(devices() + "/" + door + "/active", "ca-manager", "{\"active\":false}").andExpect(status().isConflict());
         String list = mvc.perform(get(devices() + "?size=100").with(as("ca-operator")))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var items = json.readTree(list).get("items");

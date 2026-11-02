@@ -69,6 +69,7 @@ public class DahuaEventSubscriber {
             return;
         }
         Map<UUID, Device> wanted = devices.findByAdapter("DAHUA_CGI").stream()
+                .filter(Device::isActive)
                 .filter(d -> !"off".equalsIgnoreCase(d.getConfig().get("events")))
                 .collect(Collectors.toMap(Device::getId, d -> d));
         for (var entry : Set.copyOf(workers.entrySet())) {

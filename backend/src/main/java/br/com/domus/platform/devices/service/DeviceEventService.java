@@ -62,6 +62,9 @@ public class DeviceEventService implements DeviceEventSink {
         if (condominiums.isSuspended(device.getCondominiumId())) {
             throw new ForbiddenException("Access suspended");
         }
+        if (!device.isActive()) {
+            throw new ForbiddenException("Device is deactivated");
+        }
         record(device, type, commandId, occurredAt, person);
     }
 

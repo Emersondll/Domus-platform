@@ -1035,6 +1035,28 @@ describe("operator panel", () => {
     expect(screen.queryByText("ROTATED-KEY")).not.toBeInTheDocument();
   });
 
+  it("deactivates a door only after confirmation", async () => {
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Portas" }));
+    await user.click(await screen.findByRole("button", { name: "Desativar Portão principal" }));
+    expect(posted.some((p) => p.url.endsWith("/active"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(posted.some((p) => p.url.endsWith("/active"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Desativar Portão principal" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar desativação" }));
+    await waitFor(() => expect(posted.some((p) => p.url.endsWith("/active"))).toBe(true));
+  });
+
+  it("does not offer door deactivation to the operator", async () => {
+    devicePerms = "OPERATE";
+    const user = await login();
+    await user.click(await screen.findByRole("button", { name: /Residencial Sol/ }));
+    await user.click(await screen.findByRole("tab", { name: "Portas" }));
+    expect(await screen.findByText("Portão principal")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desativar Portão principal" })).not.toBeInTheDocument();
+  });
+
   it("does not offer key rotation to the operator", async () => {
     devicePerms = "OPERATE";
     const user = await login();

@@ -338,4 +338,29 @@ class DeviceCommandsIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/operator/overview").with(as("p6-op")))
                 .andExpect(jsonPath("$[?(@.name=='P6 Main')].deviceHealth").isNotEmpty());
     }
+
+    @Test
+    void aDeactivatedControllerRefusesCommandsAndEventsAndComesBackOnReactivation() throws Exception {
+        JsonNode device = registerDevice("Portão cadastrado errado", "ACCESS_CONTROLLER", "SIMULATOR", "{}");
+        String id = device.get("id").asString();
+        String apiKey = device.get("apiKey").asString();
+        String call = assignedCall("p6-op");
+
+        mvc.perform(post(url("/devices/" + id + "/active")).with(as("p6-op")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":false}")).andExpect(status().isForbidden());
+        mvc.perform(post(url("/devices/" + id + "/active")).with(as("p6-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":false}")).andExpect(status().isOk()).andExpect(jsonPath("$.active").value(false));
+
+        assertThat(open("p6-op", id, "\"callId\":\"" + call + "\"", "k-deactivated-1").getResponse().getStatus())
+                .isEqualTo(409);
+        mvc.perform(post("/api/v1/devices/" + id + "/events").header("X-Device-Key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"DOOR_OPENED\",\"occurredAt\":\"" + Instant.now() + "\"}"))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post(url("/devices/" + id + "/active")).with(as("p6-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.active").value(true));
+        assertThat(open("p6-op", id, "\"callId\":\"" + call + "\"", "k-deactivated-2").getResponse().getStatus())
+                .isEqualTo(202);
+    }
 }

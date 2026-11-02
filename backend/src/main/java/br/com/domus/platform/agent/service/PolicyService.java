@@ -69,7 +69,7 @@ public class PolicyService {
         long version = agents.currentVersion(agent.getCondominiumId());
         TreeSet<String> entrances = new TreeSet<>();
         for (Device d : devices.findByCondominiumId(agent.getCondominiumId())) {
-            if ("ACCESS_CONTROLLER".equals(d.getKind())) {
+            if (d.isActive() && "ACCESS_CONTROLLER".equals(d.getKind())) {
                 entrances.add(d.getEntrance());
             }
         }

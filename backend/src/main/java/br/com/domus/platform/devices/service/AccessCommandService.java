@@ -106,6 +106,9 @@ public class AccessCommandService {
                 || !adapter.capabilities().contains(DeviceAdapter.Capability.OPEN_DOOR)) {
             throw new ConflictException("Device does not support door control");
         }
+        if (!device.isActive()) {
+            throw new ConflictException("Device is deactivated");
+        }
         if (callId != null && !operations.isCallAssignedTo(condominiumId, callId, actor.userId())) {
             deny(actor, condominiumId, deviceId, "call-not-assigned");
         }
@@ -142,7 +145,7 @@ public class AccessCommandService {
         Device device = devices.find(condominiumId, deviceId);
         DeviceAdapter adapter = adapters.find(device.getAdapter())
                 .orElseThrow(() -> new ConflictException("Adapter not available"));
-        if (!device.isResidentOpenable() || !"ACCESS_CONTROLLER".equals(device.getKind())
+        if (!device.isActive() || !device.isResidentOpenable() || !"ACCESS_CONTROLLER".equals(device.getKind())
                 || !adapter.capabilities().contains(DeviceAdapter.Capability.OPEN_DOOR)) {
             throw new NotFoundException("Remote open is not available");
         }

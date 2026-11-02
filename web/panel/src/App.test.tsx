@@ -37,6 +37,8 @@ let permsGate: Promise<void> | null = null;
 let staffOnly = false;
 let adminScope: unknown = { platformAdmin: false, operator: true, companies: [] };
 let mineCalls = 0;
+let mineGone = false;
+let lastEventType = "CLAIMED";
 let panics: unknown[] = [];
 let claimed: Record<string, unknown> | null = null;
 const sirenStarts: number[] = [];
@@ -146,10 +148,12 @@ function fakeApi() {
     if (url.endsWith("/api/v1/operator/overview")) return json(overview);
     if (url === "/api/v1/operator/overview") return json(overview);
     if (url === "/api/v1/operator/calls/mine") { mineCalls++; if (staffOnly) return json({ detail: "Forbidden" }, 403); }
+    if (url === "/api/v1/operator/calls/heartbeat") return new Response(null, { status: 204 });
+    if (url === "/api/v1/operator/calls/mine" && mineGone) return pg([]);
     if (url === "/api/v1/operator/calls/mine") return json({ items: claimed ? [call, claimed] : [call], page: 0, size: 50, totalElements: 1 });
     if (url === "/api/v1/operator/shifts/current")
       return json({ id: "s1", startedAt: new Date().toISOString(), endedAt: null });
-    if (url.endsWith("/events")) return json([{ type: "CLAIMED", detail: null, actorUserId: "u1", occurredAt: new Date().toISOString() }]);
+    if (url.endsWith("/events")) return json([{ type: lastEventType, detail: null, actorUserId: "u1", occurredAt: new Date().toISOString() }]);
     if (url.endsWith("/operators/on-duty")) return json([{ id: "u2", displayName: "Operador 2" }]);
     if (url.endsWith("/devices")) return json({ items: [{ id: "d1", name: "Portão principal", kind: "ACCESS_CONTROLLER", entrance: "portaria", status: "ONLINE" }], page: 0, size: 50, totalElements: 1 });
     if (url.endsWith("/devices/d1/open")) return json({ id: "cmd1", state: "SENT", failureReason: null, evidence: null });
@@ -178,6 +182,8 @@ describe("operator panel", () => {
     staffOnly = false;
     adminScope = { platformAdmin: false, operator: true, companies: [] };
     mineCalls = 0;
+    mineGone = false;
+    lastEventType = "CLAIMED";
     panics = [];
     claimed = null;
     sirenStarts.length = 0;
@@ -1072,6 +1078,39 @@ describe("operator panel", () => {
     expect(await screen.findByText("ROTATED-KEY")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Já guardei" }));
     expect(screen.queryByText("ROTATED-KEY")).not.toBeInTheDocument();
+  });
+
+  it("sends a heartbeat while the operator attends a call", async () => {
+    await login();
+    await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/operator/calls/heartbeat")).toBe(true));
+  });
+
+  it("warns the operator when a call they attended went back to the queue for inactivity", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await login();
+      await waitFor(() => expect(mineCalls).toBeGreaterThan(0));
+      mineGone = true;
+      lastEventType = "AUTO_RELEASED";
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(await screen.findByText(/voltou à fila porque ficou sem atividade/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not warn when the call left the operator's list for another reason", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await login();
+      await waitFor(() => expect(mineCalls).toBeGreaterThan(0));
+      mineGone = true; // encerrada ou transferida: o último evento não é a devolução
+      await vi.advanceTimersByTimeAsync(20_000);
+      await waitFor(() => expect(mineCalls).toBeGreaterThan(1));
+      expect(screen.queryByText(/voltou à fila porque ficou sem atividade/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("deactivates a door only after confirmation", async () => {

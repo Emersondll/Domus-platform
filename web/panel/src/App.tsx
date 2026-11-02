@@ -80,7 +80,23 @@ export function App() {
 
   // null = ainda não se sabe; atendimentos e turno só são consultados por quem é operador (evita um 403 por login)
   const staffOnly = useRef(false);
+  // chamadas que o operador atendia na última consulta (id -> condomínio): se uma some sem ele ter agido, o servidor a devolveu à fila
+  const held = useRef(new Map<string, string>());
   useEffect(() => { if (!session) staffOnly.current = false; }, [session]);
+  /** Se uma chamada que o operador atendia sumiu e a última marca dela é a devolução por inatividade, avisa. */
+  async function warnIfReleased(tk: string, mine: Call[]) {
+    const now = new Map(mine.map((c) => [c.id, c.condominiumId] as const));
+    for (const [id, condominiumId] of held.current) {
+      if (now.has(id)) continue;
+      try {
+        const events = await request<{ type: string }[]>(tk, "GET", `/api/v1/condominiums/${condominiumId}/calls/${id}/events`);
+        if (events && events[events.length - 1]?.type === "AUTO_RELEASED") {
+          setMessage("Uma chamada que você atendia voltou à fila porque ficou sem atividade. Assuma-a de novo se ainda for sua.");
+        }
+      } catch { /* sem o histórico não há aviso; a chamada já voltou à fila */ }
+    }
+    held.current = now;
+  }
   const refresh = useCallback(async () => {
     if (!token) return;
     try {
@@ -92,7 +108,9 @@ export function App() {
         setShift(null);
       } else if (isOperator && !staffOnly.current) {
         try {
-          setCalls((await request<Page<Call>>(token, "GET", "/api/v1/operator/calls/mine"))?.items ?? []);
+          const mine = (await request<Page<Call>>(token, "GET", "/api/v1/operator/calls/mine"))?.items ?? [];
+          setCalls(mine);
+          await warnIfReleased(token, mine);
           setShift(await request<Shift>(token, "GET", "/api/v1/operator/shifts/current"));
         } catch (e) {
           if (!(e instanceof ApiError && e.status === 403)) throw e;
@@ -111,6 +129,17 @@ export function App() {
     const id = setInterval(refresh, POLL_MS);
     return () => clearInterval(id);
   }, [refresh]);
+
+  // Sinal de vida: enquanto o operador atende algo, o painel aberto avisa o servidor a cada 30 s. Sem ele (navegador fechado,
+  // rede caída) a chamada volta sozinha à fila depois do prazo.
+  const attending = isOperator === true && calls.length > 0;
+  useEffect(() => {
+    if (!token || !attending) return;
+    const beat = () => { request(token, "POST", "/api/v1/operator/calls/heartbeat").catch(() => undefined); };
+    beat();
+    const id = setInterval(beat, 30_000);
+    return () => clearInterval(id);
+  }, [token, attending]);
 
   async function act(fn: () => Promise<unknown>) {
     setMessage(null);

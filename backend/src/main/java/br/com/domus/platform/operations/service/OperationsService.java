@@ -29,6 +29,7 @@ import br.com.domus.platform.shared.tenant.AccessService;
 import br.com.domus.platform.shared.tenant.Actor;
 import br.com.domus.platform.shared.tenant.ResidentContext;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +78,14 @@ public class OperationsService implements OperatorCallReleaser {
     private final ConnectivityLookup connectivity;
     private final FieldCipher cipher;
     private final NotificationService notifications;
+
+    /** Sem sinal de vida por mais que isto, uma chamada comum em atendimento volta à fila (decisão do titular: 5 min). */
+    @Value("${portaria.operations.call-inactivity.standard:PT5M}")
+    private Duration inactivity = Duration.ofMinutes(5);
+
+    /** Mesmo limite para alerta de pânico, menor porque ficar preso é mais grave (decisão do titular: 2 min). */
+    @Value("${portaria.operations.call-inactivity.panic:PT2M}")
+    private Duration panicInactivity = Duration.ofMinutes(2);
 
     /** Construtor de OperationsService; recebe as dependências por injeção. */
     public OperationsService(ShiftRepository shifts, ServiceCallRepository calls, CallEventRepository events,
@@ -339,6 +350,40 @@ public class OperationsService implements OperatorCallReleaser {
             audit.record(actorUserId, null, condominiumId, "call.release", "call", call.getId().toString(), AuditOutcome.SUCCESS);
         }
         return mine.size();
+    }
+
+    /**
+     * O painel do operador avisa que ele continua ali: renova o sinal de vida das chamadas que ele atende. Sem esse sinal (navegador
+     * fechado, rede caída) a chamada volta sozinha à fila depois do prazo.
+     */
+    @Transactional
+    public int heartbeat() {
+        Actor actor = requireOperator();
+        return calls.touchAssigned(actor.userId(), now());
+    }
+
+    /** Executa periodicamente a devolução por inatividade. */
+    @Scheduled(initialDelay = 30_000, fixedDelayString = "${portaria.operations.call-inactivity.interval-ms:30000}")
+    public void releaseInactiveCalls() {
+        releaseInactiveCalls(now());
+    }
+
+    /**
+     * Devolve à fila as chamadas cujo operador não dá sinal de vida há mais que o prazo (comum ou de pânico). Nada é encerrado nem
+     * apagado: o histórico ganha {@code AUTO_RELEASED} e a auditoria registra a devolução sem ator humano.
+     *
+     * @param at instante de referência
+     * @return quantas chamadas voltaram à fila
+     */
+    @Transactional
+    public int releaseInactiveCalls(Instant at) {
+        List<ServiceCallRepository.InactiveRelease> released = calls.releaseInactive(at.minus(inactivity), at.minus(panicInactivity));
+        for (ServiceCallRepository.InactiveRelease r : released) {
+            events.save(new CallEvent(r.getId(), r.getCondominiumId(), null, "AUTO_RELEASED",
+                    "from " + r.getPreviousUserId() + ": no activity from the operator", at));
+            audit.record(null, null, r.getCondominiumId(), "call.auto-release", "call", r.getId().toString(), AuditOutcome.SUCCESS);
+        }
+        return released.size();
     }
 
     /** Chamadas da unidade do morador (as mais recentes primeiro), sem expor o operador nem a justificativa. */

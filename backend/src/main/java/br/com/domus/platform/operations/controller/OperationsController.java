@@ -241,6 +241,13 @@ public class OperationsController {
                 .orElse(ResponseEntity.noContent().build());
     }
 
+    /** Atende `POST /operator/calls/heartbeat`: o painel avisa que o operador continua ali (renova o prazo das chamadas dele). */
+    @PostMapping("/operator/calls/heartbeat")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void heartbeat() {
+        service.heartbeat();
+    }
+
     /**
      * Atende `GET /operator/calls/mine`.
      *

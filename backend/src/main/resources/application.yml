@@ -90,6 +90,12 @@ portaria:
     active-key-id: ${FIELD_ENCRYPTION_ACTIVE_KEY_ID:}
     blind-index-key: ${BLIND_INDEX_KEY:}
     migrate-on-start: ${FIELD_ENCRYPTION_MIGRATE:false}
+  operations:
+    # Chamada em atendimento sem sinal de vida do operador volta sozinha à fila (o painel aberto avisa a cada 30 s).
+    call-inactivity:
+      standard: PT5M
+      panic: PT2M
+      interval-ms: 30000
   devices:
     simulator-enabled: false
     # Hosts que a central pode contatar (proteção contra SSRF). Vazio = nenhum.

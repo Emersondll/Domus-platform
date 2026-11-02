@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,7 +44,7 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
      * @return o ID da chamada assumida, se houver
      */
     @Query(value = """
-            UPDATE service_call SET status = 'ASSIGNED', assigned_user_id = :userId, assigned_at = :now
+            UPDATE service_call SET status = 'ASSIGNED', assigned_user_id = :userId, assigned_at = :now, last_activity_at = :now
             WHERE id = (SELECT id FROM service_call
                         WHERE status = 'QUEUED' AND condominium_id IN (:condominiumIds)
                         ORDER BY (source = 'PANIC') DESC, created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
@@ -51,6 +52,39 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
             """, nativeQuery = true)
     Optional<UUID> claimNext(@Param("userId") UUID userId, @Param("condominiumIds") Collection<UUID> condominiumIds,
                              @Param("now") Instant now);
+
+    /** Chamada devolvida à fila por inatividade: quem a atendia antes e onde ela está. */
+    interface InactiveRelease {
+        UUID getId();
+
+        UUID getCondominiumId();
+
+        UUID getPreviousUserId();
+    }
+
+    /**
+     * Devolve à fila, de uma vez só, as chamadas em atendimento sem sinal de vida desde os limites informados (alerta de pânico tem
+     * limite próprio, menor). {@code FOR UPDATE SKIP LOCKED}: duas instâncias rodando juntas nunca devolvem a mesma chamada.
+     */
+    @Query(value = """
+            WITH stale AS (
+                SELECT id, assigned_user_id AS prev FROM service_call
+                WHERE status = 'ASSIGNED'
+                  AND last_activity_at < CASE WHEN source = 'PANIC' THEN CAST(:panicCutoff AS timestamptz) ELSE CAST(:cutoff AS timestamptz) END
+                FOR UPDATE SKIP LOCKED),
+            upd AS (
+                UPDATE service_call c SET status = 'QUEUED', assigned_user_id = NULL, assigned_at = NULL, last_activity_at = NULL
+                FROM stale s WHERE c.id = s.id
+                RETURNING c.id AS id, c.condominium_id AS condo, s.prev AS prev)
+            SELECT id AS "id", condo AS "condominiumId", prev AS "previousUserId" FROM upd
+            """, nativeQuery = true)
+    List<InactiveRelease> releaseInactive(@Param("cutoff") Instant cutoff, @Param("panicCutoff") Instant panicCutoff);
+
+    /** Renova o sinal de vida de tudo o que o operador está atendendo (o painel aberto avisa que ele está ali). */
+    @Modifying
+    @Query(value = "UPDATE service_call SET last_activity_at = :now WHERE assigned_user_id = :userId AND status = 'ASSIGNED'",
+            nativeQuery = true)
+    int touchAssigned(@Param("userId") UUID userId, @Param("now") Instant now);
 
     /**
      * Serializa, até o fim da transação, quem disputa a mesma chave (aqui, as chamadas de uma unidade): sem isso, duas

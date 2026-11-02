@@ -46,6 +46,9 @@ public class ServiceCall {
     @Column(name = "assigned_at")
     private Instant assignedAt;
 
+    @Column(name = "last_activity_at")
+    private Instant lastActivityAt;
+
     @Column(name = "closed_at")
     private Instant closedAt;
 
@@ -73,6 +76,7 @@ public class ServiceCall {
     public void transferTo(UUID userId, Instant when) {
         this.assignedUserId = userId;
         this.assignedAt = when;
+        this.lastActivityAt = when;
     }
 
     /** Devolve o atendimento à fila, sem operador responsável (o operador sumiu, foi revogado ou o turno ficou preso). */
@@ -80,6 +84,7 @@ public class ServiceCall {
         this.status = QUEUED;
         this.assignedUserId = null;
         this.assignedAt = null;
+        this.lastActivityAt = null;
     }
 
     /**
@@ -132,6 +137,11 @@ public class ServiceCall {
     /** Retorna o instante de criação. */
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    /** Retorna o último sinal de vida do operador que atende a chamada (vazio fora de atendimento). */
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
     }
 
     /** Retorna o campo assigned at. */

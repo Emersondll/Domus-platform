@@ -33,6 +33,14 @@ fontes públicas **não oficiais**. O adaptador continua **não validado**, e a 
   O pior caso de uma hipótese errada é a porta abrir sem a central saber, nunca o contrário.
 - Antes de produção, pedir ao fabricante/revendedor a versão do documento para o **modelo exato** e rodar o roteiro de campo abaixo.
 
+## Roteiro de campo automatizado (2026-11-03)
+`scripts/field-probe-dahua.py` faz o roteiro abaixo sozinho, no notebook de quem está no local (mesma rede do equipamento): por padrão **só lê** (identificação
+e escuta de eventos); `--open-door` testa o `openDoor` com um identificador único e só depois de digitar `ABRIR`, com a porta supervisionada. Grava `report.md` (o que
+respondeu, quais `Code=` apareceram, quais campos vêm no `data` e **se o identificador do teste voltou no evento e em qual campo**) e `events.sanitized.txt` (todo valor
+trocado por `<redigido>`, exceto campos não pessoais como `Status`, `Method`, `ReaderID`). A senha vem de `DAHUA_PASSWORD` (não fica no histórico) e não é gravada.
+`scripts/test-field-probe.py` prova o script contra um equipamento falso que exige Digest de verdade (leitura sem abrir porta, sanitização, eco do identificador, falta do eco e senha errada).
+**Isto não substitui o teste com equipamento real**: nada aqui foi rodado num Dahua/Intelbras de verdade.
+
 ## Roteiro de campo (com a porta supervisionada)
 1. `curl --digest -u usuario:senha "http://IP/cgi-bin/magicBox.cgi?action=getSystemInfo"` responde 200?
 2. `curl --digest -N -u usuario:senha "http://IP/cgi-bin/eventManager.cgi?action=attach&codes=[All]&heartbeat=5"` e abrir a porta por cartão: quais `Code=` aparecem e com que `data`?

@@ -15,7 +15,7 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 | Item | O que falta |
 |---|---|
 | **F1 (equipe)** | Tela que cria a conta de equipe pela API de administração do Keycloak, dá o papel (agora **obrigatório**: a API recusa sem ele) e liga o `sub`. Hoje é manual. |
-| **Backup/restauração no VPS** | Documentar e exercitar o procedimento para um servidor único com Compose (o `restore-drill` já existe no banco de desenvolvimento). |
+| **Backup/restauração no VPS** | **Feito em 2026-11-03** (`docs/operations.md`): `scripts/backup-all.sh` salva `portaria` **e** `keycloak` (antes só um banco; sem o `keycloak` ninguém entraria após restaurar); procedimento de servidor novo exercitado numa stack de produção real. Falta: API sobre o banco restaurado, cópia offsite/GPG, RTO em servidor remoto. |
 | **F6 (resto)** | Expirar comunicado por prazo; mudar a unidade de um visitante. |
 | **F3 (resto)** | Validar o dígito verificador do CNPJ (os dados de teste usam CNPJs fictícios, então exige cuidado). |
 | **F4 (resto)** | Escolher na tela quais veículos e animais levar numa mudança de unidade; ligar dependente a um adulto específico. |

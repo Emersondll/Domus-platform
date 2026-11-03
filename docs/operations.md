@@ -74,8 +74,41 @@ recadastrar os agentes (o segredo de política de cada um é derivado dele).
   reenviam os eventos pendentes sozinhos (idempotência), então eventos ocorridos após o backup, offline, são recuperados.
   **RPO** = intervalo entre backups (para RPO menor, habilite arquivamento WAL/PITR — não configurado). **RTO** depende do
   tamanho do banco e do provisionamento; **não medido em produção**.
-- Backup do Keycloak: seu banco (`keycloak`) está no mesmo PostgreSQL e entra no backup se `PGDB` for ajustado (rode o script
-  também com `PGDB=keycloak`); a definição do realm está versionada em `deploy/keycloak/portaria-realm.json`.
+- **Backup do Keycloak é obrigatório, não opcional.** As contas de login da equipe e dos moradores (senha, MFA, o `sub` que as liga
+  às associações) ficam no banco `keycloak`, no mesmo PostgreSQL. Restaurar só o `portaria` deixa todos sem conseguir entrar.
+  Por isso use **`scripts/backup-all.sh`**, que salva `portaria` e `keycloak` (lista em `BACKUP_DBS`). A definição do realm está
+  versionada em `deploy/keycloak/portaria-realm.json`, mas **não** contém usuários.
+
+### Servidor único com Docker Compose (produção)
+Nos comandos abaixo, `COMPOSE_FILES` aponta para a stack de produção e `PGSERVICE=db` (o serviço do banco tem outro nome que no dev):
+```bash
+export COMPOSE_FILES="--env-file deploy/.env.prod -f deploy/docker-compose.prod.yml" PGSERVICE=db
+# agendar (cron), de preferência com BACKUP_GPG_RECIPIENT, e copiar o diretório para FORA do servidor:
+scripts/backup-all.sh /var/backups/domus
+```
+**O que o backup NÃO inclui e você precisa guardar em outro lugar:** `deploy/.env.prod` (senhas, `FIELD_ENCRYPTION_KEYS`,
+`BLIND_INDEX_KEY`, `CREDENTIAL_HMAC_SECRET`, `AGENT_POLICY_MASTER_SECRET`) — sem as chaves os dados pessoais cifrados são
+irrecuperáveis, e sem o segredo do agente as políticas já emitidas deixam de validar. Os certificados do Caddy não precisam de cópia
+(são emitidos de novo, respeitando o limite de emissões da autoridade). Gravações de vídeo e métricas do Grafana também ficam de fora.
+
+**Recuperação num servidor novo (testada, ver abaixo):**
+1. Instale Docker, traga o repositório e o `deploy/.env.prod` (com as **mesmas** chaves) e suba só o banco: `docker compose $COMPOSE_FILES up -d db`.
+   O volume novo já nasce com `portaria` e `keycloak` vazios.
+2. Restaure cada dump em um banco **novo** (o `restore.sh` confere o SHA-256 e nunca sobrescreve):
+   `scripts/restore.sh <portaria-….dump> portaria_restored` e `scripts/restore.sh <keycloak-….dump> keycloak_restored`.
+3. Troque os nomes (nada pode estar conectado; a API e o Keycloak ainda não foram iniciados). Os vazios ficam como `*_empty`, para desfazer:
+   `ALTER DATABASE portaria RENAME TO portaria_empty; ALTER DATABASE portaria_restored RENAME TO portaria;` e o mesmo para `keycloak`
+   (via `docker compose $COMPOSE_FILES exec -T db psql -U portaria -d postgres -c "…"`).
+4. Suba o resto: `docker compose $COMPOSE_FILES up -d`. O Keycloak ignora a importação do realm porque ele já existe no banco.
+5. Confira `/readiness`, entre com uma conta real e rode `scripts/restore-drill.sh` (com as mesmas variáveis) como sanidade.
+- **Exercício feito em 2026-11-03** numa stack de produção real em portas locais (`docker-compose.prod.yml`, só `db` e `keycloak`):
+  banco `portaria` com o esquema real (31 migrações, 636 200 linhas de auditoria, 67 MB) e um usuário criado no Keycloak; `backup-all.sh`
+  levou 4 s; `down -v` apagou o volume; um banco novo recebeu a restauração e, 14 s depois, o Keycloak estava no ar com a importação do
+  realm ignorada (“already exists”). Resultado: **31 migrações e 636 200 linhas de auditoria idênticas**, o usuário voltou com o **mesmo id**
+  (portanto o mesmo `sub`) e a credencial de senha existe — a senha certa passa da checagem de senha (o login pára em “Account is not fully
+  set up”, exigência de configuração da conta no realm) e a errada dá “Invalid user credentials”. **Limites:** a API não foi iniciada
+  sobre o banco restaurado nesse exercício; foi uma máquina de desenvolvimento, não um servidor remoto; o tempo de 14 s vale para 67 MB
+  e não é um RTO; a cópia para fora do servidor e a criptografia GPG não foram exercitadas aqui.
 
 ## Saída de rede da API (contenção da stack de produção)
 Na `deploy/docker-compose.prod.yml` só o **proxy** (Caddy) tem saída: ele precisa dela para obter o certificado. Banco, Keycloak e API ficam

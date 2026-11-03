@@ -30,7 +30,7 @@ Rodada de 2026-11-03: todos os itens abaixo foram feitos; o que sobra de cada um
 | **T11 (IP)** | **Decidido 2026-11-03: não guardar IP na auditoria.** Só o Keycloak guarda o IP dos logins (30 dias). Reabre apenas se o jurídico exigir. |
 | **D2 (decidido 2026-11-03: Dahua/Intelbras)** | **Você ainda não tem equipamento** (resposta de 2026-11-03): falta conseguir uma controladora (compra, empréstimo ou parceiro/instalador), com o **modelo exato**, de preferência em bancada para o primeiro teste. Roteiro pronto: `scripts/field-probe-dahua.py` (só lê por padrão; testado contra equipamento falso com Digest, não contra equipamento real). |
 | **D6 (provedor)** | Qual provedor de VPS e qual domínio (o modelo, VPS único com Compose, já foi decidido). |
-| **Autocadastro** | Aceitar o risco sem CAPTCHA nem verificação de e-mail (documentado em `docs/operations.md`). |
+| **Autocadastro** | **Risco aceito em 2026-11-03** (sem CAPTCHA nem verificação de e-mail; documentado em `docs/operations.md`). Reavaliar se aparecer abuso; as saídas são o reCAPTCHA do Keycloak ou a verificação de e-mail (exige SMTP, D5, e domínio, D6). |
 | **D7, D5** | Decididos como "adiar" e "nenhum aviso externo por enquanto"; só reabrem se você mudar de ideia. |
 
 ### C. Dependem de equipamento, rede ou terceiros

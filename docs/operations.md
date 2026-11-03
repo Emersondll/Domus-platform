@@ -77,6 +77,30 @@ recadastrar os agentes (o segredo de política de cada um é derivado dele).
 - Backup do Keycloak: seu banco (`keycloak`) está no mesmo PostgreSQL e entra no backup se `PGDB` for ajustado (rode o script
   também com `PGDB=keycloak`); a definição do realm está versionada em `deploy/keycloak/portaria-realm.json`.
 
+## Saída de rede da API (contenção da stack de produção)
+Na `deploy/docker-compose.prod.yml` só o **proxy** (Caddy) tem saída: ele precisa dela para obter o certificado. Banco, Keycloak e API ficam
+na rede `internal`, que é `internal: true` (sem rota para a internet nem para a rede do servidor), e o proxy as alcança por dentro. Isso
+limita o estrago de uma falha de SSRF ou de execução remota na API e impede que o Keycloak ou o banco "liguem para casa".
+- **Medido em 2026-11-02 numa stack real (portas locais, domínio `*.localhost`):** antes, `app` e `keycloak` alcançavam o servidor
+  (portas 80 e 443 do gateway) e `1.1.1.1:443`; depois, todos esses acessos ficam **bloqueados**, enquanto `app → db`, `proxy → app` e a
+  validação de um token real do Keycloak pelo HTTPS do proxy (200 na descoberta, 401 sem token, **403 com token válido sem associação**,
+  401 com token adulterado, 404 em `/actuator`) continuam funcionando, sem nenhum erro de rede nos logs. O proxy segue com saída.
+- **Se a API precisa falar com controladoras HTTP/ONVIF/Dahua ou com o servidor de mídia** (`DEVICE_HTTP_ALLOWED_HOSTS`, `MEDIA_ENABLED`),
+  some o override: `docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml -f deploy/docker-compose.prod.devices.yml up -d`.
+  Ele dá à API uma rede **com saída irrestrita** (provado: com o override a API alcança `1.1.1.1:443`; sem ele, não). Por isso restrinja o
+  destino no firewall do servidor. Exemplo **não testado** (ajuste a interface, a sub-rede da rede `devices` e os IPs): na cadeia
+  `DOCKER-USER`, aceitar `-s <sub-rede devices> -d <IP da controladora> -p tcp --dport <porta>` e `-s <sub-rede devices> -d <IP do servidor
+  de mídia>`, e descartar o restante vindo dessa sub-rede (`-j DROP`). Descubra a sub-rede com `docker network inspect portaria-prod_devices`.
+- **Prometheus e Grafana** (profile `observability`) estavam numa rede interna e por isso **não publicavam** `127.0.0.1:9090` e
+  `127.0.0.1:3000` (o Docker não publica porta de rede interna): em produção ficavam inacessíveis. Agora têm também a rede `host`, só
+  para publicar a porta; **essa rede tem saída**, então o Grafana vem com telemetria e verificação de versão desligadas. Prometheus 200 e
+  Grafana 200 no servidor depois da correção.
+- **Guarda contra regressão:** `scripts/check-prod-network.py` (roda na CI, job `compose-config`) falha se banco, Keycloak ou API entrarem em
+  rede com saída, se a rede interna deixar de ser interna ou se o override der saída a quem não deve. Provado: reintroduzir o defeito antigo
+  (API na rede `edge`) faz o script falhar com exit 1.
+- **Limites:** não filtra o tráfego do proxy nem o dos painéis de observabilidade; não substitui firewall de host nem mTLS; a stack
+  foi medida localmente, não num servidor de produção.
+
 ## Associação de moradores e ticket de saída (V26, V27)
 
 - **Código de adesão:** o síndico gera em Cadastros → Solicitações. Quem o tem só consegue **abrir um pedido**; o acesso nasce quando o síndico aprova. Trocar ou desligar o código vale na hora (pedidos já abertos continuam pendentes). Para o morador conseguir pedir, ele precisa ter conta no provedor de identidade: **decidido em 2026-11-02: o autocadastro do Keycloak fica ligado** (`registrationAllowed: true` em `deploy/keycloak/portaria-realm.json`, sem verificação de e-mail). A conta nova não tem papel nenhum; ela só passa a ver um condomínio depois que o síndico aprova o pedido com o código de adesão. **Em um Keycloak já existente o realm não é reimportado:** ligue "User registration" em Realm settings → Login. **Riscos aceitos:** não há CAPTCHA nem verificação de e-mail (qualquer pessoa pode criar contas sem papel; o bloqueio por tentativas do Keycloak vale para login, não para cadastro), e o e-mail informado não é confirmado. Se o abuso aparecer, as saídas são o "Registration reCAPTCHA" do Keycloak (chaves do Google) ou exigir verificação de e-mail (precisa de SMTP, decisão D5).

@@ -1,0 +1,11 @@
+# Override OPCIONAL: dá à API saída de rede para falar com controladoras HTTP/ONVIF/Dahua e com o servidor de mídia.
+# Sem ele a API não alcança nada fora da rede interna (padrão seguro). Uso:
+#   docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml -f deploy/docker-compose.prod.devices.yml up -d
+# Esta rede TEM saída irrestrita: restrinja o destino no firewall do servidor (ver docs/operations.md, "Saída de rede da API"),
+# permitindo só os IPs de DEVICE_HTTP_ALLOWED_HOSTS e do servidor de mídia.
+services:
+  app:
+    networks: [internal, devices]
+
+networks:
+  devices:

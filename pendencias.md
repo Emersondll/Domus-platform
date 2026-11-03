@@ -130,7 +130,7 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 
 **Os 9 itens "que posso fazer sozinho" — rodada de 2026-10-28:**
 1. **B12:** feito (sessões revogáveis, teto, lock por usuário). Evidência: `CameraSessionRevocationIT` (7).
-2. **Anti-SSRF:** feito em camadas (endereço resolvido, metadados, credenciais na URL, redirecionamento, corpo limitado). `SsrfDefenseTest` (8). **Falta** restringir o egress do contêiner na rede (não é código).
+2. **Anti-SSRF:** feito em camadas (endereço resolvido, metadados, credenciais na URL, redirecionamento, corpo limitado). `SsrfDefenseTest` (8). **Egress restringido em 2026-11-02 (stack de produção; ver STATUS).** Antes dizia: falta restringir o egress do contêiner na rede (não é código).
 3. **Javadoc:** 20 membros documentados e 38 `@param` de placeholder substituídos; não sobrou membro público sem documentação, exceto os `@Override` (herdam da interface). A revisão dos demais `@param` gerados continua sendo texto de qualidade média.
 4. **`docs/inventory/`:** Maven (154 + 6) e npm (35) regerados; textos de licença e a lista de jars sem arquivo de licença **não** foram regerados.
 5. **Testes por domínio:** 40 classes movidas para pacotes por domínio; mesma contagem de testes, 0 falhas.
@@ -139,7 +139,7 @@ Todos os demais (B1–B5, B7, B11, B13–B16, B18, B20–B27, CR1) estão **corr
 8. **Agente publica vídeo (NAT):** feito e provado com MediaMTX e ffmpeg reais (`scripts/e2e-agent-video.py`). **Nunca com câmera real.** Segredo de publicação único por instalação.
 9. API e painéis de desenvolvimento no ar de novo.
 
-**Feito em 2026-10-29 (era "posso fazer sozinho"):** estado da câmera publicada pelo agente na tela ("agente enviando vídeo" ou não); publicação de vídeo com a identidade e a chave de cada agente (acabou o segredo único compartilhado entre agentes); prova do agente publicando para o MediaMTX no CI; Grafana/Prometheus atualizados com reteste. **Ainda posso fazer sozinho:** o egress de rede do contêiner na stack de produção.
+**Feito em 2026-10-29 (era "posso fazer sozinho"):** estado da câmera publicada pelo agente na tela ("agente enviando vídeo" ou não); publicação de vídeo com a identidade e a chave de cada agente (acabou o segredo único compartilhado entre agentes); prova do agente publicando para o MediaMTX no CI; Grafana/Prometheus atualizados com reteste. **Egress de rede do contêiner na stack de produção: feito em 2026-11-02.**
 
 **Estado dos pedidos do Dependabot (2026-10-28):** aplicados no código e enviados: Spring Boot 4.1.2 (#10), Keycloak 26.8 (#3, mesclado), agente (#6), web (#11, fechado), `gitleaks-action` 3, `setup-java` 6, `setup-node` 7, `upload-artifact` 7. #10 e #6 seguem abertos no GitHub mas o conteúdo já está na `main`; fechar à mão se não fecharem sozinhos. **#1 Grafana 13 e #7 Prometheus 3.15: aplicados em 2026-10-29 (com reteste).** **Adiado:** #2 Postgres 18 (fechado; maior, exige migração do diretório de dados). **Aplicado depois:** #12 `actions/checkout` 7.
 

@@ -44,7 +44,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    networks: [internal, edge]
+    # Só rede interna: o Keycloak não precisa de saída (sem e-mail, sem login social) e o proxy o alcança por dentro.
+    networks: [internal]
 
   app:
     build:
@@ -72,7 +73,9 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
-    networks: [internal, edge]
+    # Só rede interna: sem saída para a internet nem para a rede do servidor. Se a central precisar falar com controladoras ou com
+    # o servidor de mídia, some o override docker-compose.prod.devices.yml (e restrinja o destino no firewall: docs/operations.md).
+    networks: [internal]
     healthcheck:
       # JRE sem curl: requisição HTTP mínima pela porta de gestão (interna)
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8082 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200' <&3"]
@@ -98,7 +101,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [app, keycloak]
-    networks: [edge]
+    # Única porta de entrada e única com saída (precisa dela para o certificado); alcança app e keycloak pela rede interna.
+    networks: [edge, internal]
 
   prometheus:
     image: prom/prometheus:v3.15.1
@@ -109,7 +113,8 @@ services:
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     ports:
       - "127.0.0.1:9090:9090"
-    networks: [internal]
+    # Rede interna para raspar a API; `host` só para publicar a porta (o Docker não publica porta de rede interna).
+    networks: [internal, host]
 
   grafana:
     image: grafana/grafana:13.3.0
@@ -119,17 +124,25 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?defina GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # Sem telemetria nem consulta de versão: o Grafana fica numa rede com saída só para poder publicar a porta no servidor.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - "127.0.0.1:3000:3000"
-    networks: [internal]
+    networks: [internal, host]
 
 networks:
+  # Sem saída: banco, Keycloak, API e (por dentro) o proxy.
   internal:
     internal: true
+  # Porta de entrada pública e saída para o certificado (somente o proxy).
   edge:
+  # Só para publicar as portas de observabilidade em 127.0.0.1 (profile `observability`).
+  host:
 
 volumes:
   pgdata:

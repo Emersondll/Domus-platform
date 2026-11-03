@@ -1,21 +1,21 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-11-02 (a seção 0 abaixo é a lista viva; as demais seções guardam o histórico e o detalhe). Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-11-03 (a seção 0 abaixo é a lista viva; as demais seções guardam o histórico e o detalhe). Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
 
-## 0. Lista viva das pendências abertas (2026-11-02)
+## 0. Lista viva das pendências abertas (2026-11-03)
 
-**Evidência atual (a tabela da seção 1 é histórica; os números vigentes estão em [`docs/STATUS.md`](docs/STATUS.md)):** `mvn verify` exit 0 com 41 unitários + 219 de integração; web 95 (painel) + 46 (app do morador) com build exit 0; `restore-drill` PASS (31 migrações, V1–V31); `load-test` 0 erros nos 8 cenários; `e2e-browser` 106 verificações; `verify_keycloak.py` OK e `e2e-oidc-browser.py` 18 verificações (Keycloak 26.8 real).
+**Evidência atual (a tabela da seção 1 é histórica; os números vigentes estão em [`docs/STATUS.md`](docs/STATUS.md)):** `mvn verify` exit 0 com 41 unitários + 226 de integração; web 97 (painel) + 46 (app do morador) com build exit 0; `restore-drill` PASS (31 migrações, V1–V31); `load-test` 0 erros nos 8 cenários; `e2e-browser` 106 verificações; `verify_keycloak.py` OK e `e2e-oidc-browser.py` 18 verificações (Keycloak 26.8 real).
 
-**Fechadas desde 2026-10-31:** T13, F2, F3, F4, F5, C1, T11, T9; F6, R1, T8 e F1 em parte (restos abaixo); exigência de MFA da equipe na API e autocadastro ligado; contenção de rede da stack de produção (e correção das portas do Prometheus/Grafana). T10 virou "sem ação" (dado de teste).
+**Fechadas desde 2026-10-31:** T13, F2, F3, F4, F5, C1, T11, T9; F6, R1, T8 F1 (equipe, criação de conta pela tela) e backup/restauração do VPS (restos abaixo); exigência de MFA da equipe na API e autocadastro ligado; contenção de rede da stack de produção (e correção das portas do Prometheus/Grafana). T10 virou "sem ação" (dado de teste).
 
 ### A. Posso fazer sozinho (sem decisão sua)
 | Item | O que falta |
 |---|---|
-| **F1 (equipe)** | **Feito em 2026-11-03**: a tela cria a conta no Keycloak (conta de serviço `portaria-provisioner`), dá o papel de MFA, gera senha provisória mostrada uma vez e liga o `sub`; o fluxo manual segue como alternativa. Falta: provar pelo navegador real o primeiro acesso completo (OTP + troca de senha) e testar em Keycloak já existente (client criado à mão). Risco aceito: API comprometida pode criar contas/papéis no Keycloak. |
-| **Backup/restauração no VPS** | **Feito em 2026-11-03** (`docs/operations.md`): `scripts/backup-all.sh` salva `portaria` **e** `keycloak` (antes só um banco; sem o `keycloak` ninguém entraria após restaurar); procedimento de servidor novo exercitado numa stack de produção real. Falta: API sobre o banco restaurado, cópia offsite/GPG, RTO em servidor remoto. |
+| **F1 (resto)** | Feito em 2026-11-03 (criação da conta pela tela). Falta provar no navegador real o primeiro acesso completo (OTP + troca de senha) e testar num Keycloak já existente (client criado à mão). Risco aceito: API comprometida pode criar contas e papéis no Keycloak. |
+| **Backup/restauração (resto)** | Feito em 2026-11-03 (`docs/operations.md`): `scripts/backup-all.sh` salva `portaria` **e** `keycloak` (antes só um banco; sem o `keycloak` ninguém entraria após restaurar); procedimento de servidor novo exercitado numa stack de produção real. Falta: API sobre o banco restaurado, cópia offsite/GPG, RTO em servidor remoto. |
 | **F6 (resto)** | Expirar comunicado por prazo; mudar a unidade de um visitante. |
 | **F3 (resto)** | Validar o dígito verificador do CNPJ (os dados de teste usam CNPJs fictícios, então exige cuidado). |
 | **F4 (resto)** | Escolher na tela quais veículos e animais levar numa mudança de unidade; ligar dependente a um adulto específico. |

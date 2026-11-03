@@ -1,9 +1,50 @@
 # Pendências, bugs, melhorias e decisões em aberto
 
-Atualizado em 2026-10-31. Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
+Atualizado em 2026-11-02 (a seção 0 abaixo é a lista viva; as demais seções guardam o histórico e o detalhe). Fonte de verdade técnica detalhada: [`docs/STATUS.md`](docs/STATUS.md). Este arquivo é o **painel de acompanhamento**:
 o que falta, o que está arriscado e o que depende de uma decisão de quem é titular do produto.
 
 > Estado: **não está pronto para produção.** Nenhum equipamento real foi testado, e há decisões jurídicas e de infraestrutura em aberto.
+
+## 0. Lista viva das pendências abertas (2026-11-02)
+
+**Evidência atual (a tabela da seção 1 é histórica; os números vigentes estão em [`docs/STATUS.md`](docs/STATUS.md)):** `mvn verify` exit 0 com 41 unitários + 219 de integração; web 95 (painel) + 46 (app do morador) com build exit 0; `restore-drill` PASS (31 migrações, V1–V31); `load-test` 0 erros nos 8 cenários; `e2e-browser` 106 verificações; `verify_keycloak.py` OK e `e2e-oidc-browser.py` 18 verificações (Keycloak 26.8 real).
+
+**Fechadas desde 2026-10-31:** T13, F2, F3, F4, F5, C1, T11, T9; F6, R1, T8 e F1 em parte (restos abaixo); exigência de MFA da equipe na API e autocadastro ligado; contenção de rede da stack de produção (e correção das portas do Prometheus/Grafana). T10 virou "sem ação" (dado de teste).
+
+### A. Posso fazer sozinho (sem decisão sua)
+| Item | O que falta |
+|---|---|
+| **F1 (equipe)** | Tela que cria a conta de equipe pela API de administração do Keycloak, dá o papel (agora **obrigatório**: a API recusa sem ele) e liga o `sub`. Hoje é manual. |
+| **Backup/restauração no VPS** | Documentar e exercitar o procedimento para um servidor único com Compose (o `restore-drill` já existe no banco de desenvolvimento). |
+| **F6 (resto)** | Expirar comunicado por prazo; mudar a unidade de um visitante. |
+| **F3 (resto)** | Validar o dígito verificador do CNPJ (os dados de teste usam CNPJs fictícios, então exige cuidado). |
+| **F4 (resto)** | Escolher na tela quais veículos e animais levar numa mudança de unidade; ligar dependente a um adulto específico. |
+| **R1 (resto)** | Orientar na tela os três canais de comunicação e a conta com `sub` × associação por código. |
+| **T8** | A mesa do condomínio continua a ~800 px do topo no celular; só reordenar o painel resolve. |
+| **Aviso ativo ao síndico (C1)** | Falta uma caixa de notificação para a equipe (hoje só moradores têm). |
+| **C1 (resto)** | Operador ausente com o painel aberto continua dando sinal de vida; abrir porta não renova o prazo sozinha. |
+| **Imagens de contêiner** | Repetir a varredura de vulnerabilidades (a última foi nas versões anteriores). |
+
+### B. Dependem de você (decisão ou texto)
+| Item | O que falta |
+|---|---|
+| **D4** | Quem guarda a chave privada de lançamento do agente, onde e como recupera. |
+| **D1, D16, D18, D19, D21, CR6 (LGPD)** | Texto jurídico em `docs/juridico/` (não existe); confirmar os 90 dias; aviso no local das câmeras; registro da "ciência" do morador. Sem isso não se declara conformidade. |
+| **T11 (IP)** | Guardar IP na auditoria só se o jurídico aprovar, com prazo de descarte (a auditoria nunca expira). |
+| **D2** | Modelo da primeira controladora e ambiente de teste de campo. |
+| **D6 (provedor)** | Qual provedor de VPS e qual domínio (o modelo, VPS único com Compose, já foi decidido). |
+| **Autocadastro** | Aceitar o risco sem CAPTCHA nem verificação de e-mail (documentado em `docs/operations.md`). |
+| **D7, D5** | Decididos como "adiar" e "nenhum aviso externo por enquanto"; só reabrem se você mudar de ideia. |
+
+### C. Dependem de equipamento, rede ou terceiros
+- **Hardware real:** nenhum adaptador testado com equipamento; suposições do Dahua/Intelbras (B6, MA3) não confirmadas; câmera real; SIP/telefonia; ONVIF `GetStreamUri`; descoberta de dispositivos; leitor facial (depende de D2, D16, D18).
+- **Aparelho real:** HLS e login em iPhone/Safari nunca testados (B17); T8 e T9 só vistos em Chromium emulando 390 px.
+- **Produção e escala:** réplica e PITR do banco, Redis para limitador de taxa e agendamentos, mTLS por agente, WAF/DDoS, pentest independente; a contenção de rede foi medida numa stack local, não num servidor, e o exemplo de firewall em `docs/operations.md` não foi testado.
+- **Ticket de saída:** impressão e leitor automático (hoje o número é validado por um operador na tela).
+- **Jurídico e marca:** RIPD, DPO, parecer sobre o Grafana (AGPL, L5), busca de anterioridade da marca (L1), varredura de proveniência com ferramenta comercial (L3).
+
+### D. Riscos aceitos, sem ação planejada
+Revogação de credencial durante a queda só chega ao agente em até 6 h (B8); quota offline por agente (B9); a vazão da rota "Meus acessos" cai no banco de desenvolvimento grande (medido: em banco novo faz ~1.400 req/s); autocadastro sem CAPTCHA.
 
 ## 1. Evidência do estado atual (2026-10-29)
 

@@ -33,7 +33,7 @@ Cada item: o que o sistema faz hoje → a pergunta → a recomendação técnica
 ## Visitantes e prestadores (terceiros)
 - **Hoje:** o morador informa o nome; ele fica cifrado e vinculado à unidade, sem prazo. **Perguntas:** prazo; como informar o visitante (aviso na portaria/convite); como atender o pedido de um visitante.
 
-## T11 — Endereço IP na auditoria
+## T11 — Endereço IP na auditoria (decisão do titular em 2026-11-03: NÃO guardar)
 - **Hoje:** a auditoria **não guarda IP** (só o tipo de cliente). O Keycloak guarda o IP dos logins por 30 dias. **Pergunta:** o registro de IP é necessário/justificável para segurança e quanto tempo pode ficar (Marco Civil da Internet pode ter prazos próprios — para conferência)?
 - **Recomendação técnica:** só adotar se houver necessidade clara; com prazo de descarte próprio e sem misturar com a trilha que nunca expira.
 

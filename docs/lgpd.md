@@ -1,5 +1,7 @@
 # LGPD — o que é técnico e o que depende de decisão jurídica/operacional
 
+> **Rascunhos para o advogado revisar** (política, aviso de câmeras, consentimento, retenção, inventário de dados e perguntas): [`docs/juridico/`](juridico/README.md) (2026-11-03). Não são parecer.
+
 > **Este documento não declara conformidade com a LGPD.** Controles técnicos são necessários, não suficientes: base legal,
 > contratos, DPO, RIPD e resposta a incidentes são decisões organizacionais e jurídicas.
 

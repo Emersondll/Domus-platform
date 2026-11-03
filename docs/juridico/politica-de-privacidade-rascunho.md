@@ -19,7 +19,7 @@ O condomínio `[NOME, CNPJ]` é o **controlador** dos seus dados neste aplicativ
 | Foto de cadastro (**só se o recurso for ligado e você aceitar**) | controle de acesso | consentimento (ver termo) |
 | Câmeras da entrada ao vivo (**só nas câmeras liberadas pelo síndico**) | segurança | `[BASE LEGAL]` |
 
-Não coletamos biometria (impressão digital, gabarito facial) e **não gravamos vídeo**. Não vendemos nem compartilhamos seus dados para marketing.
+Não coletamos biometria (impressão digital, gabarito facial) e **não gravamos vídeo**. O sistema não envia seus dados a terceiros nem para marketing `[CONFIRMAR COMO COMPROMISSO DO CONTROLADOR]`.
 
 ## 3. Quem vê seus dados
 A portaria e o síndico do **seu** condomínio veem o cadastro e o histórico da portaria. Outros condomínios não veem nada. O seu histórico pessoal de entradas e saídas só você vê.

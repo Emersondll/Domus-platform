@@ -13,6 +13,8 @@
 | XXE (ONVIF) | DTD desabilitado | `OnvifAdapterTest` |
 | Força bruta em credenciais de máquina | bloqueio do IP após 10 falhas/5 min; limite de taxa por chave | `RateLimitIT` |
 | Força bruta em login de pessoas / MFA | Keycloak: bloqueio progressivo, política de senha (12+), TOTP obrigatório para papéis de equipe | `scripts/verify_keycloak.py` (login real: operador → configuração de OTP; morador → código) |
+| Equipe sem MFA (adicionada aqui, esquecida no Keycloak) | **a API só honra uma associação de equipe se o token trouxer o papel do Keycloak correspondente** (`operator`, `condo-manager`, `company-admin`, `platform-admin`), que é o que obriga o OTP no login; sem ele responde 403 e registra `auth.staff-mfa-role-missing` na auditoria (no máximo uma vez por usuário a cada 10 min). Ligado por padrão em produção (`REQUIRE_STAFF_MFA_ROLE`) | `StaffMfaRoleIT` (4), `scripts/verify_keycloak.py` (Keycloak real: sem o papel 403, com o papel 200) |
+| Conta criada por autocadastro virando equipe | o autocadastro só cria conta no Keycloak sem papel nenhum; acesso a qualquer coisa vem de associação no banco (morador: aprovada pelo síndico com o código de adesão; equipe: só o administrador da empresa adiciona) | `scripts/e2e-oidc-browser.py` (cadastra pelo formulário e confere que não há papel de equipe) |
 | Política/agente falsos | política assinada (HMAC), versionada, com validade; rejeita adulterada/outro agente/antiga | `ContingencyTest` |
 | Adulteração da auditoria | `audit_log` append-only por trigger (mantido após restauração) | `TenantIsolationIT`, `restore-drill.sh` |
 | Vazamento por logs | sem tokens/senhas em logs; correlação por ID | revisão de código (sem teste automatizado) |

@@ -138,7 +138,7 @@ def cleanup(tok):
     psql(f"DROP DATABASE IF EXISTS {DB} WITH (FORCE)")
     try:
         kc("PUT", "", tok, {"realm": "portaria", "accessTokenLifespan": 300})  # devolve o tempo de vida original
-        for username in (f"adm-{SUFFIX}", f"ca-{SUFFIX}", f"op-{SUFFIX}", f"res-{SUFFIX}"):
+        for username in (f"adm-{SUFFIX}", f"ca-{SUFFIX}", f"op-{SUFFIX}", f"res-{SUFFIX}", f"reg-{SUFFIX}"):
             users = json.loads(kc("GET", f"/users?username={username}&exact=true", tok)[1])
             if users:
                 kc("DELETE", f"/users/{users[0]['id']}", tok)
@@ -183,7 +183,7 @@ env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{DB}", DB_USER=
            CREDENTIAL_HMAC_SECRET="kc-browser-secret-0123456789-abcdefghijklmnopqr",
            AGENT_POLICY_MASTER_SECRET="kc-browser-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_adm, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"adm-{SUFFIX}@example.invalid",
-           SPRING_PROFILES_ACTIVE="")
+           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true")  # como em produção
 web_env = dict(os.environ)
 if node_path():
     web_env["PATH"] = node_path() + os.pathsep + web_env["PATH"]
@@ -343,6 +343,41 @@ try:
             pan.click("#kc-login")
             expect(pan.locator("#otp")).to_be_visible(timeout=20000)
             check("um código de autenticador errado é recusado", "Condomínio OIDC" not in pan.content())
+        ctx.close()
+
+        print("== autocadastro: a pessoa cria a própria conta no Keycloak e cai na tela de pedir acesso")
+        ctx, reg, seen = new_page("portaria-resident", 5174)
+        reg.get_by_role("button", name="Entrar").click()
+        expect(reg.locator("#username")).to_be_visible(timeout=20000)
+        try:
+            reg.locator("#kc-registration a, a:has-text('Register'), a:has-text('Registrar')").first.click(timeout=10000)
+            check("a tela de login do Keycloak oferece o cadastro de conta", True)
+        except Exception:
+            shot(reg, "autocadastro-link")
+            check("a tela de login do Keycloak oferece o cadastro de conta", False, reg.url)
+        reg_user = f"reg-{SUFFIX}"
+        try:
+            reg.fill("#firstName", "Pessoa")
+            reg.fill("#lastName", "Sintetica")
+            reg.fill("#email", f"{reg_user}@example.invalid")
+            if reg.locator("#username").count():
+                reg.fill("#username", reg_user)
+            reg.fill("#password", PASSWORD)
+            reg.fill("#password-confirm", PASSWORD)
+            reg.locator("input[type=submit], button[type=submit]").first.click()
+            expect(reg.get_by_text("Pedir acesso ao condomínio")).to_be_visible(timeout=20000)
+            check("depois do cadastro a pessoa volta ao app e vê a tela de pedir acesso com o código de adesão", True)
+        except AssertionError:
+            shot(reg, "autocadastro")
+            check("depois do cadastro a pessoa volta ao app e vê a tela de pedir acesso com o código de adesão", False, reg.url)
+        tok = kc_admin_token()  # o token de administração vale poucos minutos e o teste já passou desse tempo
+        created = json.loads(kc("GET", f"/users?username={reg_user}&exact=true", tok)[1])
+        staff_roles = {"operator", "condo-manager", "company-admin", "platform-admin"}
+        granted = set()
+        if created:
+            granted = {r["name"] for r in json.loads(kc("GET", f"/users/{created[0]['id']}/role-mappings/realm", tok)[1])}
+        check("a conta criada pelo autocadastro não recebe nenhum papel de equipe (logo, nenhum caminho para o painel)",
+              bool(created) and not (granted & staff_roles), str(sorted(granted)))
         ctx.close()
         browser.close()
 finally:

@@ -126,7 +126,10 @@ function Companies({ token }: { token: string }) {
         setTaxId("");
       }, "Empresa cadastrada.")}>Cadastrar empresa</button>
       <h3>Adicionar administrador a uma empresa</h3>
-      <p className="hint">Informe o identificador do usuário no provedor de login (Keycloak).</p>
+      <p className="hint">
+        Informe o identificador do usuário no provedor de login (Keycloak). <strong>Dê também a essa pessoa o papel "company-admin" no Keycloak</strong>:
+        é ele que obriga o código do autenticador (OTP) no login; sem o papel, a API recusa o acesso dela.
+      </p>
       <label htmlFor="ad-company">Empresa</label>
       <select id="ad-company" value={adminCompany} onChange={(e) => setAdminCompany(e.target.value)}>
         <option value="">Escolha…</option>

@@ -9,10 +9,16 @@ import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ForbiddenException;
 import br.com.domus.platform.shared.error.NotFoundException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,6 +37,19 @@ public class AccessService {
     private final MembershipRepository memberships;
     private final CondominiumLookup condominiums;
     private final AuditService audit;
+
+    /**
+     * Em produção, uma associação de equipe só vale se o token trouxer o papel correspondente do Keycloak: é esse papel que
+     * obriga o OTP no login. Sem isso, quem foi adicionado à equipe aqui mas esquecido lá entraria só com senha.
+     */
+    @Value("${portaria.security.require-staff-mfa-role:false}")
+    private boolean requireStaffMfaRole;
+
+    /** Última vez que registramos na auditoria a falta do papel, por usuário (evita uma linha por requisição do painel). */
+    private final Map<UUID, Instant> mfaRoleDenialLogged = new ConcurrentHashMap<>();
+
+    private static final Map<Role, String> KEYCLOAK_STAFF_ROLE = Map.of(Role.PLATFORM_ADMIN, "platform-admin",
+            Role.COMPANY_ADMIN, "company-admin", Role.CONDO_MANAGER, "condo-manager", Role.OPERATOR, "operator");
 
     /** Construtor de AccessService; recebe as dependências por injeção. */
     public AccessService(AppUserRepository users, MembershipRepository memberships,
@@ -63,12 +82,39 @@ public class AccessService {
                 .filter(AppUser::isActive)
                 .orElseThrow(() -> new ForbiddenException("User is not registered or is inactive"));
         List<Membership> all = memberships.findByUserIdAndActiveTrue(user.getId());
-        List<Membership> usable = all.stream().filter(m -> !isSuspended(m)).toList();
-        if (usable.isEmpty() && !all.isEmpty()) {
+        List<Membership> notSuspended = all.stream().filter(m -> !isSuspended(m)).toList();
+        if (notSuspended.isEmpty() && !all.isEmpty()) {
             // empresa ou condomínio suspenso: o acesso ao app (equipe, moradores, administradores) fica desligado
             throw new ForbiddenException("Access suspended");
         }
+        List<Membership> usable = notSuspended.stream().filter(m -> hasMfaRole(m, jwt)).toList();
+        if (usable.isEmpty() && !notSuspended.isEmpty()) {
+            logMissingMfaRole(user.getId());
+            throw new ForbiddenException("Staff role requires multi-factor authentication");
+        }
+        if (usable.size() < notSuspended.size()) {
+            logMissingMfaRole(user.getId()); // perdeu só a parte de equipe; mantém, por exemplo, o vínculo de morador
+        }
         return new Actor(user.getId(), usable);
+    }
+
+    /** Morador não precisa de papel; equipe precisa do papel do Keycloak, que é o que obriga o OTP (quando a exigência está ligada). */
+    private boolean hasMfaRole(Membership m, Jwt jwt) {
+        String required = KEYCLOAK_STAFF_ROLE.get(m.getRole());
+        if (!requireStaffMfaRole || required == null) {
+            return true;
+        }
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        return realmAccess != null && realmAccess.get("roles") instanceof Collection<?> roles && roles.contains(required);
+    }
+
+    private void logMissingMfaRole(UUID userId) {
+        Instant now = Instant.now();
+        Instant last = mfaRoleDenialLogged.get(userId);
+        if (last == null || last.isBefore(now.minus(Duration.ofMinutes(10)))) {
+            mfaRoleDenialLogged.put(userId, now);
+            audit.record(userId, null, null, "auth.staff-mfa-role-missing", "user", userId.toString(), AuditOutcome.DENIED);
+        }
     }
 
     /** O vínculo pertence a uma empresa ou a um condomínio suspenso (o administrador da plataforma nunca é suspenso). */

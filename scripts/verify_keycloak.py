@@ -128,7 +128,8 @@ print("== usuários no Keycloak")
 tok = admin_token()
 suffix = secrets.token_hex(3)
 uid_admin = create_user(tok, f"plat-admin-{suffix}", "platform-admin")
-uid_op = create_user(tok, f"op-{suffix}", "operator")
+uid_op = create_user(tok, f"op-{suffix}", "company-admin")  # o papel do Keycloak tem de ser o da associação (a API confere)
+uid_forgot = create_user(tok, f"forgot-{suffix}", None)  # será adicionada à equipe, mas esquecida no Keycloak
 uid_res = create_user(tok, f"res-{suffix}", "resident")
 uid_none = create_user(tok, f"nobody-{suffix}", None)
 
@@ -149,7 +150,7 @@ env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{VERIFY_DB}", D
            FIELD_ENCRYPTION_KEYS="kcv:" + base64.b64encode(b"kc-verify-field-key-0123456789-a").decode(), BLIND_INDEX_KEY="kc-verify-blind-index-key-0123456789-abc",
            CREDENTIAL_HMAC_SECRET="kc-verify-secret-0123456789-abcdefghijklmnopqr", AGENT_POLICY_MASTER_SECRET="kc-verify-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_admin, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"plat-admin-{suffix}@example.invalid",
-           SPRING_PROFILES_ACTIVE="")
+           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true")  # como em produção
 log = open(os.path.join(os.environ.get("TMPDIR", "/tmp"), "kc-verify-api.log"), "w")
 proc = subprocess.Popen(["java", "-jar", os.path.join(ROOT, "backend/target/platform-0.1.0-SNAPSHOT.jar")], env=env, stdout=log, stderr=log)
 try:
@@ -199,6 +200,18 @@ try:
     t_op = direct_grant_token(tok, f"op-{suffix}")
     s, _, b = api("GET", "/api/v1/condominiums", t_op)
     check("o novo administrador de empresa já é reconhecido", s == 200, f"({s})")
+    print("== equipe sem o papel do Keycloak não entra só com senha")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins", t_admin,
+                  {"externalSubject": uid_forgot, "email": f"forgot-{suffix}@example.invalid", "displayName": "Esquecida KC"})
+    check("a plataforma adiciona uma pessoa à equipe pela associação -> 201", s == 201, f"({s})")
+    t_forgot = direct_grant_token(tok, f"forgot-{suffix}")
+    s, _, b = api("GET", "/api/v1/condominiums", t_forgot)
+    check("equipe SEM o papel no Keycloak (sem o OTP obrigatório) é recusada pela API -> 403", s == 403 and "multi-factor" in b, f"({s}) {b[:100]}")
+    s, _, rb = admin("GET", "/roles/company-admin", tok)
+    admin("POST", f"/users/{uid_forgot}/role-mappings/realm", tok, [json.loads(rb)])
+    t_forgot2 = direct_grant_token(tok, f"forgot-{suffix}")
+    s, _, b = api("GET", "/api/v1/condominiums", t_forgot2)
+    check("com o papel dado no Keycloak (que passa a exigir o OTP no login) a mesma pessoa entra -> 200", s == 200, f"({s})")
 finally:
     proc.terminate()
     try:

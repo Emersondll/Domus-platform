@@ -17,7 +17,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @AutoConfigureMockMvc
 public abstract class AbstractIntegrationTest {
 
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17");
+    // Cada contexto Spring em cache segura um pool de até 10 conexões (mais o de auditoria): com o limite padrão de 100, uma suíte com
+    // vários contextos e testes de concorrência fica no limite e o pool de auditoria falha só em alguns ambientes (visto na CI).
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17")
+            .withCommand("postgres", "-c", "max_connections=300");
 
     static {
         POSTGRES.start();

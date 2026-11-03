@@ -104,7 +104,9 @@ public class AuditService {
                 throw e; // auditoria de sucesso obrigatória: sem ela, a ação não se confirma
             }
             // Negação/falha: o 403/404 já está decidido; não mascaramos a resposta, mas o erro precisa aparecer.
-            log.error("AUDIT WRITE FAILED for action={} outcome={}: {}", action, outcome, e.getMessage());
+            // a causa raiz (ex.: "too many clients already") é o que ajuda; a mensagem do wrapper só diz "Failed to obtain JDBC Connection"
+            log.error("AUDIT WRITE FAILED for action={} outcome={}: {} (causa: {})", action, outcome, e.getMessage(),
+                    org.springframework.core.NestedExceptionUtils.getMostSpecificCause(e).getMessage());
         }
     }
 

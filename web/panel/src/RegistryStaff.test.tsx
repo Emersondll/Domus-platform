@@ -11,7 +11,7 @@ function stubApi(enabled: boolean) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ method: init?.method ?? "GET", url, body: init?.body as string | undefined });
     if (url.endsWith("/identity/provisioning")) return json({ enabled });
-    if (url.endsWith("/members/provision")) return json({ membership: { id: "m1" }, temporaryPassword: "Tmp-Pass-1234567890" }, 201);
+    if (url.endsWith("/members/provision")) return json({ membership: { id: "m1" }, temporaryPassword: "senha-ficticia-de-teste" }, 201);
     if (url.endsWith("/members")) return json([]);
     return json({});
   }));
@@ -28,11 +28,11 @@ describe("equipe: criar a conta pela tela", () => {
     fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "ana@example.invalid" } });
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana Souza" } });
     fireEvent.click(screen.getByText("Criar conta e adicionar"));
-    expect(await screen.findByText("Tmp-Pass-1234567890")).toBeTruthy();
+    expect(await screen.findByText("senha-ficticia-de-teste")).toBeTruthy();
     const post = calls.find((c) => c.url.endsWith("/members/provision"))!;
     expect(JSON.parse(post.body!)).toEqual({ role: "OPERATOR", account: { email: "ana@example.invalid", displayName: "Ana Souza" } });
     fireEvent.click(screen.getByText("Já entreguei, fechar"));
-    expect(screen.queryByText("Tmp-Pass-1234567890")).toBeNull();
+    expect(screen.queryByText("senha-ficticia-de-teste")).toBeNull();
   });
 
   it("com a criação desligada continua pedindo o identificador (fluxo manual)", async () => {

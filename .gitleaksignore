@@ -1,0 +1,2 @@
+# Falso positivo: senha provisória FICTÍCIA no teste do painel (RegistryStaff.test.tsx); não é segredo.
+dacdb81324048ef30d9716010cd6040cb9ec76c1:web/panel/src/RegistryStaff.test.tsx:generic-api-key:14

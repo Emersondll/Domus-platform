@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** Acesso a credenciais, sempre escopado por condomínio. */
 public interface AccessCredentialRepository extends JpaRepository<AccessCredential, UUID> {
 
+    List<AccessCredential> findByCondominiumIdAndVisitorId(UUID condominiumId, UUID visitorId);
+
     List<AccessCredential> findByCondominiumIdAndCreatedByUserId(UUID condominiumId, UUID userId);
 
     Optional<AccessCredential> findByIdAndCondominiumId(UUID id, UUID condominiumId);

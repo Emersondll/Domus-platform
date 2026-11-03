@@ -8,7 +8,12 @@
   .layout > .col-main { grid-column: 1; min-width: 0; }
   .layout > .col-desk { grid-column: 2; min-width: 0; }
 }
-@media (max-width: 999px) { .layout > .col-desk, .layout > .col-main { grid-column: 1 / -1; } }
+@media (max-width: 999px) {
+  .layout > .col-desk, .layout > .col-main { grid-column: 1 / -1; }
+  /* No celular as colunas empilham. Sem atendimento em andamento a mesa do condomínio vem primeiro (antes ficava ~800 px abaixo do topo);
+     com atendimento, a fila e a bancada continuam no alto. */
+  .layout:not(.has-work) > .col-main { order: 1; }
+}
 
 /* Faixa de estado: zero apagado, acima de zero colorido. */
 .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }

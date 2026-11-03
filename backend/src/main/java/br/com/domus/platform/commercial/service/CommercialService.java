@@ -13,6 +13,7 @@ import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.ForbiddenException;
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
@@ -41,11 +42,14 @@ public class CommercialService {
     private final AccessService access;
     private final AuditService audit;
     private final ViewSessionRevoker viewSessions;
+    private final boolean requireValidCnpj;
 
     /** Construtor de CommercialService; recebe as dependências por injeção. */
     public CommercialService(OperatorCompanyRepository companies, CondominiumRepository condominiums,
                              BlockRepository blocks, UnitRepository units, AccessService access,
-                             AuditService audit, ViewSessionRevoker viewSessions) {
+                             AuditService audit, ViewSessionRevoker viewSessions,
+                             @org.springframework.beans.factory.annotation.Value("${portaria.commercial.require-valid-cnpj:false}") boolean requireValidCnpj) {
+        this.requireValidCnpj = requireValidCnpj;
         this.companies = companies;
         this.condominiums = condominiums;
         this.blocks = blocks;
@@ -62,8 +66,9 @@ public class CommercialService {
      * @param taxId CNPJ
      */
     @Transactional
-    public OperatorCompany createCompany(String name, String taxId) {
+    public OperatorCompany createCompany(String name, String rawTaxId) {
         Actor actor = access.requirePlatformAdmin("company.create");
+        String taxId = normalizeTaxId(rawTaxId);
         if (companies.existsByTaxId(taxId)) {
             throw new ConflictException("A company with this tax id already exists");
         }
@@ -82,7 +87,8 @@ public class CommercialService {
      * @param taxId CNPJ corrigido
      */
     @Transactional
-    public OperatorCompany updateCompany(UUID companyId, String name, String taxId) {
+    public OperatorCompany updateCompany(UUID companyId, String name, String rawTaxId) {
+        String taxId = normalizeTaxId(rawTaxId);
         Actor actor = access.requirePlatformAdmin("company.update");
         OperatorCompany company = companies.findById(companyId).orElseThrow(() -> new NotFoundException("Company not found"));
         if (companies.existsByTaxIdAndIdNot(taxId, companyId)) {
@@ -104,7 +110,7 @@ public class CommercialService {
      * @param taxId CNPJ corrigido, ou nulo para manter
      */
     @Transactional
-    public Condominium updateCondominium(UUID condominiumId, String name, String taxId) {
+    public Condominium updateCondominium(UUID condominiumId, String name, String rawTaxId) {
         Actor actor = access.currentActor();
         Condominium condominium = condominiums.findById(condominiumId).orElse(null);
         boolean allowed = condominium != null && (access.isPlatformAdmin(actor)
@@ -117,7 +123,7 @@ public class CommercialService {
         if (condominiums.existsByOperatorCompanyIdAndNameAndIdNot(condominium.getOperatorCompanyId(), name, condominiumId)) {
             throw new ConflictException("A condominium with this name already exists for the company");
         }
-        String newTaxId = taxId == null || taxId.isBlank() ? condominium.getTaxId() : taxId;
+        String newTaxId = rawTaxId == null || rawTaxId.isBlank() ? condominium.getTaxId() : normalizeTaxId(rawTaxId);
         String detail = changes(condominium.getName(), name, condominium.getTaxId(), newTaxId);
         condominium.correct(name, newTaxId);
         audit.record(actor.userId(), condominium.getOperatorCompanyId(), condominiumId, "condominium.update", "condominium",
@@ -181,7 +187,7 @@ public class CommercialService {
      * @param taxId CNPJ
      */
     @Transactional
-    public Condominium createCondominium(UUID companyId, String name, String taxId) {
+    public Condominium createCondominium(UUID companyId, String name, String rawTaxId) {
         Actor actor = access.currentActor();
         boolean allowed = access.companyIdsAdministeredBy(actor).contains(companyId)
                 || access.isPlatformAdmin(actor);
@@ -196,7 +202,8 @@ public class CommercialService {
         if (condominiums.existsByOperatorCompanyIdAndName(companyId, name)) {
             throw new ConflictException("A condominium with this name already exists for the company");
         }
-        Condominium condominium = condominiums.save(new Condominium(companyId, name, taxId));
+        Condominium condominium = condominiums.save(new Condominium(companyId, name,
+                rawTaxId == null || rawTaxId.isBlank() ? rawTaxId : normalizeTaxId(rawTaxId)));
         audit.record(actor.userId(), companyId, condominium.getId(), "condominium.create", "condominium",
                 condominium.getId().toString(), AuditOutcome.SUCCESS);
         return condominium;
@@ -411,5 +418,24 @@ public class CommercialService {
     public Unit requireUnit(UUID condominiumId, UUID unitId) {
         return units.findByIdAndCondominiumId(unitId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Unit not found"));
+    }
+
+    /**
+     * Normaliza o CNPJ para só dígitos. Com 14 dígitos, os verificadores são sempre conferidos (pega erro de digitação). Fora disso,
+     * com {@code portaria.commercial.require-valid-cnpj} ligado (produção) o valor é recusado; desligado (desenvolvimento e testes,
+     * que usam identificadores fictícios), é aceito como veio.
+     */
+    private String normalizeTaxId(String value) {
+        String digits = Cnpj.digitsOnly(value);
+        if (digits.matches("\\d{14}")) {
+            if (!Cnpj.isValid(digits)) {
+                throw new InvalidRequestException("Invalid CNPJ: check digits do not match");
+            }
+            return digits;
+        }
+        if (requireValidCnpj) {
+            throw new InvalidRequestException("Invalid CNPJ: must have 14 digits");
+        }
+        return value;
     }
 }

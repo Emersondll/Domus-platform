@@ -138,7 +138,7 @@ def cleanup(tok):
     psql(f"DROP DATABASE IF EXISTS {DB} WITH (FORCE)")
     try:
         kc("PUT", "", tok, {"realm": "portaria", "accessTokenLifespan": 300})  # devolve o tempo de vida original
-        for username in (f"adm-{SUFFIX}", f"ca-{SUFFIX}", f"op-{SUFFIX}", f"res-{SUFFIX}", f"reg-{SUFFIX}"):
+        for username in (f"adm-{SUFFIX}", f"ca-{SUFFIX}", f"op-{SUFFIX}", f"res-{SUFFIX}", f"reg-{SUFFIX}", f"prov-{SUFFIX}@example.invalid"):
             users = json.loads(kc("GET", f"/users?username={username}&exact=true", tok)[1])
             if users:
                 kc("DELETE", f"/users/{users[0]['id']}", tok)
@@ -183,7 +183,8 @@ env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{DB}", DB_USER=
            CREDENTIAL_HMAC_SECRET="kc-browser-secret-0123456789-abcdefghijklmnopqr",
            AGENT_POLICY_MASTER_SECRET="kc-browser-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_adm, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"adm-{SUFFIX}@example.invalid",
-           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true")  # como em produção
+           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true",  # como em produção
+           PROVISIONER_ENABLED="true", PROVISIONER_BASE_URL=KC, PROVISIONER_CLIENT_SECRET="provisioner_dev_only")
 web_env = dict(os.environ)
 if node_path():
     web_env["PATH"] = node_path() + os.pathsep + web_env["PATH"]
@@ -343,6 +344,54 @@ try:
             pan.click("#kc-login")
             expect(pan.locator("#otp")).to_be_visible(timeout=20000)
             check("um código de autenticador errado é recusado", "Condomínio OIDC" not in pan.content())
+        ctx.close()
+
+        print("== equipe criada pela tela: o primeiro acesso completo (senha provisória, autenticador e nova senha)")
+        tok = kc_admin_token()
+        t_ca = api_token(tok, f"ca-{SUFFIX}")
+        prov_mail = f"prov-{SUFFIX}@example.invalid"
+        made = api("POST", f"{base}/members/provision", t_ca, {"role": "OPERATOR", "account": {"email": prov_mail, "displayName": "Operador Criado Pela Tela"}})
+        temp_pw = made["temporaryPassword"]
+        new_pw = PASSWORD + "-nova"
+        ctx, fresh, seen = new_page("portaria-panel", 5173)
+        fresh.get_by_role("button", name="Entrar").click()
+        expect(fresh.locator("#username")).to_be_visible(timeout=20000)
+        fresh.fill("#username", prov_mail)
+        fresh.fill("#password", temp_pw)
+        fresh.click("#kc-login")
+        steps = []
+        landed = False
+        otp_secret = None
+        for _ in range(5):
+            try:
+                fresh.locator("#kc-totp-secret-key, #mode-manual, #password-new, #firstName").or_(
+                    fresh.get_by_text(re.compile("Condomínio OIDC"))).first.wait_for(state="visible", timeout=20000)
+            except Exception:
+                break
+            if fresh.get_by_text(re.compile("Condomínio OIDC")).count():
+                landed = True
+                break
+            if fresh.locator("#mode-manual").count() and not fresh.locator("#kc-totp-secret-key").is_visible():
+                fresh.click("#mode-manual")
+            if fresh.locator("#kc-totp-secret-key").count() and fresh.locator("#kc-totp-secret-key").is_visible():
+                steps.append("otp")
+                otp_secret = fresh.locator("#kc-totp-secret-key").inner_text().strip()
+                fresh.fill("#totp", totp(otp_secret))
+                if fresh.locator("#userLabel").count():
+                    fresh.fill("#userLabel", "e2e")
+                fresh.click("#saveTOTPBtn")
+            elif fresh.locator("#password-new").count():
+                steps.append("senha")
+                fresh.fill("#password-new", new_pw)
+                fresh.fill("#password-confirm", new_pw)
+                fresh.locator("input[type=submit], button[type=submit]").first.click()
+            elif fresh.locator("#firstName").count():
+                steps.append("perfil")
+                fresh.locator("input[type=submit], button[type=submit]").first.click()
+        shot(fresh, "equipe-criada")
+        check("a senha provisória leva ao cadastro do autenticador e à troca da senha", "otp" in steps and "senha" in steps, str(steps))
+        check("depois dos passos obrigatórios a pessoa criada pela tela entra no painel do condomínio", landed or fresh.get_by_text(re.compile("Condomínio OIDC")).count() > 0, fresh.url)
+        check("nenhuma resposta 401/403 da API no primeiro acesso", not seen["bad"], str(seen["bad"][:3]))
         ctx.close()
 
         print("== autocadastro: a pessoa cria a própria conta no Keycloak e cai na tela de pedir acesso")

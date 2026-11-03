@@ -86,6 +86,13 @@ public interface ServiceCallRepository extends JpaRepository<ServiceCall, UUID> 
             nativeQuery = true)
     int touchAssigned(@Param("userId") UUID userId, @Param("now") Instant now);
 
+    /** Renova o sinal de vida de UMA chamada que o operador atende (uma ação dele nela, como abrir a porta). */
+    @Modifying
+    @Query(value = "UPDATE service_call SET last_activity_at = :now WHERE id = :callId AND condominium_id = :condominiumId "
+            + "AND assigned_user_id = :userId AND status = 'ASSIGNED'", nativeQuery = true)
+    int touchCall(@Param("condominiumId") UUID condominiumId, @Param("callId") UUID callId, @Param("userId") UUID userId,
+                  @Param("now") Instant now);
+
     /**
      * Serializa, até o fim da transação, quem disputa a mesma chave (aqui, as chamadas de uma unidade): sem isso, duas
      * requisições simultâneas passam juntas pela verificação "já existe uma em aberto?".

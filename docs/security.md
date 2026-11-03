@@ -35,7 +35,7 @@ renderizam texto via React (escape por padrão) e há CSP restritiva no proxy. I
 3. **mTLS por dispositivo/agente** não implementado (hoje: chave por agente/dispositivo sobre TLS).
 4. **Nada testado com hardware real** (controladoras, câmeras, SIP). O vídeo ao vivo foi provado só com fonte RTSP de teste (`docs/cameras.md`).
 5. Dados em repouso: campos pessoais no PostgreSQL e o SQLite do agente têm **criptografia de campo/arquivo** (AES-256-GCM); falta criptografia do disco/banco como um todo e guardar as chaves em KMS/cofre (D3).
-6. Sem WAF/proteção DDoS; sem teste de intrusão independente; sem varredura de imagem de contêiner.
+6. Sem WAF/proteção DDoS; sem teste de intrusão independente; a varredura de imagens existe e foi repetida em 2026-11-03 (abaixo), mas há achados de Postgres, Caddy e MediaMTX ainda sem correção aplicada.
 7. Limitação de taxa e agendamentos por instância (ver [operations.md](operations.md)).
 8. Front-end exige Node ≥ 22.12; `npm audit` completo = 0 vulnerabilidades (revalidar a cada atualização de dependências).
 9. CI no GitHub Actions: 7 jobs verdes desde 2026-10-22 e nos pushes seguintes.
@@ -65,3 +65,18 @@ Trivy 0.58 (`--severity HIGH,CRITICAL --scanners vuln`), imagens baixadas no mes
 **Leitura honesta:** vulnerabilidade listada não é vulnerabilidade explorável (o `gosu`, por exemplo, não recebe entrada externa), mas as imagens de Keycloak, MediaMTX, Prometheus e Grafana estão **defasadas** e devem subir de versão antes de produção, com reteste (`verify_keycloak.py`, `e2e-oidc-browser.py`, `e2e-browser.py` com vídeo). Quem expõe porta é o Caddy, o Keycloak e o MediaMTX: priorizar esses três. O Dependabot (`docker`, `docker-compose`) abre os pedidos de atualização.
 **Atualizações aplicadas em 2026-10-28 (pedidos do Dependabot):** Keycloak 26.4 → 26.8.1 (dev e produção; `verify_keycloak.py` e `e2e-oidc-browser.py` com 15 OK), Spring Boot 4.0.9 → 4.1.2 (`mvn verify` 31 + 151, 0 falhas; `load-test` com 0 erros nos 6 cenários), atualizações menores do agente e do web e as ações do GitHub (gitleaks v3 em Node 24, setup-java 6, setup-node 7, upload-artifact 7). **Não aplicadas:** Grafana 12 → 13 (versão maior, AGPL, painéis provisionados sem teste), Prometheus 3.5 → 3.15 (só na observabilidade; sem teste) e Postgres 17 → 18 (versão maior: troca o formato do diretório de dados; exige migração planejada). Estas continuam defasadas.
 **Digests fixados** (`tag@sha256`) nas tags móveis: `postgres:17`, `caddy:2` e `eclipse-temurin:26-jre`; o Dependabot atualiza o digest. As tags já versionadas (Keycloak, MediaMTX, Prometheus, Grafana) não foram fixadas por digest.
+
+### Repetição da varredura (2026-11-03)
+Trivy 0.76.1 (banco de vulnerabilidades do dia), `scripts/scan-images.sh`, nas imagens **como o `docker-compose.prod.yml` as referencia** (digests fixados) e a imagem da API recém-montada. Só HIGH e CRITICAL:
+
+| Imagem | CRITICAL | HIGH | Com correção disponível | Origem principal |
+|---|---|---|---|---|
+| `portaria-platform` (API, base `eclipse-temurin:26-jre` em Ubuntu 26.04) | 0 | 0 | — | nenhum achado, nem no jar |
+| `postgres:17@sha256:2d2b…` | 2 | 87 | 1 CRIT / 25 HIGH | Debian 13 e o `gosu` (Go 1.24) da imagem oficial |
+| `caddy:2@sha256:685a…` | 1 | 9 | 1 CRIT / 8 HIGH | Alpine 3.23 (`brotli-libs`) e bibliotecas Go do próprio Caddy (`go-jose`, `x/net`, stdlib) |
+| `quay.io/keycloak/keycloak:26.8` | 0 | 5 | 0 / 2 | RHEL 9 e OpenJDK 21; `guava` 33.6.0 (correção em 33.7.2) |
+| `prom/prometheus:v3.15.1` | 0 | 0 | — | nenhum (binários Go `prometheus` e `promtool` lidos) |
+| `grafana/grafana:13.3.0` | 0 | 39 | 0 / 39 | stdlib do Go 1.26.7 em plugins embutidos; todos com correção em versão nova |
+| `bluenviron/mediamtx:1.15.1` (servidor de mídia, fora do compose de produção) | 1 | 45 | 1 / 45 | bibliotecas Go; todos com correção em versão nova |
+
+**Leitura honesta:** melhorou muito frente a 2026-10-27 (Keycloak 8/82 → 0/5; Grafana 9/148 → 0/39; Prometheus 4/108 → 0/0) porque as versões foram atualizadas depois daquela varredura. Continuam: `postgres:17` (praticamente o mesmo, vem da imagem oficial), `caddy:2` (um CRITICAL novo na camada Alpine) e `mediamtx` (versão defasada). Baixei também as tags móveis mais novas de `caddy:2` e `postgres:17` no mesmo dia e os números **não mudaram**: hoje não há digest melhor para trocar; o caminho é repetir a varredura quando o fornecedor publicar. **Nada foi corrigido nesta rodada** (trocar versão de imagem exige reteste da pilha). Vulnerabilidade listada não é vulnerabilidade explorável (o `gosu` não recebe entrada externa; o Caddy é quem fica exposto e deve ser o primeiro a subir de versão), e a varredura só enxerga o que o Trivy conhece (não é pentest). **Como repetir:** `scripts/scan-images.sh` (não falha por achados, só informa).

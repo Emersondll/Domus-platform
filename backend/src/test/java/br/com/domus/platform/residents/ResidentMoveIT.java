@@ -52,7 +52,9 @@ class ResidentMoveIT extends AbstractIntegrationTest {
     @Autowired AppUserRepository users;
     @Autowired MembershipRepository memberships;
 
-    UUID condo, otherCondo, u1, u2, u3, foreignUnit;
+    @Autowired br.com.domus.platform.residents.repository.PetRepository petRepo;
+
+    UUID condo, otherCondo, u1, u2, u3, u4, foreignUnit;
 
     @BeforeAll
     void seed() {
@@ -63,6 +65,7 @@ class ResidentMoveIT extends AbstractIntegrationTest {
         u1 = units.save(new Unit(condo, b.getId(), "101")).getId();
         u2 = units.save(new Unit(condo, b.getId(), "102")).getId();
         u3 = units.save(new Unit(condo, b.getId(), "103")).getId();
+        u4 = units.save(new Unit(condo, b.getId(), "104")).getId();
         Block ob = blocks.save(new Block(otherCondo, "A"));
         foreignUnit = units.save(new Unit(otherCondo, ob.getId(), "901")).getId();
         staff("mov-manager", Role.CONDO_MANAGER, condo);
@@ -102,6 +105,14 @@ class ResidentMoveIT extends AbstractIntegrationTest {
         return mvc.perform(post(base() + "/residents/" + residentId + "/move").with(as(who))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"unitId\":\"" + toUnit + "\",\"reason\":\"" + reason + "\",\"moveDependents\":" + dependents + "}"));
+    }
+
+    private ResultActions moveWith(String who, UUID residentId, UUID toUnit, boolean dependents, String vehicleIds, String petIds)
+            throws Exception {
+        return mvc.perform(post(base() + "/residents/" + residentId + "/move").with(as(who))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"unitId\":\"" + toUnit + "\",\"reason\":\"mudança de apartamento\",\"moveDependents\":" + dependents
+                        + ",\"vehicleIds\":" + vehicleIds + ",\"petIds\":" + petIds + "}"));
     }
 
     private void invite(String who) throws Exception {
@@ -181,5 +192,74 @@ class ResidentMoveIT extends AbstractIntegrationTest {
         UUID r = resident("mov-gone", u3, ResidentType.OWNER, false);
         deactivate(r, "mov-gone", ResidentType.OWNER);
         move("mov-manager", r, u1, "mudança de apartamento", false).andExpect(status().isConflict());
+    }
+
+    @Test
+    void onlyTheChosenVehiclesAndPetsGoAlongAndAWrongIdMovesNothing() throws Exception {
+        UUID mover = resident("mov-owner-vp", u4, ResidentType.OWNER, true);
+        vehicle("mov-owner-vp", "VPA1B22");
+        vehicle("mov-owner-vp", "VPC3D44");
+        List<String> ids = jdbc.queryForList("select id::text from vehicle where unit_id = ? order by created_at", String.class, u4);
+        var pet1 = petRepo.save(new br.com.domus.platform.residents.entity.Pet(condo, u4, "Rex", "DOG", null, null, Instant.now()));
+        var pet2 = petRepo.save(new br.com.domus.platform.residents.entity.Pet(condo, u4, "Mimi", "CAT", null, null, Instant.now()));
+        UUID foreignVehicleUnit = u1;
+        // um veículo de outra unidade na lista: erro e nada se move
+        vehicle("mov-stays", "ZZZ9Z99");
+        String foreign = jdbc.queryForList("select id::text from vehicle where unit_id = ? order by created_at desc", String.class,
+                foreignVehicleUnit).get(0);
+        moveWith("mov-manager", mover, u3, false, "[\"" + ids.get(0) + "\",\"" + foreign + "\"]", "[]").andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("select count(*) from vehicle where unit_id = ?", Integer.class, u4)).isEqualTo(2);
+        assertThat(residents.findById(mover).orElseThrow().getUnitId()).isEqualTo(u4);
+
+        moveWith("mov-manager", mover, u3, false, "[\"" + ids.get(0) + "\"]", "[\"" + pet1.getId() + "\"]")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.vehiclesMoved").value(1)).andExpect(jsonPath("$.petsMoved").value(1));
+        assertThat(jdbc.queryForObject("select unit_id::text from vehicle where id = ?::uuid", String.class, ids.get(0))).isEqualTo(u3.toString());
+        assertThat(jdbc.queryForObject("select unit_id::text from vehicle where id = ?::uuid", String.class, ids.get(1))).isEqualTo(u4.toString());
+        assertThat(petRepo.findById(pet1.getId()).orElseThrow().getUnitId()).isEqualTo(u3);
+        assertThat(petRepo.findById(pet2.getId()).orElseThrow().getUnitId()).isEqualTo(u4);
+        assertThat(jdbc.queryForObject("select count(*) from audit_log where action in ('vehicle.move','pet.move') and resource_id in (?, ?)",
+                Integer.class, ids.get(0), pet1.getId().toString())).isEqualTo(2);
+    }
+
+    @Test
+    void dependentsFollowTheirResponsibleAdultAndOthersStayUnlinkedFromTheMover() throws Exception {
+        UUID unit = u2;
+        UUID adultA = resident("mov-adult-a", unit, ResidentType.OWNER, true);
+        UUID adultB = resident("mov-adult-b", unit, ResidentType.SPOUSE, true);
+        UUID kidA = resident("mov-kid-a", unit, ResidentType.DEPENDENT, false);
+        UUID kidB = resident("mov-kid-b", unit, ResidentType.DEPENDENT, false);
+        UUID kidFree = resident("mov-kid-free", unit, ResidentType.DEPENDENT, false);
+        // a administração liga cada dependente ao seu adulto; dependente não pode ser responsável nem de outra unidade
+        String body = "{\"fullName\":\"%s\",\"residentType\":\"DEPENDENT\",\"active\":true,\"responsibleResidentId\":\"%s\"}";
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base() + "/residents/" + kidA).with(as("mov-manager"))
+                .contentType(MediaType.APPLICATION_JSON).content(body.formatted("mov-kid-a", adultA))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.responsibleResidentId").value(adultA.toString()));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base() + "/residents/" + kidB).with(as("mov-manager"))
+                .contentType(MediaType.APPLICATION_JSON).content(body.formatted("mov-kid-b", adultB))).andExpect(status().isOk());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base() + "/residents/" + kidFree).with(as("mov-manager"))
+                .contentType(MediaType.APPLICATION_JSON).content(body.formatted("mov-kid-free", kidA))).andExpect(status().isBadRequest());
+        UUID elsewhere = resident("mov-adult-elsewhere", u3, ResidentType.OWNER, false);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base() + "/residents/" + kidFree).with(as("mov-manager"))
+                .contentType(MediaType.APPLICATION_JSON).content(body.formatted("mov-kid-free", elsewhere))).andExpect(status().isBadRequest());
+
+        moveWith("mov-manager", adultA, u1, true, "[]", "[]").andExpect(status().isOk())
+                .andExpect(jsonPath("$.dependentsMoved").value(2)); // o dele e o sem responsável
+        assertThat(residents.findById(kidA).orElseThrow().getUnitId()).isEqualTo(u1);
+        assertThat(residents.findById(kidFree).orElseThrow().getUnitId()).isEqualTo(u1);
+        assertThat(residents.findById(kidB).orElseThrow().getUnitId()).isEqualTo(unit); // do outro adulto: fica
+        assertThat(residents.findById(kidB).orElseThrow().getResponsibleResidentId()).isEqualTo(adultB);
+    }
+
+    @Test
+    void dependentsLeftBehindLoseTheLinkToTheAdultWhoLeft() throws Exception {
+        UUID adult = resident("mov-adult-c", u3, ResidentType.OWNER, true);
+        UUID kid = resident("mov-kid-c", u3, ResidentType.DEPENDENT, false);
+        Resident k = residents.findById(kid).orElseThrow();
+        k.linkResponsible(adult);
+        residents.saveAndFlush(k);
+        move("mov-manager", adult, u4, "mudança de apartamento", false).andExpect(status().isOk());
+        Resident after = residents.findById(kid).orElseThrow();
+        assertThat(after.getUnitId()).isEqualTo(u3);
+        assertThat(after.getResponsibleResidentId()).isNull();
     }
 }

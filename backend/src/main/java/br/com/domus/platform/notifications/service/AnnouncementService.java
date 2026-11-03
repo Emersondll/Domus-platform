@@ -4,6 +4,7 @@ import br.com.domus.platform.notifications.entity.Announcement;
 import br.com.domus.platform.notifications.repository.AnnouncementRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.shared.error.NotFoundException;
 import br.com.domus.platform.shared.tenant.AccessLevel;
 import br.com.domus.platform.shared.tenant.AccessService;
@@ -42,12 +43,15 @@ public class AnnouncementService {
      * @param condominiumId condomínio
      * @param title título
      * @param body texto
+     * @param expiresAt prazo para o morador ver o comunicado (nulo = sem prazo; deve estar no futuro)
      */
     @Transactional
-    public Announcement publish(UUID condominiumId, String title, String body) {
+    public Announcement publish(UUID condominiumId, String title, String body, Instant expiresAt) {
         Actor actor = access.require(condominiumId, AccessLevel.OPERATE, "announcement.publish");
+        requireValidExpiry(expiresAt);
         Announcement a = announcements.save(new Announcement(condominiumId, title, body, actor.userId(),
                 Instant.now(clock)));
+        a.expireAt(expiresAt);
         audit.record(actor.userId(), null, condominiumId, "announcement.publish", "announcement",
                 a.getId().toString(), AuditOutcome.SUCCESS);
         notifications.notifyCondominium(condominiumId, NotificationService.ANNOUNCEMENT, title, body);
@@ -72,11 +76,12 @@ public class AnnouncementService {
      * reescreve uma notificação entregue); a lista de comunicados passa a mostrar o texto corrigido. Não notifica de novo.
      */
     @Transactional
-    public Announcement correct(UUID condominiumId, UUID announcementId, String title, String body) {
+    public Announcement correct(UUID condominiumId, UUID announcementId, String title, String body, Instant expiresAt) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "announcement.update");
         Announcement a = announcements.findByIdAndCondominiumId(announcementId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Announcement not found"));
-        a.correct(title, body);
+        requireValidExpiry(expiresAt);
+        a.correct(title, body, expiresAt);
         audit.record(actor.userId(), null, condominiumId, "announcement.update", "announcement", announcementId.toString(),
                 AuditOutcome.SUCCESS);
         return a;
@@ -93,6 +98,13 @@ public class AnnouncementService {
     @Transactional(readOnly = true)
     public Page<Announcement> listMine(UUID condominiumId, Pageable pageable) {
         access.requireResident(condominiumId, "announcement.list.self");
-        return announcements.findByCondominiumId(condominiumId, pageable);
+        return announcements.findActive(condominiumId, Instant.now(clock), pageable);
+    }
+
+    private void requireValidExpiry(Instant expiresAt) {
+        Instant now = Instant.now(clock);
+        if (expiresAt != null && (!expiresAt.isAfter(now) || expiresAt.isAfter(now.plus(java.time.Duration.ofDays(366))))) {
+            throw new InvalidRequestException("Expiry must be in the future and within one year");
+        }
     }
 }

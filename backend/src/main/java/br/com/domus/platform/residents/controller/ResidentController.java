@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -41,10 +42,11 @@ public class ResidentController {
      * @param email        e-mail de contato, opcional
      * @param phone        telefone de contato, opcional
      * @param residentType vínculo com a unidade
+     * @param responsibleResidentId adulto responsável, só para dependente (opcional; deve ser adulto ativo da mesma unidade)
      */
     public record CreateResidentRequest(@NotNull UUID unitId, @NotBlank @Size(max = 160) String fullName,
                                         @Email @Size(max = 190) String email, @Size(max = 30) String phone,
-                                        @NotNull ResidentType residentType) {
+                                        @NotNull ResidentType residentType, UUID responsibleResidentId) {
     }
 
     /**
@@ -55,12 +57,13 @@ public class ResidentController {
      * @param phone        telefone de contato
      * @param residentType vínculo com a unidade
      * @param active       indica se o cadastro está ativo
+     * @param responsibleResidentId adulto responsável pelo dependente, ou nulo
      */
     public record ResidentResponse(UUID id, UUID unitId, String fullName, String email, String phone,
-                                   ResidentType residentType, boolean active) {
+                                   ResidentType residentType, boolean active, UUID responsibleResidentId) {
         static ResidentResponse from(Resident r) {
             return new ResidentResponse(r.getId(), r.getUnitId(), r.getFullName(), r.getEmail(), r.getPhone(),
-                    r.getResidentType(), r.isActive());
+                    r.getResidentType(), r.isActive(), r.getResponsibleResidentId());
         }
     }
 
@@ -74,7 +77,7 @@ public class ResidentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResidentResponse create(@PathVariable UUID condominiumId, @Valid @RequestBody CreateResidentRequest r) {
         return ResidentResponse.from(service.create(condominiumId, r.unitId(), r.fullName(), r.email(),
-                r.phone(), r.residentType()));
+                r.phone(), r.residentType(), r.responsibleResidentId()));
     }
 
     /**
@@ -83,10 +86,11 @@ public class ResidentController {
      * @param phone        telefone de contato, opcional
      * @param residentType vínculo com a unidade (OWNER, TENANT, SPOUSE ou DEPENDENT)
      * @param active       false desativa o cadastro (mudança, fim de contrato); o histórico permanece
+     * @param responsibleResidentId adulto responsável pelo dependente (opcional; ignorado para quem não é dependente)
      */
     public record UpdateResidentRequest(@NotBlank @Size(max = 160) String fullName, @Email @Size(max = 190) String email,
                                         @Size(max = 30) String phone, @NotNull ResidentType residentType,
-                                        @NotNull Boolean active) {
+                                        @NotNull Boolean active, UUID responsibleResidentId) {
     }
 
     /** @param unitId filtra pelos moradores de uma unidade, opcional */
@@ -108,33 +112,40 @@ public class ResidentController {
     public ResidentResponse update(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                    @Valid @RequestBody UpdateResidentRequest r) {
         return ResidentResponse.from(service.update(condominiumId, residentId, r.fullName(), r.email(), r.phone(),
-                r.residentType(), r.active()));
+                r.residentType(), r.active(), r.responsibleResidentId()));
     }
 
     /**
      * @param unitId         unidade de destino (do mesmo condomínio)
      * @param reason         motivo da mudança; vai para a auditoria, sem dado pessoal
-     * @param moveDependents verdadeiro leva também os dependentes ativos da unidade antiga
+     * @param moveDependents verdadeiro leva também os dependentes da unidade antiga que são dele (ou sem responsável definido)
+     * @param vehicleIds     veículos da unidade antiga a levar junto (opcional)
+     * @param petIds         animais da unidade antiga a levar junto (opcional)
      */
     public record MoveResidentRequest(@NotNull UUID unitId, @NotBlank @Size(min = 5, max = 200) String reason,
-                                      boolean moveDependents) {
+                                      boolean moveDependents, @Size(max = 50) List<UUID> vehicleIds,
+                                      @Size(max = 50) List<UUID> petIds) {
     }
 
     /**
      * @param resident          morador já na unidade nova
      * @param dependentsMoved   quantos dependentes foram junto
      * @param invitationsRevoked quantos convites ativos dele para a unidade antiga foram revogados
+     * @param vehiclesMoved     quantos veículos foram junto
+     * @param petsMoved         quantos animais foram junto
      */
-    public record MoveResidentResponse(ResidentResponse resident, int dependentsMoved, int invitationsRevoked) {
+    public record MoveResidentResponse(ResidentResponse resident, int dependentsMoved, int invitationsRevoked, int vehiclesMoved,
+                                       int petsMoved) {
     }
 
     /** Atende `POST /condominiums/{condominiumId}/residents/{residentId}/move`: síndico ou administração muda o morador de unidade. */
     @PostMapping("/{residentId}/move")
     public MoveResidentResponse move(@PathVariable UUID condominiumId, @PathVariable UUID residentId,
                                      @Valid @RequestBody MoveResidentRequest r) {
-        ResidentService.Moved moved = service.move(condominiumId, residentId, r.unitId(), r.reason().trim(), r.moveDependents());
+        ResidentService.Moved moved = service.move(condominiumId, residentId, r.unitId(), r.reason().trim(), r.moveDependents(),
+                r.vehicleIds(), r.petIds());
         return new MoveResidentResponse(ResidentResponse.from(moved.resident()), moved.dependentsMoved(),
-                moved.invitationsRevoked());
+                moved.invitationsRevoked(), moved.vehiclesMoved(), moved.petsMoved());
     }
 
     /**

@@ -20,7 +20,7 @@ public class Vehicle {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(name = "unit_id", nullable = false, updatable = false)
+    @Column(name = "unit_id", nullable = false)
     private UUID unitId;
 
     @Convert(converter = EncryptedStringConverter.class)
@@ -50,6 +50,11 @@ public class Vehicle {
         this.plateHash = plateHash;
         this.model = model;
         this.color = color;
+    }
+
+    /** Passa o veículo para outra unidade do mesmo condomínio (a FK composta garante o condomínio). */
+    public void moveTo(UUID unitId) {
+        this.unitId = unitId;
     }
 
     /** Corrige os dados do veículo (a placa nova já vem normalizada, com o índice cego dela). */

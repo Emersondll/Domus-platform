@@ -10,6 +10,7 @@ import { DeskShiftLog } from "./DeskShiftLog";
 import { DeskVisitors } from "./DeskVisitors";
 import { IncidentsPanel } from "./IncidentsPanel";
 import type { AccessRow, Parcel, VisitRequest } from "./types";
+import { StaffNotices } from "./StaffNotices";
 import { useCondoList } from "./useCondoList";
 
 /** Seções agrupadas por assunto, para a portaria achar cada coisa sem varrer uma lista longa. */
@@ -37,6 +38,7 @@ export function CondoDesk({ token, condominiumId, name }:
   return (
     <section aria-label="Mesa do condomínio">
       <h2>{name}</h2>
+      <StaffNotices token={token} condominiumId={condominiumId} />
       <div className="desk-summary" role="status" aria-label="Resumo da portaria">
         <button className={`card ${parcels.items.length === 0 ? "zero" : ""}`} onClick={() => setTab("Encomendas")}>
           <strong>{parcels.items.length}</strong>

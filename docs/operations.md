@@ -38,6 +38,8 @@ administrador da plataforma; o condomínio, o administrador da plataforma ou o d
 | `AGENT_POLICY_MASTER_SECRET` (≥32) | sim | deriva o segredo de assinatura da política de cada agente |
 | `FIELD_ENCRYPTION_KEYS` (`id:base64`, 32 bytes) · `BLIND_INDEX_KEY` (≥32) | sim | criptografia de dados pessoais (ver abaixo) |
 | `FIELD_ENCRYPTION_ACTIVE_KEY_ID` · `FIELD_ENCRYPTION_MIGRATE` | não | chave ativa (padrão: a primeira) · cifra dados legados/rotaciona na partida |
+| `REQUIRE_VALID_CNPJ` (padrão `true` em produção) | não | exige CNPJ de 14 dígitos com verificadores corretos ao cadastrar empresa e condomínio (e guarda só os dígitos); em desenvolvimento e testes aceita identificadores fictícios, mas 14 dígitos sempre são conferidos |
+| `PROVISIONER_ENABLED` · `PROVISIONER_CLIENT_SECRET` (obrigatório no compose de produção) | não · sim | criação de contas da equipe pela tela (ver "Criar a conta da equipe pela tela") |
 | `DEVICE_HTTP_ALLOWED_HOSTS` | se usar controladora HTTP | anti-SSRF: hosts que a central pode contatar |
 | `BOOTSTRAP_PLATFORM_ADMIN_*` | só na instalação | primeiro administrador |
 | `DB_POOL_SIZE` (20) · `TRUST_FORWARDED_FOR` (true no prod) · `MANAGEMENT_PORT` (8082) | não | ajuste |
@@ -101,14 +103,10 @@ irrecuperáveis, e sem o segredo do agente as políticas já emitidas deixam de 
    (via `docker compose $COMPOSE_FILES exec -T db psql -U portaria -d postgres -c "…"`).
 4. Suba o resto: `docker compose $COMPOSE_FILES up -d`. O Keycloak ignora a importação do realm porque ele já existe no banco.
 5. Confira `/readiness`, entre com uma conta real e rode `scripts/restore-drill.sh` (com as mesmas variáveis) como sanidade.
-- **Exercício feito em 2026-11-03** numa stack de produção real em portas locais (`docker-compose.prod.yml`, só `db` e `keycloak`):
-  banco `portaria` com o esquema real (31 migrações, 636 200 linhas de auditoria, 67 MB) e um usuário criado no Keycloak; `backup-all.sh`
-  levou 4 s; `down -v` apagou o volume; um banco novo recebeu a restauração e, 14 s depois, o Keycloak estava no ar com a importação do
-  realm ignorada (“already exists”). Resultado: **31 migrações e 636 200 linhas de auditoria idênticas**, o usuário voltou com o **mesmo id**
-  (portanto o mesmo `sub`) e a credencial de senha existe — a senha certa passa da checagem de senha (o login pára em “Account is not fully
-  set up”, exigência de configuração da conta no realm) e a errada dá “Invalid user credentials”. **Limites:** a API não foi iniciada
-  sobre o banco restaurado nesse exercício; foi uma máquina de desenvolvimento, não um servidor remoto; o tempo de 14 s vale para 67 MB
-  e não é um RTO; a cópia para fora do servidor e a criptografia GPG não foram exercitadas aqui.
+- **Exercício feito em 2026-11-03** numa stack de produção real em portas locais (`docker-compose.prod.yml`): banco `portaria` com o esquema real (31 migrações, 636 200 linhas de auditoria, 67 MB) e um usuário no Keycloak. `backup-all.sh` **cifrado com GPG** (`BACKUP_GPG_RECIPIENT`, chave descartável) levou 6 s; os backups foram copiados por `rsync` para outro diretório (a "cópia de fora", **simulada**: não houve servidor remoto) e os `.sha256` conferidos lá; `down -v` apagou o volume e os backups locais; um banco novo recebeu a restauração **a partir da cópia de fora, decifrando com a chave GPG** (13 s para os dois bancos) e a API (`app`) subiu sobre ele: **Flyway aplicou a V32 e a V33 sobre o backup antigo, `/actuator/health/readiness` = UP em 15 s**, 33 migrações e 636 200 linhas de auditoria. O usuário do Keycloak voltou com o **mesmo id** (mesmo `sub`) e entra com a senha certa (a errada dá "Invalid user credentials").
+  - **Prova do aviso sobre as chaves:** na primeira tentativa a API caiu em laço ao subir ("Encrypted value uses an unknown key id"), porque o backup tinha sido cifrado com chaves de campo diferentes das do `.env` do servidor novo. Com as **mesmas** chaves ela subiu. Ou seja: restaurar o banco sem o `deploy/.env.prod` original não recupera os dados pessoais, e a API recusa subir em vez de gravar por cima (falha segura).
+  - **Defeito achado e corrigido:** com GPG, o `backup.sh` apagava o dump em claro mas deixava o `.sha256` dele sobrando (conferência na cópia de fora acusava "arquivo inexistente"); agora só o `.sha256` do `.gpg` fica. O `restore.sh` passou a aceitar `.dump.gpg` (confere o checksum do `.gpg`, decifra para um temporário e apaga).
+  - **Limites:** máquina de desenvolvimento, não um servidor remoto; a cópia de fora foi um `rsync` local; o tempo (15 s) vale para 67 MB e não é um RTO; a API foi vista saudável, mas **não** foi testado um login pela API com token do Keycloak restaurado (o emissor do token depende do domínio público); `restore-drill.sh` não foi rodado contra a stack de produção.
 
 ## Saída de rede da API (contenção da stack de produção)
 Na `deploy/docker-compose.prod.yml` só o **proxy** (Caddy) tem saída: ele precisa dela para obter o certificado. Banco, Keycloak e API ficam

@@ -26,7 +26,7 @@ export function Messages({ token, condo }: { token: string; condo: string }) {
   return (
     <section aria-label="Mensagens">
       <h2>Mensagens com a portaria</h2>
-      <p className="hint">Não envie senhas nem dados de pagamento. Em emergência, use o botão de pânico na tela inicial.</p>
+      <p className="hint">Mensagem escrita para a portaria, sem urgência. Para ser atendido agora, use “Chamar a central” na tela inicial; avisos do condomínio chegam em Avisos. Não envie senhas nem dados de pagamento. Em emergência, use o botão de pânico na tela inicial.</p>
       <ul>
         {[...items].reverse().map((m) => (
           <li key={m.id}>

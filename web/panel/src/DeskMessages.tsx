@@ -51,6 +51,10 @@ export function DeskMessages({ token, condominiumId }: { token: string; condomin
   return (
     <div aria-label="Mensagens">
       <h3>Conversas</h3>
+      <p className="hint">
+        Mensagem escrita com <strong>um morador</strong>, sem urgência. Para falar agora, use uma chamada (aba Chamadas); para avisar
+        <strong> todos</strong> os moradores, publique um comunicado (aba Comunicados).
+      </p>
       <ul>
         {threads.map((t) => (
           <li key={t.residentUserId}>

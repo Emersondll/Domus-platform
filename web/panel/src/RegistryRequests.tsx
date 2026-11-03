@@ -44,6 +44,11 @@ export function RegistryRequests({ token, condominiumId }: { token: string; cond
   return (
     <div aria-label="Solicitações de acesso">
       <h3>Código de adesão</h3>
+      <p className="hint">
+        Há dois caminhos para um morador ter acesso ao app: <strong>(1) por código</strong> (esta tela): ele cria a própria conta, usa o código
+        para pedir acesso e você aprova; <strong>(2) direto</strong> (Moradores → Acesso ao app): você informa o identificador da conta dele no
+        provedor de login e o acesso nasce na hora. Use o código sempre que possível, porque dispensa copiar identificadores.
+      </p>
       <p className="hint">Quem tem o código pode pedir para entrar no condomínio, mas só passa a ter acesso depois que você aprovar.</p>
       <p>{code ? <>Código atual: <strong aria-label="Código de adesão">{code}</strong></> : "Nenhum código ativo: ninguém consegue pedir acesso."}</p>
       <button onClick={() => run(() => request(token, "POST", `${base}/join-code`))}>{code ? "Gerar novo código" : "Gerar código"}</button>{" "}

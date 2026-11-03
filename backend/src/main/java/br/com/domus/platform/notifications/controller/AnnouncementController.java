@@ -37,8 +37,10 @@ public class AnnouncementController {
     /**
      * @param title título curto do comunicado
      * @param body  texto do comunicado
+     * @param expiresAt prazo opcional: depois dele o morador deixa de ver o comunicado (a portaria e o síndico continuam vendo)
      */
-    public record PublishRequest(@NotBlank @Size(max = 120) String title, @NotBlank @Size(max = 2000) String body) {
+    public record PublishRequest(@NotBlank @Size(max = 120) String title, @NotBlank @Size(max = 2000) String body,
+                                 Instant expiresAt) {
     }
 
     /**
@@ -46,10 +48,11 @@ public class AnnouncementController {
      * @param title     título
      * @param body      texto
      * @param createdAt quando foi publicado
+     * @param expiresAt prazo de exibição ao morador, ou nulo
      */
-    public record AnnouncementResponse(UUID id, String title, String body, Instant createdAt) {
+    public record AnnouncementResponse(UUID id, String title, String body, Instant createdAt, Instant expiresAt) {
         static AnnouncementResponse from(Announcement a) {
-            return new AnnouncementResponse(a.getId(), a.getTitle(), a.getBody(), a.getCreatedAt());
+            return new AnnouncementResponse(a.getId(), a.getTitle(), a.getBody(), a.getCreatedAt(), a.getExpiresAt());
         }
     }
 
@@ -62,14 +65,14 @@ public class AnnouncementController {
     @PostMapping("/announcements")
     @ResponseStatus(HttpStatus.CREATED)
     public AnnouncementResponse publish(@PathVariable UUID condominiumId, @Valid @RequestBody PublishRequest r) {
-        return AnnouncementResponse.from(service.publish(condominiumId, r.title(), r.body()));
+        return AnnouncementResponse.from(service.publish(condominiumId, r.title(), r.body(), r.expiresAt()));
     }
 
     /** Atende `PUT /condominiums/{condominiumId}/announcements/{announcementId}`: síndico ou administração corrige título e texto, sem notificar de novo. */
     @PutMapping("/announcements/{announcementId}")
     public AnnouncementResponse correct(@PathVariable UUID condominiumId, @PathVariable UUID announcementId,
                                         @Valid @RequestBody PublishRequest r) {
-        return AnnouncementResponse.from(service.correct(condominiumId, announcementId, r.title(), r.body()));
+        return AnnouncementResponse.from(service.correct(condominiumId, announcementId, r.title(), r.body(), r.expiresAt()));
     }
 
     /** Atende `DELETE /condominiums/{condominiumId}/announcements/{announcementId}`: síndico ou administração apaga o comunicado. */

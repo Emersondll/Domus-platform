@@ -112,6 +112,9 @@ public class AccessCommandService {
         if (callId != null && !operations.isCallAssignedTo(condominiumId, callId, actor.userId())) {
             deny(actor, condominiumId, deviceId, "call-not-assigned");
         }
+        if (callId != null) {
+            operations.touchCall(condominiumId, callId, actor.userId());
+        }
         if (attemptId != null && !credentials.isFreshGrant(condominiumId, attemptId)) {
             deny(actor, condominiumId, deviceId, "no-fresh-grant");
         }

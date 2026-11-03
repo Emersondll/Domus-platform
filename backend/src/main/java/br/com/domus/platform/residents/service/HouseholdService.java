@@ -77,6 +77,9 @@ public class HouseholdService {
         }
         Resident member = residents.save(new Resident(condominiumId, unitId, fullName.trim(), null,
                 phone == null || phone.isBlank() ? null : phone.trim(), relationship));
+        if (relationship == ResidentType.DEPENDENT) {
+            member.linkResponsible(me.residentId());
+        }
         audit.record(me.actor().userId(), null, condominiumId, "household.add", "resident",
                 member.getId().toString(), AuditOutcome.SUCCESS);
         return member;

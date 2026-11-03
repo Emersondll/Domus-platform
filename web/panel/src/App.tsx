@@ -13,6 +13,8 @@ import { OverviewPanel, StatusBar } from "./OverviewPanel";
 import { PanicAlerts } from "./PanicAlerts";
 import type { AdminScope, Call, Overview, Shift } from "./types";
 
+/** Sem toque, tecla ou rolagem por mais que isso, o painel não dá mais sinal de vida (ver a chamada devolvida à fila). */
+const PRESENCE_WINDOW_MS = 90_000;
 const POLL_MS = 5000;
 
 /** Atalho recolhido para o monitoramento ao vivo: o vídeo só abre quando o operador pede. Recomeça recolhido a cada condomínio. */
@@ -130,12 +132,23 @@ export function App() {
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Sinal de vida: enquanto o operador atende algo, o painel aberto avisa o servidor a cada 30 s. Sem ele (navegador fechado,
-  // rede caída) a chamada volta sozinha à fila depois do prazo.
+  // Sinal de vida: enquanto o operador atende algo E mexe no painel, ele avisa o servidor a cada 30 s. Painel aberto sem ninguém na frente
+  // (nenhum toque, tecla ou rolagem há mais de 90 s) NÃO dá sinal, para a chamada voltar à fila no prazo. Navegador fechado ou rede caída
+  // também deixam de dar o sinal.
   const attending = isOperator === true && calls.length > 0;
+  const lastInteraction = useRef(Date.now());
+  useEffect(() => {
+    const mark = () => { lastInteraction.current = Date.now(); };
+    const events = ["pointerdown", "keydown", "touchstart", "wheel", "scroll"] as const;
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, mark));
+  }, []);
   useEffect(() => {
     if (!token || !attending) return;
-    const beat = () => { request(token, "POST", "/api/v1/operator/calls/heartbeat").catch(() => undefined); };
+    const beat = () => {
+      if (Date.now() - lastInteraction.current > PRESENCE_WINDOW_MS) return;
+      request(token, "POST", "/api/v1/operator/calls/heartbeat").catch(() => undefined);
+    };
     beat();
     const id = setInterval(beat, 30_000);
     return () => clearInterval(id);
@@ -174,7 +187,7 @@ export function App() {
   }
 
   return (
-    <div className="layout">
+    <div className={`layout${calls.length > 0 || call ? " has-work" : ""}`}>
       <PanicAlerts token={session.token} onAttend={attendPanic} />
       <header>
         <strong>Domus Central</strong>

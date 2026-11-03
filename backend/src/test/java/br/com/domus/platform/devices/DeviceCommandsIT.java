@@ -51,6 +51,7 @@ import tools.jackson.databind.ObjectMapper;
 class DeviceCommandsIT extends AbstractIntegrationTest {
 
     @Autowired MockMvc mvc;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired OperatorCompanyRepository companies;
     @Autowired CondominiumRepository condominiums;
@@ -169,8 +170,12 @@ class DeviceCommandsIT extends AbstractIntegrationTest {
         mvc.perform(get(url("/devices")).with(as("p6-manager")))
                 .andExpect(jsonPath("$.items[0].apiKey").doesNotExist());
         String call = assignedCall("p6-op");
+        jdbc.update("update service_call set last_activity_at = now() - interval '4 minutes' where id = ?::uuid", call);
         MvcResult r = open("p6-op", device.get("id").asString(), "\"callId\":\"" + call + "\"", "k-confirm-1");
         assertThat(r.getResponse().getStatus()).isEqualTo(202);
+        // pedir a abertura é uma ação do operador na chamada: renova o prazo de inatividade
+        assertThat(jdbc.queryForObject("select last_activity_at > now() - interval '1 minute' from service_call where id = ?::uuid",
+                Boolean.class, call)).isTrue();
         String id = body(r).get("id").asString();
         assertThat(body(r).get("state").asString()).isIn("PENDING", "SENT", "CONFIRMED");
         assertThat(awaitState(id, "CONFIRMED")).isEqualTo("CONFIRMED");

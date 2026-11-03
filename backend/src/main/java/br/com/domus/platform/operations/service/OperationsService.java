@@ -382,6 +382,9 @@ public class OperationsService implements OperatorCallReleaser {
             events.save(new CallEvent(r.getId(), r.getCondominiumId(), null, "AUTO_RELEASED",
                     "from " + r.getPreviousUserId() + ": no activity from the operator", at));
             audit.record(null, null, r.getCondominiumId(), "call.auto-release", "call", r.getId().toString(), AuditOutcome.SUCCESS);
+            // o síndico precisa saber que uma chamada ficou sem operador (sem expor quem era o operador nem dados do morador)
+            notifications.notifyManagers(r.getCondominiumId(), NotificationService.CALL_AUTO_RELEASED, "Chamada devolvida à fila",
+                    "Uma chamada ficou sem sinal do operador e voltou à fila para outro atender.");
         }
         return released.size();
     }
@@ -541,6 +544,15 @@ public class OperationsService implements OperatorCallReleaser {
         return calls.findByIdAndCondominiumId(callId, condominiumId)
                 .filter(c -> ServiceCall.ASSIGNED.equals(c.getStatus()) && userId.equals(c.getAssignedUserId()))
                 .isPresent();
+    }
+
+    /**
+     * Uma ação do operador na chamada dele (por exemplo, pedir a abertura de uma porta) conta como presença e renova o prazo, mesmo que
+     * o painel não esteja mandando o sinal de vida.
+     */
+    @Transactional
+    public void touchCall(UUID condominiumId, UUID callId, UUID userId) {
+        calls.touchCall(condominiumId, callId, userId, now());
     }
 
     // ---- internos ----

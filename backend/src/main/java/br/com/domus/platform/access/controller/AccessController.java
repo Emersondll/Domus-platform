@@ -206,16 +206,18 @@ public class AccessController {
     /**
      * @param fullName nome corrigido do visitante
      * @param kind     VISITOR ou SERVICE_PROVIDER
+     * @param unitId   nova unidade, opcional; mudar de unidade revoga os convites ativos do visitante
      */
     public record CorrectVisitorRequest(@NotBlank @Size(max = 200) String fullName,
-                                        @NotNull @Pattern(regexp = "VISITOR|SERVICE_PROVIDER") String kind) {
+                                        @NotNull @Pattern(regexp = "VISITOR|SERVICE_PROVIDER") String kind,
+                                        UUID unitId) {
     }
 
     /** Atende `PUT /condominiums/{condominiumId}/visitors/{visitorId}`: síndico ou administração corrige nome e tipo. */
     @PutMapping("/visitors/{visitorId}")
     public VisitorResponse correctVisitor(@PathVariable UUID condominiumId, @PathVariable UUID visitorId,
                                           @Valid @RequestBody CorrectVisitorRequest r) {
-        return VisitorResponse.from(service.correctVisitor(condominiumId, visitorId, r.fullName(), r.kind()));
+        return VisitorResponse.from(service.correctVisitor(condominiumId, visitorId, r.fullName(), r.kind(), r.unitId()));
     }
 
     private static InvitationResponse toResponse(AccessCredential c, String visitorName, String token) {

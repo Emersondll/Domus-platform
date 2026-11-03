@@ -42,6 +42,9 @@ public class Resident {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(name = "responsible_resident_id")
+    private UUID responsibleResidentId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -71,6 +74,16 @@ public class Resident {
     /** Muda o morador de unidade (mesmo condomínio, garantido pela FK composta); o cadastro e o histórico continuam os mesmos. */
     public void moveTo(UUID unitId) {
         this.unitId = unitId;
+    }
+
+    /** Liga o dependente ao adulto responsável da unidade (nulo desliga). O serviço confere que é adulto da mesma unidade. */
+    public void linkResponsible(UUID responsibleResidentId) {
+        this.responsibleResidentId = responsibleResidentId;
+    }
+
+    /** Retorna o adulto responsável por este dependente, ou nulo. */
+    public UUID getResponsibleResidentId() {
+        return responsibleResidentId;
     }
 
     /** Atualização cadastral feita pela administração do condomínio. */

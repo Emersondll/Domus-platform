@@ -61,6 +61,11 @@ public class Notification {
         }
     }
 
+    /** Retorna o condomínio do aviso. */
+    public UUID getCondominiumId() {
+        return condominiumId;
+    }
+
     /** Retorna o identificador. */
     public UUID getId() {
         return id;

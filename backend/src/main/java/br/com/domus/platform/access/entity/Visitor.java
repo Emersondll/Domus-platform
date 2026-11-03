@@ -20,7 +20,7 @@ public class Visitor {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(name = "unit_id", nullable = false, updatable = false)
+    @Column(name = "unit_id", nullable = false)
     private UUID unitId;
 
     @Convert(converter = EncryptedStringConverter.class)
@@ -45,10 +45,15 @@ public class Visitor {
         this.kind = kind;
     }
 
-    /** Corrige o nome e o tipo (a unidade e o vínculo com os convites não mudam). */
+    /** Corrige o nome e o tipo. */
     public void correct(String fullName, String kind) {
         this.fullName = fullName;
         this.kind = kind;
+    }
+
+    /** Muda a unidade que o visitante visita (os convites antigos são revogados pelo serviço; o histórico não muda). */
+    public void moveTo(UUID unitId) {
+        this.unitId = unitId;
     }
 
     /** Retorna o condomínio dono do registro. */

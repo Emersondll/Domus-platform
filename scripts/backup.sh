@@ -20,7 +20,7 @@ chmod 600 "$FILE"
 (cd "$DEST" && sha256sum "$(basename "$FILE")" > "$(basename "$FILE").sha256")
 if [ -n "${BACKUP_GPG_RECIPIENT:-}" ]; then
   gpg --batch --yes --encrypt --recipient "$BACKUP_GPG_RECIPIENT" --output "$FILE.gpg" "$FILE"
-  rm -f "$FILE"; FILE="$FILE.gpg"
+  rm -f "$FILE" "$FILE.sha256"; FILE="$FILE.gpg"   # o checksum do claro não serve mais (o claro foi apagado)
   (cd "$DEST" && sha256sum "$(basename "$FILE")" > "$(basename "$FILE").sha256")
 fi
 # Retenção local dos backups

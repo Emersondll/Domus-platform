@@ -34,6 +34,8 @@ public class NotificationService {
     public static final String CALL_ASSIGNED = "CALL_ASSIGNED";
     public static final String CAMERA_RELEASED = "CAMERA_RELEASED";
     public static final String CALL_CLOSED = "CALL_CLOSED";
+    /** Aviso à equipe (síndico): uma chamada voltou à fila porque o operador sumiu. */
+    public static final String CALL_AUTO_RELEASED = "CALL_AUTO_RELEASED";
 
     private final NotificationRepository notifications;
     private final NotificationPreferenceRepository preferences;
@@ -84,6 +86,43 @@ public class NotificationService {
         for (UUID userId : residents.findAdultUserIdsOfCondominium(condominiumId)) {
             notifications.save(new Notification(userId, condominiumId, type, title, body, now));
         }
+    }
+
+    /** Notifica os síndicos do condomínio (aviso da equipe); aparece na caixa de avisos do painel. */
+    @Transactional
+    public void notifyManagers(UUID condominiumId, String type, String title, String body) {
+        Instant now = Instant.now(clock);
+        for (UUID userId : notifications.findManagerUserIds(condominiumId)) {
+            notifications.save(new Notification(userId, condominiumId, type, title, body, now));
+        }
+    }
+
+    /** Avisos do usuário da equipe no condomínio (operador, síndico ou administração). */
+    @Transactional(readOnly = true)
+    public Page<Notification> listForStaff(UUID condominiumId, Pageable pageable) {
+        br.com.domus.platform.shared.tenant.Actor actor = access.require(condominiumId,
+                br.com.domus.platform.shared.tenant.AccessLevel.READ, "staff-notification.list");
+        return notifications.findByUserIdAndCondominiumId(actor.userId(), condominiumId, pageable);
+    }
+
+    /** Conta os avisos da equipe ainda não lidos. */
+    @Transactional(readOnly = true)
+    public long unreadCountForStaff(UUID condominiumId) {
+        br.com.domus.platform.shared.tenant.Actor actor = access.require(condominiumId,
+                br.com.domus.platform.shared.tenant.AccessLevel.READ, "staff-notification.count");
+        return notifications.countByUserIdAndCondominiumIdAndReadAtIsNull(actor.userId(), condominiumId);
+    }
+
+    /** Marca um aviso da equipe como lido (só o do próprio usuário). */
+    @Transactional
+    public Notification markReadForStaff(UUID condominiumId, UUID notificationId) {
+        br.com.domus.platform.shared.tenant.Actor actor = access.require(condominiumId,
+                br.com.domus.platform.shared.tenant.AccessLevel.READ, "staff-notification.read");
+        Notification n = notifications.findByIdAndUserId(notificationId, actor.userId())
+                .filter(x -> x.getCondominiumId().equals(condominiumId))
+                .orElseThrow(() -> new NotFoundException("Notification not found"));
+        n.markRead(Instant.now(clock));
+        return n;
     }
 
     /** Notifica um morador específico (resposta da portaria a uma mensagem). O texto da mensagem não é copiado. */

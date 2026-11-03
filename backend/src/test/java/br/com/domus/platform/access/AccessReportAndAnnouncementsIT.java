@@ -50,6 +50,7 @@ class AccessReportAndAnnouncementsIT extends AbstractIntegrationTest {
     @Autowired ResidentRepository residents;
     @Autowired AppUserRepository users;
     @Autowired MembershipRepository memberships;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     UUID condo, otherCondo, unit1, unit2;
 
@@ -68,6 +69,8 @@ class AccessReportAndAnnouncementsIT extends AbstractIntegrationTest {
         resident("ar-res-b", unit2);
         AppUser op = users.save(new AppUser("ar-operator", "ar-operator@example.invalid", "op"));
         memberships.save(new Membership(op.getId(), Role.OPERATOR, null, condo));
+        AppUser mgr = users.save(new AppUser("ar-manager", "ar-manager@example.invalid", "mgr"));
+        memberships.save(new Membership(mgr.getId(), Role.CONDO_MANAGER, null, condo));
     }
 
     private void resident(String subject, UUID unit) {
@@ -179,5 +182,34 @@ class AccessReportAndAnnouncementsIT extends AbstractIntegrationTest {
         }
         mvc.perform(get(base() + "/announcements").with(as("ar-operator")))
                 .andExpect(jsonPath("$.items[0].title").value("Manutenção"));
+    }
+
+    @Test
+    void anExpiredAnnouncementDisappearsForResidentsButStaysInTheHistory() throws Exception {
+        String soon = java.time.Instant.now().plus(java.time.Duration.ofDays(3)).toString();
+        String past = java.time.Instant.now().minusSeconds(60).toString();
+        mvc.perform(post(base() + "/announcements").with(as("ar-operator")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Passado\",\"body\":\"x\",\"expiresAt\":\"" + past + "\"}")).andExpect(status().isBadRequest());
+        String far = java.time.Instant.now().plus(java.time.Duration.ofDays(900)).toString();
+        mvc.perform(post(base() + "/announcements").with(as("ar-operator")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Longe\",\"body\":\"x\",\"expiresAt\":\"" + far + "\"}")).andExpect(status().isBadRequest());
+        String id = json.readTree(mvc.perform(post(base() + "/announcements").with(as("ar-operator")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Festa de sábado\",\"body\":\"Salão reservado\",\"expiresAt\":\"" + soon + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(get(base() + "/me/announcements").with(as("ar-res-a")))
+                .andExpect(jsonPath("$.items[?(@.title=='Festa de sábado')]").isNotEmpty());
+        // o prazo passa (simulado direto no banco, pois o relógio do teste é o real)
+        jdbc.update("update announcement set expires_at = now() - interval '1 minute' where id = ?::uuid", id);
+        mvc.perform(get(base() + "/me/announcements").with(as("ar-res-a")))
+                .andExpect(jsonPath("$.items[?(@.title=='Festa de sábado')]").isEmpty());
+        mvc.perform(get(base() + "/announcements").with(as("ar-operator")))
+                .andExpect(jsonPath("$.items[?(@.title=='Festa de sábado')]").isNotEmpty());
+        // prorrogar pelo PUT faz o comunicado voltar a aparecer para o morador
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base() + "/announcements/" + id)
+                .with(as("ar-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Festa de sábado\",\"body\":\"Salão reservado\",\"expiresAt\":\"" + soon + "\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get(base() + "/me/announcements").with(as("ar-res-a")))
+                .andExpect(jsonPath("$.items[?(@.title=='Festa de sábado')]").isNotEmpty());
     }
 }

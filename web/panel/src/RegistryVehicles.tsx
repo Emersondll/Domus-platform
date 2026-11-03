@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
-import type { Block, Unit } from "./types";
+import type { Block, Unit, Vehicle } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 
-type Vehicle = { id: string; unitId: string; plate: string; model: string | null; color: string | null };
 
 /** Veículos cadastrados pelos moradores, com busca por placa; o síndico corrige a placa ou remove (vendido, trocado). */
 export function RegistryVehicles({ token, condominiumId }: { token: string; condominiumId: string }) {

@@ -31,6 +31,8 @@ springdoc:
     enabled: false
 
 portaria:
+  commercial:
+    require-valid-cnpj: ${REQUIRE_VALID_CNPJ:true}
   security:
     # Equipe só entra se o token trouxer o papel do Keycloak que obriga o OTP (ver docs/security.md). Desligar só para diagnóstico.
     require-staff-mfa-role: ${REQUIRE_STAFF_MFA_ROLE:true}

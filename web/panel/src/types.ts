@@ -51,13 +51,14 @@ export type CommandRow = { id: string; deviceId: string; state: string; failureR
 export type VisitRequest = { id: string; unitId: string; callId: string | null; visitorName: string; kind: string; status: string; createdAt: string; expiresAt: string; decidedAt: string | null; entered?: boolean; hasSnapshot?: boolean };
 
 export type AccessRow = { attemptId: string; occurredAt: string; entrance: string; result: string; reason: string; unitId: string | null; unitLabel: string | null; visitorName: string | null; exitedAt: string | null; exitTicket?: number | null };
-export type Announcement = { id: string; title: string; body: string; createdAt: string };
+export type Announcement = { id: string; title: string; body: string; createdAt: string; expiresAt?: string | null };
 export type ShiftLogEntry = { id: string; shiftId: string | null; kind: string; text: string; createdAt: string };
 
 export type DirectMessage = { id: string; fromResident: boolean; text: string; createdAt: string; read: boolean };
 export type MessageThread = { residentUserId: string; residentName: string; lastAt: string; unread: number };
 export type Block = { id: string; name: string };
-export type Resident = { id: string; unitId: string; fullName: string; email: string | null; phone: string | null; residentType: string; active: boolean };
+export type Resident = { id: string; unitId: string; fullName: string; email: string | null; phone: string | null; residentType: string; active: boolean; responsibleResidentId?: string | null };
+export type Vehicle = { id: string; unitId: string; plate: string; model: string | null; color: string | null };
 export type Pet = { id: string; unitId: string; name: string; species: string; breed: string | null; notes: string | null };
 export type Member = { id: string; userId: string; role: string; condominiumId: string | null; companyId: string | null; residentId: string | null;
   displayName?: string | null };

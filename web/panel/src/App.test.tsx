@@ -493,7 +493,7 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Título"), "Aviso");
     await user.type(screen.getByLabelText("Mensagem"), "Sem água amanhã");
     await user.click(publish);
-    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/announcements"))?.body).toEqual({ title: "Aviso", body: "Sem água amanhã" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/announcements"))?.body).toEqual({ title: "Aviso", body: "Sem água amanhã", expiresAt: null }));
 
     await user.click(screen.getByRole("tab", { name: "Livro de turno" }));
     expect(await screen.findByText("Portão social instável")).toBeInTheDocument();
@@ -598,7 +598,7 @@ describe("operator panel", () => {
     await user.type(screen.getByLabelText("Nome completo"), "Carlos Teste");
     await user.selectOptions(screen.getByLabelText("Vínculo"), "SPOUSE");
     await user.click(screen.getByRole("button", { name: "Cadastrar morador" }));
-    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents"))?.body).toEqual({ unitId: "un1", fullName: "Carlos Teste", email: null, phone: null, residentType: "SPOUSE" }));
+    await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents"))?.body).toEqual({ unitId: "un1", fullName: "Carlos Teste", email: null, phone: null, residentType: "SPOUSE", responsibleResidentId: null }));
     await user.click(screen.getByRole("button", { name: "Detalhes de Joana Teste" }));
     expect(await screen.findByLabelText("Detalhe do morador")).toHaveTextContent("joana@example.invalid");
     await user.click(screen.getByRole("button", { name: "Fechar detalhe" }));
@@ -817,7 +817,7 @@ describe("operator panel", () => {
     await user.type(title, "Manutenção geral");
     await user.click(screen.getByRole("button", { name: "Salvar correção" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/announcements/an1"))?.body)
-      .toEqual({ title: "Manutenção geral", body: "Caixa d'água na sexta" }));
+      .toEqual({ title: "Manutenção geral", body: "Caixa d'água na sexta", expiresAt: null }));
     expect(posted.some((p) => p.url.endsWith("/announcements"))).toBe(false);
   });
 
@@ -833,7 +833,7 @@ describe("operator panel", () => {
     await user.selectOptions(screen.getByLabelText("Tipo"), "SERVICE_PROVIDER");
     await user.click(screen.getByRole("button", { name: "Salvar correção" }));
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/visitors/v1"))?.body)
-      .toEqual({ fullName: "Maria Silva", kind: "SERVICE_PROVIDER" }));
+      .toEqual({ fullName: "Maria Silva", kind: "SERVICE_PROVIDER", unitId: "un1" }));
   });
 
   it("does not offer visitor correction to the operator", async () => {
@@ -860,7 +860,7 @@ describe("operator panel", () => {
     await user.click(screen.getByLabelText(/Levar também os dependentes/));
     await user.click(confirm);
     await waitFor(() => expect(posted.find((p) => p.url.endsWith("/residents/r1/move"))?.body)
-      .toEqual({ unitId: "un2", reason: "mudança de apartamento", moveDependents: true }));
+      .toEqual({ unitId: "un2", reason: "mudança de apartamento", moveDependents: true, vehicleIds: [], petIds: [] }));
     expect(await screen.findByText(/Convites revogados: 2; dependentes levados: 1/)).toBeInTheDocument();
   });
 
@@ -1134,6 +1134,24 @@ describe("operator panel", () => {
   it("sends a heartbeat while the operator attends a call", async () => {
     await login();
     await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/operator/calls/heartbeat")).toBe(true));
+  });
+
+  it("stops sending the heartbeat when nobody touches the panel and resumes on the next interaction", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await login();
+      await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/operator/calls/heartbeat")).toBe(true));
+      const beats = () => posted.filter((p) => p.url === "/api/v1/operator/calls/heartbeat").length;
+      await vi.advanceTimersByTimeAsync(100_000); // 100 s sem ninguém mexendo
+      const afterIdle = beats();
+      await vi.advanceTimersByTimeAsync(60_000); // mais 60 s: passou dos 90 s sem interação, não deve haver sinal novo
+      expect(beats()).toBe(afterIdle);
+      window.dispatchEvent(new Event("pointerdown"));
+      await vi.advanceTimersByTimeAsync(31_000);
+      expect(beats()).toBeGreaterThan(afterIdle);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("warns the operator when a call they attended went back to the queue for inactivity", async () => {

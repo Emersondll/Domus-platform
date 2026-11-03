@@ -58,6 +58,7 @@ public class CredentialService implements InvitationRevoker {
     private final NotificationService notifications;
     private final PolicyVersion policyVersion;
     private final MeterRegistry meters;
+    private final br.com.domus.platform.commercial.service.CommercialService commercial;
 
     /** Construtor de CredentialService; recebe as dependências por injeção. */
     public CredentialService(AccessCredentialRepository credentials, VisitorRepository visitors,
@@ -65,7 +66,8 @@ public class CredentialService implements InvitationRevoker {
                              CredentialTokenCodec codec,
                              br.com.domus.platform.shared.tenant.AccessService access, AuditService audit,
                              Clock clock, NotificationService notifications, PolicyVersion policyVersion,
-                             MeterRegistry meters) {
+                             MeterRegistry meters, br.com.domus.platform.commercial.service.CommercialService commercial) {
+        this.commercial = commercial;
         this.credentials = credentials;
         this.visitors = visitors;
         this.attempts = attempts;
@@ -324,16 +326,42 @@ public class CredentialService implements InvitationRevoker {
      * @param visitorId visitante
      * @param fullName nome corrigido
      * @param kind VISITOR ou SERVICE_PROVIDER
+     * @param unitId nova unidade (nulo ou igual à atual = não muda); mudar revoga os convites ativos do visitante
      */
     @Transactional
-    public Visitor correctVisitor(UUID condominiumId, UUID visitorId, String fullName, String kind) {
+    public Visitor correctVisitor(UUID condominiumId, UUID visitorId, String fullName, String kind, UUID unitId) {
         Actor actor = access.require(condominiumId, AccessLevel.MANAGE, "visitor.update");
         Visitor visitor = visitors.findByIdAndCondominiumId(visitorId, condominiumId)
                 .orElseThrow(() -> new NotFoundException("Visitor not found"));
         visitor.correct(fullName.trim(), kind);
+        String detail = null;
+        if (unitId != null && !unitId.equals(visitor.getUnitId())) {
+            commercial.requireUnit(condominiumId, unitId);
+            int revoked = revokeVisitorInvitations(actor.userId(), condominiumId, visitorId);
+            detail = "unit " + visitor.getUnitId() + " -> " + unitId + "; invitations revoked: " + revoked;
+            visitor.moveTo(unitId);
+        }
         audit.record(actor.userId(), null, condominiumId, "visitor.update", "visitor", visitorId.toString(),
-                AuditOutcome.SUCCESS);
+                AuditOutcome.SUCCESS, detail);
         return visitor;
+    }
+
+    /** Revoga os convites ainda ativos do visitante: foram emitidos por moradores da unidade antiga. */
+    private int revokeVisitorInvitations(UUID actorUserId, UUID condominiumId, UUID visitorId) {
+        Instant now = Instant.now(clock);
+        int revoked = 0;
+        for (AccessCredential c : credentials.findByCondominiumIdAndVisitorId(condominiumId, visitorId)) {
+            if (AccessCredential.ACTIVE.equals(c.getStatus()) && c.getValidUntil().isAfter(now)) {
+                c.revoke(now);
+                audit.record(actorUserId, null, condominiumId, "invitation.revoke", "credential", c.getId().toString(),
+                        AuditOutcome.SUCCESS);
+                revoked++;
+            }
+        }
+        if (revoked > 0) {
+            policyVersion.bump(condominiumId);
+        }
+        return revoked;
     }
 
     @Override

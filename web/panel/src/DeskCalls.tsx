@@ -50,6 +50,10 @@ export function DeskCalls({ token, condominiumId }: { token: string; condominium
   return (
     <div aria-label="Chamadas">
       <h3>Chamadas do condomínio</h3>
+      <p className="hint">
+        Chamada é o contato <strong>imediato</strong> do morador com a portaria. Conversa escrita com um morador fica em Mensagens, e aviso
+        para todos em Comunicados.
+      </p>
       <p className="hint">Todas as chamadas deste condomínio. A fila geral e o atendimento ficam na tela inicial da central.
         {canManage && " Se um operador deixou uma chamada presa (fechou o navegador, saiu), devolva-a à fila para outro assumir."}</p>
       <ul>

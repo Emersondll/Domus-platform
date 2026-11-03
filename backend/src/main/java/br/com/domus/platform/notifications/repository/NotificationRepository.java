@@ -20,4 +20,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     Optional<Notification> findByIdAndUserId(UUID id, UUID userId);
 
     long countByUserIdAndCondominiumIdAndReadAtIsNull(UUID userId, UUID condominiumId);
+
+    /** Síndicos (com associação ativa) do condomínio: quem recebe os avisos da equipe. */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT DISTINCT m.user_id FROM membership m
+            WHERE m.active AND m.role = 'CONDO_MANAGER' AND m.condominium_id = :condominiumId
+            """, nativeQuery = true)
+    List<UUID> findManagerUserIds(@org.springframework.data.repository.query.Param("condominiumId") UUID condominiumId);
 }

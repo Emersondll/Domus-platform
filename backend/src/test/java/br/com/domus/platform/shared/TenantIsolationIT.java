@@ -165,7 +165,7 @@ class TenantIsolationIT extends AbstractIntegrationTest {
 
     @Test
     void onlyPlatformAdminCreatesCompanies() throws Exception {
-        String body = "{\"name\":\"Gamma\",\"taxId\":\"30000000000300\"}";
+        String body = "{\"name\":\"Gamma\",\"taxId\":\"12345678000195\"}";
         mvc.perform(post("/api/v1/companies").with(as("alpha-admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/companies").with(as("platform-admin"))

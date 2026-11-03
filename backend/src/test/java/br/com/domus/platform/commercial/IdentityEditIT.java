@@ -104,9 +104,9 @@ class IdentityEditIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.name").value("Ide A Corrigido"));
         assertThat(condominiums.findById(condoA).orElseThrow().getTaxId()).isEqualTo("11111111000111");
         // CNPJ novo, pela plataforma, com o valor antigo na auditoria
-        putAs("ide-platform", url, "{\"name\":\"Ide A Corrigido\",\"taxId\":\"22222222000122\"}").andExpect(status().isOk());
-        assertThat(condominiums.findById(condoA).orElseThrow().getTaxId()).isEqualTo("22222222000122");
-        assertThat(details("condominium.update", condoA)).anyMatch(d -> d.contains("'11111111000111' -> '22222222000122'"));
+        putAs("ide-platform", url, "{\"name\":\"Ide A Corrigido\",\"taxId\":\"11444777000161\"}").andExpect(status().isOk());
+        assertThat(condominiums.findById(condoA).orElseThrow().getTaxId()).isEqualTo("11444777000161");
+        assertThat(details("condominium.update", condoA)).anyMatch(d -> d.contains("'11111111000111' -> '11444777000161'"));
         assertThat(details("condominium.update", condoA)).anyMatch(d -> d.contains("'Ide A' -> 'Ide A Corrigido'"));
     }
 }

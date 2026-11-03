@@ -30,6 +30,9 @@ public class Announcement {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
     protected Announcement() {
     }
 
@@ -44,9 +47,20 @@ public class Announcement {
     }
 
     /** Corrige o título e o texto (o comunicado continua o mesmo; avisos já entregues não mudam). */
-    public void correct(String title, String body) {
+    public void correct(String title, String body, Instant expiresAt) {
         this.title = title;
         this.body = body;
+        this.expiresAt = expiresAt;
+    }
+
+    /** Define o prazo de exibição ao morador (nulo = sem prazo). */
+    public void expireAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    /** Retorna o prazo de exibição ao morador, ou nulo se não houver. */
+    public Instant getExpiresAt() {
+        return expiresAt;
     }
 
     /** Retorna o identificador. */

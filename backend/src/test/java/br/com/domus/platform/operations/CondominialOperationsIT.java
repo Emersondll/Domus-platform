@@ -52,6 +52,7 @@ import tools.jackson.databind.ObjectMapper;
 class CondominialOperationsIT extends AbstractIntegrationTest {
 
     @Autowired MockMvc mvc;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired OperatorCompanyRepository companies;
     @Autowired CondominiumRepository condominiums;
@@ -302,6 +303,37 @@ class CondominialOperationsIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.kind").value("SERVICE_PROVIDER"));
         mvc.perform(get(base + "/visitors?size=100").with(as("p3-manager")))
                 .andExpect(jsonPath("$.items[?(@.id=='" + visitorId + "')].fullName").value("Maria Correta"));
+    }
+
+    @Test
+    void movingAVisitorToAnotherUnitRevokesItsInvitationsAndKeepsTheHistory() throws Exception {
+        String base = "/api/v1/condominiums/" + condoA;
+        JsonNode inv = invite("p3-res-101", condoA, 3);
+        String credentialId = inv.get("id").asString();
+        var visitors = body(mvc.perform(get(base + "/visitors?size=100").with(as("p3-manager"))).andReturn()).get("items");
+        String visitorId = null;
+        for (JsonNode v : visitors) {
+            if (v.get("unitId").asString().equals(unitA101.toString()) && v.get("fullName").asString().equals("Visitante Teste")) {
+                visitorId = v.get("id").asString();
+            }
+        }
+        org.assertj.core.api.Assertions.assertThat(visitorId).isNotNull();
+        String move = "{\"fullName\":\"Visitante Teste\",\"kind\":\"VISITOR\",\"unitId\":\"%s\"}";
+        // outro condomínio / unidade inexistente / quem não gerencia
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content(move.formatted(unitB))).andExpect(status().isNotFound());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-operator")).contentType(MediaType.APPLICATION_JSON)
+                .content(move.formatted(unitA102))).andExpect(status().isForbidden());
+        mvc.perform(put(base + "/visitors/" + visitorId).with(as("p3-manager")).contentType(MediaType.APPLICATION_JSON)
+                .content(move.formatted(unitA102))).andExpect(status().isOk()).andExpect(jsonPath("$.unitId").value(unitA102.toString()));
+        // o convite que o morador da unidade antiga emitiu deixa de valer; a credencial continua no histórico
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from access_credential where id = ?::uuid", String.class, credentialId)).isEqualTo("REVOKED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select unit_id::text from access_credential where id = ?::uuid", String.class, credentialId)).isEqualTo(unitA101.toString());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select detail from audit_log where action = 'visitor.update' and resource_id = ? and detail is not null order by occurred_at desc limit 1",
+                String.class, visitorId)).contains("invitations revoked: 1");
     }
 
     @Test

@@ -44,6 +44,7 @@ import tools.jackson.databind.ObjectMapper;
 class CallInactivityReleaseIT extends AbstractIntegrationTest {
 
     @Autowired MockMvc mvc;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired OperatorCompanyRepository companies;
     @Autowired CondominiumRepository condominiums;
@@ -65,6 +66,8 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
         Resident r = residents.save(new Resident(condo, unit, "ia-res", null, null, ResidentType.OWNER));
         AppUser ru = users.save(new AppUser("ia-res", "ia-res@example.invalid", "ia-res"));
         memberships.save(Membership.forResident(ru.getId(), condo, r.getId()));
+        AppUser mgr = users.save(new AppUser("ia-manager", "ia-manager@example.invalid", "ia-manager"));
+        memberships.save(new Membership(mgr.getId(), Role.CONDO_MANAGER, null, condo));
         for (String op : new String[] {"ia-op1", "ia-op2"}) {
             AppUser u = users.save(new AppUser(op, op + "@example.invalid", op));
             memberships.save(new Membership(u.getId(), Role.OPERATOR, null, condo));
@@ -87,6 +90,17 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
         assertThat(body(mvc.perform(post("/api/v1/operator/calls/next").with(as(who))).andExpect(status().isOk()).andReturn())
                 .get("id").asString()).isEqualTo(id);
         return id;
+    }
+
+    /** Atende e encerra o que sobrar na fila, para um teste não deixar chamadas que atrapalhem o seguinte. */
+    private void drainQueue() throws Exception {
+        mvc.perform(post("/api/v1/operator/shifts/start").with(as("ia-op1")));
+        for (int i = 0; i < 10; i++) {
+            var r = mvc.perform(post("/api/v1/operator/calls/next").with(as("ia-op1"))).andReturn().getResponse();
+            if (r.getStatus() != 200 || r.getContentAsString().isBlank()) break;
+            mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + json.readTree(r.getContentAsString()).get("id").asString()
+                    + "/close").with(as("ia-op1")));
+        }
     }
 
     private String statusOf(String id) throws Exception {
@@ -132,6 +146,56 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
         for (String id : new String[] {kept, lost}) {
             mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + id + "/close").with(as(id.equals(kept) ? "ia-op1" : "ia-op2")));
         }
+    }
+
+    @Test
+    void anActionOnTheCallRenewsOnlyThatCallAndOnlyForItsOperator() throws Exception {
+        drainQueue();
+        String kept = ordinaryCallClaimedBy("ia-op1");
+        Thread.sleep(1200);
+        UUID callId = UUID.fromString(kept);
+        operations.touchCall(condo, callId, UUID.randomUUID()); // outro usuário: não conta
+        operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).minusMillis(500));
+        assertThat(statusOf(kept)).isEqualTo("QUEUED");
+        // o mesmo operador assume a chamada devolvida de novo (a liberação em massa devolve também as de outros testes: encerra-as)
+        String again = null;
+        for (int i = 0; i < 10 && !kept.equals(again); i++) {
+            again = body(mvc.perform(post("/api/v1/operator/calls/next").with(as("ia-op1"))).andExpect(status().isOk()).andReturn())
+                    .get("id").asString();
+            if (!kept.equals(again)) {
+                mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + again + "/close").with(as("ia-op1")));
+            }
+        }
+        assertThat(again).isEqualTo(kept);
+        Thread.sleep(1200);
+        UUID owner = jdbc.queryForObject("select assigned_user_id from service_call where id = ?::uuid", UUID.class, again);
+        operations.touchCall(condo, UUID.fromString(again), owner);
+        operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).minusMillis(500));
+        assertThat(statusOf(again)).isEqualTo("ASSIGNED");
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + again + "/close").with(as("ia-op1")));
+        drainQueue();
+    }
+
+    @Test
+    void theManagerGetsAStaffNoticeWhenACallIsReturnedToTheQueue() throws Exception {
+        String url = "/api/v1/condominiums/" + condo + "/staff/notifications";
+        long before = body(mvc.perform(get(url + "/unread-count").with(as("ia-manager"))).andExpect(status().isOk()).andReturn()).get("unread").asLong();
+        drainQueue();
+        String id = ordinaryCallClaimedBy("ia-op1");
+        operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).plusSeconds(1));
+        assertThat(statusOf(id)).isEqualTo("QUEUED");
+        assertThat(body(mvc.perform(get(url + "/unread-count").with(as("ia-manager"))).andReturn()).get("unread").asLong()).isEqualTo(before + 1);
+        var first = body(mvc.perform(get(url).with(as("ia-manager"))).andExpect(status().isOk()).andReturn()).get("items").get(0);
+        assertThat(first.get("type").asString()).isEqualTo("CALL_AUTO_RELEASED");
+        assertThat(first.get("body").asString()).doesNotContain("ia-op1"); // não expõe quem era o operador
+        // só o próprio síndico lê e marca como lido; o operador não vê o aviso do síndico, e o morador não tem a caixa da equipe
+        String nid = first.get("id").asString();
+        mvc.perform(post(url + "/" + nid + "/read").with(as("ia-op2"))).andExpect(status().isNotFound());
+        mvc.perform(get(url).with(as("ia-res"))).andExpect(status().isNotFound());
+        mvc.perform(post(url + "/" + nid + "/read").with(as("ia-manager"))).andExpect(status().isOk());
+        assertThat(body(mvc.perform(get(url + "/unread-count").with(as("ia-manager"))).andReturn()).get("unread").asLong()).isEqualTo(before);
+        assertThat(body(mvc.perform(get(url + "/unread-count").with(as("ia-op1"))).andReturn()).get("unread").asLong()).isZero();
+        drainQueue();
     }
 
     @Test

@@ -80,6 +80,9 @@ logging:
     level: "%5p [%X{correlationId:-}]"
 
 portaria:
+  commercial:
+    # Produção exige CNPJ numérico válido (14 dígitos e verificadores); desenvolvimento e testes aceitam identificadores fictícios.
+    require-valid-cnpj: ${REQUIRE_VALID_CNPJ:false}
   identity:
     provisioner:
       # Cria as contas da equipe direto no Keycloak (conta de serviço com permissão só de usuários). Desligado por padrão:

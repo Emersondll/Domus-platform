@@ -21,6 +21,19 @@ procs: list[subprocess.Popen] = []
 failed = False
 
 
+def valid_cnpj(seed):
+    """CNPJ de 14 dígitos com verificadores corretos (a API confere); base de 12 dígitos derivada da semente."""
+    base = [int(c) for c in str(seed)[-12:].zfill(12)]
+    if len(set(base)) == 1:
+        base[0] = (base[0] + 1) % 10
+    def dv(nums, weights):
+        r = sum(n * w for n, w in zip(nums, weights)) % 11
+        return 0 if r < 2 else 11 - r
+    d1 = dv(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    d2 = dv(base + [d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    return "".join(map(str, base + [d1, d2]))
+
+
 def check(name, ok, detail=""):
     global failed
     print(f"  {'ok  ' if ok else 'FAIL'} {name} {detail}")
@@ -956,7 +969,7 @@ try:
         plat.get_by_role("tab", name="Empresas").click()
         emp = f"Empresa E2E {secrets.token_hex(3)}"
         plat.get_by_label("Nome da empresa").fill(emp)
-        plat.get_by_label("CNPJ (só dígitos)").fill(str(int(time.time() * 1000))[-14:].zfill(14))
+        plat.get_by_label("CNPJ (só dígitos)").fill(valid_cnpj(int(time.time() * 1000)))
         plat.get_by_role("button", name="Cadastrar empresa").click()
         expect(plat.get_by_text("Empresa cadastrada.")).to_be_visible()
         plat.locator("#ad-company").select_option(label=emp)
@@ -1019,6 +1032,18 @@ try:
         by_origin = dict(line.split("|") for line in origins.strip().splitlines() if "|" in line)
         check("a auditoria registra o painel como canal das ações feitas pela tela",
               int(by_origin.get("PANEL", "0")) >= 4, str(by_origin))
+        print("== painel no celular (T8: a mesa do condomínio não pode ficar escondida embaixo da fila)")
+        mob = browser.new_context(viewport={"width": 390, "height": 900}, locale="pt-BR").new_page()
+        watch(mob, "painel-celular")
+        mob.goto("http://localhost:5173")
+        mob.get_by_role("button", name="Entrar").click()
+        mob.get_by_role("button", name=re.compile("Residencial Sol")).click()
+        expect(mob.get_by_label("Mesa do condomínio")).to_be_visible()
+        top = mob.evaluate("() => document.querySelector('[aria-label=\"Mesa do condomínio\"]').getBoundingClientRect().top + window.scrollY")
+        check("sem atendimento em andamento, a mesa do condomínio sobe no celular (antes ~800 px; medido 607 px em 2026-11-03: o resto é cabeçalho, resumo e lista de condomínios)", top < 700, f"(topo a {top:.0f} px)")
+        check("e a fila 'Meus atendimentos' vem depois dela", mob.evaluate(
+            "() => document.querySelector('[aria-label=\"Mesa do condomínio\"]').getBoundingClientRect().top"
+            " < document.querySelector('[aria-label=\"Meus atendimentos\"]').getBoundingClientRect().top"))
         check("sem erros de JavaScript/console nas duas telas", not errors, str(errors[:3]) + (" | requisições com erro: " + str(failed_requests[:6]) if errors else ""))
         if os.environ.get("E2E_TRACE_REQUESTS"):
             with open(os.environ["E2E_TRACE_REQUESTS"], "w") as f:

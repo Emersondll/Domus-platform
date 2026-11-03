@@ -12,7 +12,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const base = `/api/v1/condominiums/${condominiumId}`;
   const visitors = useCondoList<Visitor>(token, `${base}/visitors?size=50&sort=createdAt,desc`, 10000);
   const attempts = useCondoList<Attempt>(token, `${base}/access/attempts?size=20&sort=occurredAt,desc`, 10000);
-  const { labelOf: unitNumber } = useUnitLabels(token, condominiumId);
+  const { labelOf: unitNumber, units: allUnits, label: unitLabel } = useUnitLabels(token, condominiumId);
   const onSite = useCondoList<AccessRow>(token, `${base}/access/on-site?size=100`, 10000);
   const requests = useCondoList<VisitRequest>(token, `${base}/visit-requests?size=15`, 5000);
   const [seeing, setSeeing] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
   const [view, setView] = useState<"now" | "history">("now");
   // O servidor decide; a tela só esconde a correção de quem ele recusaria (síndico ou administração).
   const [canManage, setCanManage] = useState(false);
-  const [editingVisitor, setEditingVisitor] = useState<{ id: string; fullName: string; kind: string } | null>(null);
+  const [editingVisitor, setEditingVisitor] = useState<{ id: string; fullName: string; kind: string; unitId: string; originalUnitId: string } | null>(null);
   useEffect(() => {
     request<{ canManage: boolean }>(token, "GET", `${base}/devices/permissions`)
       .then((p) => setCanManage(p?.canManage === true)).catch(() => setCanManage(false));
@@ -32,7 +32,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
     if (!editingVisitor) return;
     setError(null);
     try {
-      await request(token, "PUT", `${base}/visitors/${editingVisitor.id}`, { fullName: editingVisitor.fullName.trim(), kind: editingVisitor.kind });
+      await request(token, "PUT", `${base}/visitors/${editingVisitor.id}`, { fullName: editingVisitor.fullName.trim(), kind: editingVisitor.kind, unitId: editingVisitor.unitId });
       setEditingVisitor(null);
       await visitors.reload();
     } catch (e) {
@@ -206,7 +206,15 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
                   onChange={(e) => setEditingVisitor({ ...editingVisitor, kind: e.target.value })}>
                   <option value="VISITOR">visitante</option>
                   <option value="SERVICE_PROVIDER">prestador</option>
-                </select>{" "}
+                </select>
+                <label htmlFor={`visitor-unit-${v.id}`}>Unidade visitada</label>
+                <select id={`visitor-unit-${v.id}`} value={editingVisitor.unitId}
+                  onChange={(e) => setEditingVisitor({ ...editingVisitor, unitId: e.target.value })}>
+                  {allUnits.map((u) => <option key={u.id} value={u.id}>{unitLabel(u)}</option>)}
+                </select>
+                {editingVisitor.unitId !== editingVisitor.originalUnitId && (
+                  <p className="hint" role="note">Mudar de unidade <strong>revoga os convites ainda ativos</strong> deste visitante (foram emitidos por moradores da unidade antiga). O histórico de entradas não muda.</p>
+                )}{" "}
                 <button disabled={!editingVisitor.fullName.trim()} onClick={saveVisitor}>Salvar correção</button>{" "}
                 <button onClick={() => setEditingVisitor(null)}>Cancelar</button>
               </span>
@@ -215,7 +223,7 @@ export function DeskVisitors({ token, condominiumId }: { token: string; condomin
                 {v.fullName} · {v.kind === "SERVICE_PROVIDER" ? "prestador" : "visitante"} · unidade {unitNumber(v.unitId)}{" "}
                 {canManage && (
                   <button aria-label={`Corrigir visitante ${v.fullName}`}
-                    onClick={() => setEditingVisitor({ id: v.id, fullName: v.fullName, kind: v.kind })}>Corrigir</button>
+                    onClick={() => setEditingVisitor({ id: v.id, fullName: v.fullName, kind: v.kind, unitId: v.unitId, originalUnitId: v.unitId })}>Corrigir</button>
                 )}
               </>
             )}

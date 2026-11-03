@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
-import type { Block, Resident, Unit } from "./types";
+import type { Block, Pet, Resident, Unit, Vehicle } from "./types";
 import { errorMessage, useCondoList } from "./useCondoList";
 import { RegistryAccessIdentities } from "./RegistryAccessIdentities";
 
@@ -20,7 +20,11 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
   const [accessFor, setAccessFor] = useState<string | null>(null);
   const [identitiesFor, setIdentitiesFor] = useState<string | null>(null);
   const [detail, setDetail] = useState<Resident | null>(null);
-  const [moving, setMoving] = useState<{ id: string; toUnit: string; reason: string; dependents: boolean } | null>(null);
+  const [moving, setMoving] = useState<{ id: string; toUnit: string; reason: string; dependents: boolean; vehicleIds: string[]; petIds: string[] } | null>(null);
+  const movingFrom = moving ? residents.items.find((x) => x.id === moving.id)?.unitId : undefined;
+  const moveVehicles = useCondoList<Vehicle>(token, movingFrom ? `${base}/vehicles?unitId=${movingFrom}&size=100` : "");
+  const movePets = useCondoList<Pet>(token, movingFrom ? `${base}/pets?unitId=${movingFrom}&size=100` : "");
+  const [responsible, setResponsible] = useState("");
   const [subject, setSubject] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -48,16 +52,23 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
     if (!moving) return;
     const r = residents.items.find((x) => x.id === moving.id);
     await run(async () => {
-      const res = await request<{ dependentsMoved: number; invitationsRevoked: number }>(token, "POST",
-        `${base}/residents/${moving.id}/move`, { unitId: moving.toUnit, reason: moving.reason.trim(), moveDependents: moving.dependents });
+      const res = await request<{ dependentsMoved: number; invitationsRevoked: number; vehiclesMoved: number; petsMoved: number }>(token, "POST",
+        `${base}/residents/${moving.id}/move`, {
+          unitId: moving.toUnit, reason: moving.reason.trim(), moveDependents: moving.dependents,
+          vehicleIds: moving.vehicleIds, petIds: moving.petIds,
+        });
       setMoving(null);
       setMessage(`${r?.fullName ?? "Morador"} mudou para ${unitLabel(moving.toUnit)}. Convites revogados: ${res?.invitationsRevoked ?? 0}`
-        + `; dependentes levados: ${res?.dependentsMoved ?? 0}. Veículos e animais continuam na unidade antiga.`);
+        + `; dependentes levados: ${res?.dependentsMoved ?? 0}; veículos levados: ${res?.vehiclesMoved ?? 0}; animais levados: ${res?.petsMoved ?? 0}.`);
     });
   }
 
   const setActive = (r: Resident, active: boolean) => run(() => request(token, "PUT", `${base}/residents/${r.id}`,
-    { fullName: r.fullName, email: r.email, phone: r.phone, residentType: r.residentType, active }));
+    { fullName: r.fullName, email: r.email, phone: r.phone, residentType: r.residentType, active, responsibleResidentId: r.responsibleResidentId ?? null }));
+
+  const adults = residents.items.filter((x) => x.active && x.residentType !== "DEPENDENT");
+  const setResponsibleOf = (r: Resident, adultId: string) => run(() => request(token, "PUT", `${base}/residents/${r.id}`,
+    { fullName: r.fullName, email: r.email, phone: r.phone, residentType: r.residentType, active: r.active, responsibleResidentId: adultId || null }), "Responsável atualizado.");
 
   return (
     <div aria-label="Moradores">
@@ -74,10 +85,19 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
               <li key={r.id}>
                 <strong>{r.fullName}</strong> · {TYPE_TEXT[r.residentType] ?? r.residentType}
                 {r.phone ? ` · ${r.phone}` : ""} {!r.active && <span className="badge warn">inativo</span>}{" "}
+                {r.active && r.residentType === "DEPENDENT" && (
+                  <>
+                    <label htmlFor={`resp-${r.id}`}>Responsável de {r.fullName}</label>{" "}
+                    <select id={`resp-${r.id}`} value={r.responsibleResidentId ?? ""} onChange={(e) => void setResponsibleOf(r, e.target.value)}>
+                      <option value="">Não definido</option>
+                      {adults.map((a) => <option key={a.id} value={a.id}>{a.fullName}</option>)}
+                    </select>{" "}
+                  </>
+                )}
                 {r.active ? <button onClick={() => setActive(r, false)} aria-label={`Desativar ${r.fullName}`}>Desativar</button>
                   : <button onClick={() => setActive(r, true)} aria-label={`Reativar ${r.fullName}`}>Reativar</button>}{" "}
                 {r.active && r.residentType !== "DEPENDENT" && <button onClick={() => { setAccessFor(r.id); setMessage(null); }} aria-label={`Acesso ao app de ${r.fullName}`}>Acesso ao app</button>}{" "}
-                {r.active && <button onClick={() => { setMoving({ id: r.id, toUnit: "", reason: "", dependents: false }); setMessage(null); }}
+                {r.active && <button onClick={() => { setMoving({ id: r.id, toUnit: "", reason: "", dependents: false, vehicleIds: [], petIds: [] }); setMessage(null); }}
                   aria-label={`Mudar ${r.fullName} de unidade`}>Mudar de unidade</button>}{" "}
                 {r.active && <button onClick={() => setIdentitiesFor(r.id)} aria-label={`Meios de acesso de ${r.fullName}`}>Meios de acesso</button>}{" "}
                 <button onClick={async () => {
@@ -111,7 +131,7 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
               <h3>Mudar {residents.items.find((x) => x.id === moving.id)!.fullName} de unidade</h3>
               <p className="hint">
                 O cadastro, o acesso ao app, os meios de acesso e o histórico dele vão junto. Os convites ativos que ele criou para a unidade
-                antiga são revogados. Veículos e animais continuam na unidade antiga (não têm dono individual): ajuste-os depois, se for o caso.
+                antiga são revogados. Veículos e animais não têm dono individual: marque abaixo os que vão junto; os demais ficam na unidade antiga.
               </p>
               <label htmlFor="mv-unit">Nova unidade</label>
               <select id="mv-unit" value={moving.toUnit} onChange={(e) => setMoving({ ...moving, toUnit: e.target.value })}>
@@ -123,8 +143,32 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
               {residents.items.find((x) => x.id === moving.id)!.residentType !== "DEPENDENT" && (
                 <label className="check">
                   <input type="checkbox" checked={moving.dependents} onChange={(e) => setMoving({ ...moving, dependents: e.target.checked })} />{" "}
-                  Levar também os dependentes ativos da unidade antiga
+                  Levar também os dependentes dele (e os sem responsável definido)
                 </label>
+              )}
+              {moveVehicles.items.length > 0 && (
+                <fieldset>
+                  <legend>Veículos que vão junto</legend>
+                  {moveVehicles.items.map((v) => (
+                    <label key={v.id} className="check">
+                      <input type="checkbox" checked={moving.vehicleIds.includes(v.id)}
+                        onChange={(e) => setMoving({ ...moving, vehicleIds: e.target.checked ? [...moving.vehicleIds, v.id] : moving.vehicleIds.filter((i) => i !== v.id) })} />{" "}
+                      Veículo {v.plate}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {movePets.items.length > 0 && (
+                <fieldset>
+                  <legend>Animais que vão junto</legend>
+                  {movePets.items.map((p) => (
+                    <label key={p.id} className="check">
+                      <input type="checkbox" checked={moving.petIds.includes(p.id)}
+                        onChange={(e) => setMoving({ ...moving, petIds: e.target.checked ? [...moving.petIds, p.id] : moving.petIds.filter((i) => i !== p.id) })} />{" "}
+                      Animal {p.name}
+                    </label>
+                  ))}
+                </fieldset>
               )}
               <button disabled={!moving.toUnit || moving.reason.trim().length < 5} onClick={() => void confirmMove()}>Confirmar mudança</button>{" "}
               <button onClick={() => setMoving(null)}>Cancelar</button>
@@ -145,7 +189,10 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
           {accessFor && (
             <section aria-label="Acesso ao app">
               <h3>Dar acesso ao app</h3>
-              <p className="hint">Informe o identificador do usuário no provedor de login (Keycloak) e o e-mail da pessoa.</p>
+              <p className="hint">
+                Caminho direto: informe o identificador do usuário no provedor de login (Keycloak) e o e-mail da pessoa. Se a pessoa pode criar a
+                própria conta, é mais simples dar o código de adesão (Solicitações) e aprovar o pedido, sem copiar identificadores.
+              </p>
               <label htmlFor="acc-subject">Identificador do usuário</label>
               <input id="acc-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
               <label htmlFor="acc-email">E-mail</label>
@@ -167,13 +214,23 @@ export function RegistryResidents({ token, condominiumId }: { token: string; con
           <select id="res-type" value={type} onChange={(e) => setType(e.target.value)}>
             {Object.entries(TYPE_TEXT).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
           </select>
+          {type === "DEPENDENT" && (
+            <>
+              <label htmlFor="res-responsible">Adulto responsável (opcional)</label>
+              <select id="res-responsible" value={responsible} onChange={(e) => setResponsible(e.target.value)}>
+                <option value="">Não definido</option>
+                {adults.map((a) => <option key={a.id} value={a.id}>{a.fullName}</option>)}
+              </select>
+            </>
+          )}
           <label htmlFor="res-email">E-mail (opcional)</label>
           <input id="res-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <label htmlFor="res-phone">Telefone (opcional)</label>
           <input id="res-phone" maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} />
           <button disabled={!name.trim()} onClick={() => run(async () => {
             await request(token, "POST", `${base}/residents`,
-              { unitId, fullName: name.trim(), email: email.trim() || null, phone: phone.trim() || null, residentType: type });
+              { unitId, fullName: name.trim(), email: email.trim() || null, phone: phone.trim() || null, residentType: type, responsibleResidentId: type === "DEPENDENT" && responsible ? responsible : null });
+            setResponsible("");
             setName("");
             setEmail("");
             setPhone("");

@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Casos de uso de veículos: visão da portaria e autoatendimento do morador. */
 @Service
-public class VehicleService {
+public class VehicleService implements br.com.domus.platform.shared.UnitAssetMover {
 
     private final VehicleRepository vehicles;
     private final ResidentRepository residents;
@@ -40,6 +40,26 @@ public class VehicleService {
         this.cipher = cipher;
     }
 
+    @Override
+    @Transactional
+    public int moveVehicles(UUID actorUserId, UUID condominiumId, UUID fromUnitId, UUID toUnitId,
+                            java.util.Collection<UUID> vehicleIds) {
+        java.util.Set<UUID> wanted = new java.util.HashSet<>(vehicleIds);
+        if (wanted.isEmpty()) {
+            return 0;
+        }
+        List<Vehicle> found = vehicles.findByCondominiumIdAndUnitIdAndIdIn(condominiumId, fromUnitId, wanted);
+        if (found.size() != wanted.size()) {
+            throw new NotFoundException("Vehicle not found in the old unit");
+        }
+        for (Vehicle v : found) {
+            v.moveTo(toUnitId);
+            audit.record(actorUserId, null, condominiumId, "vehicle.move", "vehicle", v.getId().toString(), AuditOutcome.SUCCESS,
+                    "unit " + fromUnitId + " -> " + toUnitId);
+        }
+        return found.size();
+    }
+
     /** Teto de veículos por condomínio para ordenar por placa em memória (a placa cifrada não ordena no banco). */
     static final int MAX_PLATE_SORT = 5000;
 
@@ -49,8 +69,11 @@ public class VehicleService {
      * busca por placa em vez da ordenação.
      */
     @Transactional(readOnly = true)
-    public Page<Vehicle> list(UUID condominiumId, String plate, Pageable pageable) {
+    public Page<Vehicle> list(UUID condominiumId, String plate, UUID unitId, Pageable pageable) {
         access.require(condominiumId, AccessLevel.READ, "vehicle.list");
+        if (unitId != null) {
+            return vehicles.findByCondominiumIdAndUnitId(condominiumId, unitId, pageable);
+        }
         if (plate != null && !plate.isBlank()) {
             String hash = cipher.blindIndex(FieldCipher.normalizePlate(plate));
             return vehicles.findByCondominiumIdAndPlateHash(condominiumId, hash, pageable);

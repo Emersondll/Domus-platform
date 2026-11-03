@@ -66,8 +66,9 @@ public class VehicleController {
      */
     @GetMapping("/vehicles")
     public PageResponse<VehicleResponse> list(@PathVariable UUID condominiumId, @RequestParam(required = false) String plate,
+                                              @RequestParam(required = false) UUID unitId,
                                               @PageableDefault(size = 50, sort = "createdAt") Pageable pageable) {
-        return PageResponse.of(service.list(condominiumId, plate, pageable), VehicleResponse::from);
+        return PageResponse.of(service.list(condominiumId, plate, unitId, pageable), VehicleResponse::from);
     }
 
     /**

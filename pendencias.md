@@ -7,23 +7,20 @@ o que falta, o que está arriscado e o que depende de uma decisão de quem é ti
 
 ## 0. Lista viva das pendências abertas (2026-11-03)
 
-**Evidência atual (a tabela da seção 1 é histórica; os números vigentes estão em [`docs/STATUS.md`](docs/STATUS.md)):** `mvn verify` exit 0 com 41 unitários + 226 de integração; web 97 (painel) + 46 (app do morador) com build exit 0; `restore-drill` PASS (31 migrações, V1–V31); `load-test` 0 erros nos 8 cenários; `e2e-browser` 106 verificações; `verify_keycloak.py` OK e `e2e-oidc-browser.py` 18 verificações (Keycloak 26.8 real).
+**Evidência atual (a tabela da seção 1 é histórica; os números vigentes estão em [`docs/STATUS.md`](docs/STATUS.md)):** `mvn verify` exit 0 com 44 unitários + 234 de integração; web 100 (painel) + 46 (app do morador) com build exit 0; `restore-drill` PASS (33 migrações, V1–V33); `load-test` 0 erros nos 8 cenários (banco novo); `e2e-browser` 108 verificações, exit 0; `verify_keycloak.py` 25 verificações e `e2e-oidc-browser.py` 21 (Keycloak 26.8 real, inclui o primeiro acesso completo de uma conta criada pela tela).
 
-**Fechadas desde 2026-10-31:** T13, F2, F3, F4, F5, C1, T11, T9; F6, R1, T8 F1 (equipe, criação de conta pela tela) e backup/restauração do VPS (restos abaixo); exigência de MFA da equipe na API e autocadastro ligado; contenção de rede da stack de produção (e correção das portas do Prometheus/Grafana). T10 virou "sem ação" (dado de teste).
+**Fechadas desde 2026-10-31:** T13, F2, F3, F4, F5, C1, T11, T9, F6, R1 e F1; exigência de MFA da equipe na API e autocadastro ligado; contenção de rede da stack de produção (e correção das portas do Prometheus/Grafana); backup/restauração do VPS (com GPG, cópia de fora simulada e a API subindo sobre o banco restaurado); caixa de avisos da equipe; repetição da varredura de imagens. T10 virou "sem ação" (dado de teste). **O que resta de cada um está na tabela A abaixo.**
 
 ### A. Posso fazer sozinho (sem decisão sua)
+Rodada de 2026-11-03: todos os itens abaixo foram feitos; o que sobra de cada um é o resto honesto, não novo trabalho de código.
 | Item | O que falta |
 |---|---|
-| **F1 (resto)** | Feito em 2026-11-03 (criação da conta pela tela). Falta provar no navegador real o primeiro acesso completo (OTP + troca de senha) e testar num Keycloak já existente (client criado à mão). Risco aceito: API comprometida pode criar contas e papéis no Keycloak. |
-| **Backup/restauração (resto)** | Feito em 2026-11-03 (`docs/operations.md`): `scripts/backup-all.sh` salva `portaria` **e** `keycloak` (antes só um banco; sem o `keycloak` ninguém entraria após restaurar); procedimento de servidor novo exercitado numa stack de produção real. Falta: API sobre o banco restaurado, cópia offsite/GPG, RTO em servidor remoto. |
-| **F6 (resto)** | Expirar comunicado por prazo; mudar a unidade de um visitante. |
-| **F3 (resto)** | Validar o dígito verificador do CNPJ (os dados de teste usam CNPJs fictícios, então exige cuidado). |
-| **F4 (resto)** | Escolher na tela quais veículos e animais levar numa mudança de unidade; ligar dependente a um adulto específico. |
-| **R1 (resto)** | Orientar na tela os três canais de comunicação e a conta com `sub` × associação por código. |
-| **T8** | A mesa do condomínio continua a ~800 px do topo no celular; só reordenar o painel resolve. |
-| **Aviso ativo ao síndico (C1)** | Falta uma caixa de notificação para a equipe (hoje só moradores têm). |
-| **C1 (resto)** | Operador ausente com o painel aberto continua dando sinal de vida; abrir porta não renova o prazo sozinha. |
-| **Imagens de contêiner** | Repetir a varredura de vulnerabilidades (a última foi nas versões anteriores). |
+| **F1 (equipe)** | Primeiro acesso completo provado no navegador (senha provisória → OTP → nova senha → painel). Falta testar num **Keycloak já existente**, onde o client `portaria-provisioner` precisa ser criado à mão (passos em `docs/operations.md`). Risco aceito: API comprometida pode criar contas e papéis no Keycloak. |
+| **Backup/restauração** | Exercitado com GPG, cópia de fora **simulada** (`rsync` local) e a API subindo sobre o banco restaurado (V32/V33 aplicadas por cima de um backup antigo). Falta: servidor remoto de verdade, RTO real, login pela API com token do Keycloak restaurado (depende do domínio público) e `restore-drill` contra a stack de produção. |
+| **T8** | Melhorou de ~800 px para **~607 px** (a mesa vem antes da fila quando não há atendimento). O resto é cabeçalho, barra de resumo e lista de condomínios; reduzir mais é decisão de desenho do painel. |
+| **C1** | Painel sem toque/tecla/rolagem por 90 s deixa de dar sinal; abrir porta renova o prazo. Outras ações na chamada feitas só pela API (sem o painel) ainda não renovam; o aviso ao síndico vai por **caixa no painel** (sem push, sem e-mail). |
+| **Imagens de contêiner** | Varredura repetida (`scripts/scan-images.sh`, resultado em `docs/security.md`). Ainda há achados em `postgres:17` (2 CRIT/87 HIGH), `caddy:2` (1/9) e `mediamtx:1.15.1` (1/45) **sem correção aplicada**: as tags móveis mais novas de Caddy e Postgres têm os mesmos números hoje; trocar versão exige reteste da pilha. |
+| **CNPJ em produção** | `REQUIRE_VALID_CNPJ` (ligado em produção) recusa CNPJ fictício: confira os cadastros reais antes de ligar numa instalação existente. |
 
 ### B. Dependem de você (decisão ou texto)
 | Item | O que falta |

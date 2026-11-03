@@ -17,6 +17,8 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
 
     List<Pet> findByCondominiumIdAndUnitIdAndActiveTrueOrderByName(UUID condominiumId, UUID unitId);
 
+    List<Pet> findByCondominiumIdAndUnitIdAndIdInAndActiveTrue(UUID condominiumId, UUID unitId, java.util.Collection<UUID> ids);
+
     long countByCondominiumIdAndUnitIdAndActiveTrue(UUID condominiumId, UUID unitId);
 
     Optional<Pet> findByIdAndCondominiumId(UUID id, UUID condominiumId);

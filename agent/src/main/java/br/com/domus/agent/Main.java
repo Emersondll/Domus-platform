@@ -65,7 +65,7 @@ public final class Main {
                         } catch (LocalStore.StorageException e) {
                             return false;
                         }
-                    }, () -> System.exit(75), clock); // 75 = reinício pedido; o systemd/launcher sobe a nova versão
+                    }, () -> System.exit(75), clock, u.trustedKeysFile()); // 75 = reinício pedido; o systemd/launcher sobe a nova versão
             scheduler.scheduleWithFixedDelay(updater::checkOnce, u.firstCheck().toSeconds(), u.interval().toSeconds(), TimeUnit.SECONDS);
             log.info("Automatic updates enabled (channel {}, every {} h, running {})", u.channel(), u.interval().toHours(),
                     AgentUpdater.runningVersion());

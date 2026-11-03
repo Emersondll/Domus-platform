@@ -16,8 +16,9 @@ import java.util.Optional;
  * @param interval  intervalo entre verificações (padrão 24 h)
  * @param jarPath   jar executado pelo systemd, que será substituído
  * @param pending   marcador de atualização não confirmada
+ * @param trustedKeysFile conjunto de chaves de lançamento gravado por uma rotação assinada; se existir, vale no lugar da variável de ambiente
  */
-public record UpdateConfig(URI baseUrl, String publicKey, String channel, Duration firstCheck, Duration interval, Path jarPath, Path pending) {
+public record UpdateConfig(URI baseUrl, String publicKey, String channel, Duration firstCheck, Duration interval, Path jarPath, Path pending, Path trustedKeysFile) {
 
     public static Optional<UpdateConfig> fromEnv(Path dataDir) {
         String url = System.getenv("PORTARIA_UPDATE_URL");
@@ -28,11 +29,20 @@ public record UpdateConfig(URI baseUrl, String publicKey, String channel, Durati
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("PORTARIA_UPDATE_URL is set but PORTARIA_UPDATE_PUBLIC_KEY is missing");
         }
-        return Optional.of(new UpdateConfig(URI.create(url.trim()), key.trim(),
+        Path rotated = dataDir.resolve("update-trusted-keys");
+        String keys = key.trim();
+        try {
+            if (java.nio.file.Files.isRegularFile(rotated) && !java.nio.file.Files.readString(rotated).isBlank()) {
+                keys = java.nio.file.Files.readString(rotated).trim(); // houve rotação: o conjunto novo substitui o da instalação
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("cannot read " + rotated, e);
+        }
+        return Optional.of(new UpdateConfig(URI.create(url.trim()), keys,
                 System.getenv().getOrDefault("PORTARIA_UPDATE_CHANNEL", "stable"),
                 Duration.ofSeconds(Long.parseLong(System.getenv().getOrDefault("PORTARIA_UPDATE_FIRST_CHECK_SECONDS", "300"))),
                 Duration.ofHours(Long.parseLong(System.getenv().getOrDefault("PORTARIA_UPDATE_CHECK_HOURS", "24"))),
                 Path.of(System.getenv().getOrDefault("PORTARIA_JAR_PATH", dataDir.resolve("bin/agent.jar").toString())),
-                dataDir.resolve("update-pending")));
+                dataDir.resolve("update-pending"), rotated));
     }
 }

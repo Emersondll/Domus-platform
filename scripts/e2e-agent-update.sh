@@ -13,13 +13,13 @@ ok() { echo "  ok   $1"; }
 die() { echo "  FAIL $1"; exit 1; }
 
 echo "== build das versões 1.0.0 e 1.1.0 (cópias; o pom do repositório não muda)"
-for v in 1.0.0 1.1.0; do
+for v in 1.0.0 1.1.0 1.2.0 1.3.0; do
   mkdir -p "$WORK/src-$v"; cp -r agent/pom.xml agent/src "$WORK/src-$v/"
   sed -i "0,/<version>0.1.0-SNAPSHOT<\/version>/s//<version>$v<\/version>/" "$WORK/src-$v/pom.xml"
   (cd "$WORK/src-$v" && mvn -q -DskipTests package >/dev/null 2>&1) || die "build $v"
   cp "$WORK/src-$v/target/agent-$v.jar" "$WORK/agent-$v.jar" 2>/dev/null || cp "$(ls "$WORK/src-$v"/target/*.jar | grep -v original | head -1)" "$WORK/agent-$v.jar"
 done
-ok "dois jars gerados"
+ok "quatro jars gerados"
 
 echo "== chaves e lançamento assinado da 1.1.0"
 java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/keys" >/dev/null
@@ -64,4 +64,25 @@ java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/
 run_launcher_for 12 "$WORK/run4.log"
 grep -q "update manifest rejected: invalid signature" "$WORK/run4.log" && ok "manifesto assinado por outra chave recusado" || { cat "$WORK/run4.log"; die "outra chave não foi recusada"; }
 [ "$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)" = "$before" ] && ok "o jar em disco não mudou"
+echo "== rotação de chaves: a chave principal vazou; a de reserva assina uma versão que troca o conjunto de chaves confiáveis"
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/reserve" >/dev/null
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool genkey "$WORK/reserve2" >/dev/null
+RES=$(cat "$WORK/reserve/release-public.key"); RES2=$(cat "$WORK/reserve2/release-public.key")
+export PORTARIA_UPDATE_PUBLIC_KEY="$PUB,$RES"        # como instalado: principal + reserva
+java -cp "$WORK/agent-1.2.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/agent-1.2.0.jar" 1.2.0 stable "$WORK/reserve/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" "$RES,$RES2" >/dev/null
+set +e; timeout 40 agent/install/portaria-agent-run.sh > "$WORK/run5.log" 2>&1; code=$?; set -e
+[ "$code" = 75 ] || { cat "$WORK/run5.log"; die "rotação: esperava saída 75, veio $code"; }
+ok "a chave de reserva assinou a 1.2.0 e o agente a instalou"
+[ "$(tr -d '\n' < "$WORK/data/update-trusted-keys")" = "$RES,$RES2" ] && ok "o novo conjunto de chaves ficou gravado" || die "conjunto de chaves não gravado"
+run_launcher_for 8 "$WORK/run6.log"
+grep -q "running 1.2.0" "$WORK/run6.log" && ok "agora executando 1.2.0" || { cat "$WORK/run6.log"; die "não subiu a 1.2.0"; }
+before=$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/agent-1.3.0.jar" 1.3.0 stable "$WORK/keys/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" >/dev/null
+run_launcher_for 12 "$WORK/run7.log"
+grep -q "update manifest rejected: invalid signature" "$WORK/run7.log" && ok "a chave principal vazada já não consegue lançar nada (mesmo depois do reinício)" || { cat "$WORK/run7.log"; die "a chave vazada ainda vale"; }
+[ "$(sha256sum "$WORK/data/bin/agent.jar" | cut -d' ' -f1)" = "$before" ] && ok "o jar em disco não mudou"
+java -cp "$WORK/agent-1.1.0.jar" br.com.domus.agent.update.SignTool sign "$WORK/agent-1.3.0.jar" 1.3.0 stable "$WORK/reserve2/release-private.key" "$WORK/release" "2020-01-01T00:00:00Z" >/dev/null
+set +e; timeout 40 agent/install/portaria-agent-run.sh > "$WORK/run8.log" 2>&1; code=$?; set -e
+[ "$code" = 75 ] || { cat "$WORK/run8.log"; die "esperava saída 75 com a nova reserva, veio $code"; }
+cmp -s "$WORK/data/bin/agent.jar" "$WORK/agent-1.3.0.jar" && ok "a nova chave de reserva lança a 1.3.0" || die "1.3.0 não instalada"
 echo "== OK"

@@ -8,7 +8,9 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.HexFormat;
 import java.util.regex.Pattern;
 
@@ -25,37 +27,76 @@ public final class UpdateVerifier {
     private static final Pattern FILE = Pattern.compile("[A-Za-z0-9._-]{1,100}\\.jar");
     private static final Pattern VERSION = Pattern.compile("\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}");
 
-    private final PublicKey releaseKey;
+    /** Chaves de lançamento confiáveis (principal e reserva); qualquer uma valida um manifesto. Troca-se só por rotação assinada. */
+    private volatile List<PublicKey> releaseKeys;
     private final String channel;
     private final long maxBytes;
 
     /**
-     * @param publicKeyBase64 chave pública de lançamento (X.509, base64), configurada na instalação do agente
-     * @param channel         canal aceito
-     * @param maxBytes        tamanho máximo aceito para o jar
+     * @param publicKeysBase64 chaves públicas de lançamento (X.509, base64), separadas por vírgula: a principal e, se houver, a de
+     *                         reserva. Uma só chave continua funcionando como antes.
+     * @param channel          canal aceito
+     * @param maxBytes         tamanho máximo aceito para o jar
      */
-    public UpdateVerifier(String publicKeyBase64, String channel, long maxBytes) {
-        try {
-            this.releaseKey = KeyFactory.getInstance("Ed25519")
-                    .generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyBase64.trim())));
-        } catch (GeneralSecurityException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("PORTARIA_UPDATE_PUBLIC_KEY is not a valid Ed25519 public key", e);
+    public UpdateVerifier(String publicKeysBase64, String channel, long maxBytes) {
+        this.releaseKeys = parseKeys(publicKeysBase64);
+        if (releaseKeys.isEmpty()) {
+            throw new IllegalArgumentException("PORTARIA_UPDATE_PUBLIC_KEY has no key");
         }
         this.channel = channel;
         this.maxBytes = maxBytes;
     }
 
-    /** Verifica o manifesto; a ordem importa: primeiro a assinatura, só depois se confia em qualquer outro campo. */
-    public void verifyManifest(UpdateManifest m, String runningVersion, Instant now) throws Rejected {
+    private static List<PublicKey> parseKeys(String csv) {
+        List<PublicKey> keys = new ArrayList<>();
         try {
-            Signature sig = Signature.getInstance("Ed25519");
-            sig.initVerify(releaseKey);
-            sig.update(m.signedPayload().getBytes(StandardCharsets.UTF_8));
-            if (m.signature() == null || !sig.verify(Base64.getDecoder().decode(m.signature()))) {
-                throw new Rejected("invalid signature");
+            KeyFactory kf = KeyFactory.getInstance("Ed25519");
+            for (String k : csv.split(",")) {
+                if (!k.isBlank()) {
+                    keys.add(kf.generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(k.trim()))));
+                }
             }
         } catch (GeneralSecurityException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("PORTARIA_UPDATE_PUBLIC_KEY is not a valid list of Ed25519 public keys", e);
+        }
+        return List.copyOf(keys);
+    }
+
+    /** Passa a confiar só nestas chaves (rotação já verificada e instalada). */
+    public void replaceKeys(List<String> publicKeysBase64) {
+        this.releaseKeys = parseKeys(String.join(",", publicKeysBase64));
+    }
+
+    /** Verifica o manifesto; a ordem importa: primeiro a assinatura, só depois se confia em qualquer outro campo. */
+    public void verifyManifest(UpdateManifest m, String runningVersion, Instant now) throws Rejected {
+        boolean signed = false;
+        if (m.signature() != null) {
+            for (PublicKey key : releaseKeys) {
+                try {
+                    Signature sig = Signature.getInstance("Ed25519");
+                    sig.initVerify(key);
+                    sig.update(m.signedPayload().getBytes(StandardCharsets.UTF_8));
+                    if (sig.verify(Base64.getDecoder().decode(m.signature()))) {
+                        signed = true;
+                        break;
+                    }
+                } catch (GeneralSecurityException | IllegalArgumentException e) {
+                    // tenta a próxima chave
+                }
+            }
+        }
+        if (!signed) {
             throw new Rejected("invalid signature");
+        }
+        if (!m.trustedKeys().isEmpty()) {
+            try {
+                if (m.trustedKeys().size() > 4 || new java.util.HashSet<>(m.trustedKeys()).size() != m.trustedKeys().size()) {
+                    throw new Rejected("malformed manifest");
+                }
+                parseKeys(String.join(",", m.trustedKeys()));
+            } catch (IllegalArgumentException e) {
+                throw new Rejected("malformed manifest");
+            }
         }
         if (!channel.equals(m.channel())) {
             throw new Rejected("different channel");

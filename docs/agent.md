@@ -62,7 +62,19 @@ Desligada por padrão. Para ligar, defina `PORTARIA_UPDATE_URL` (pasta HTTPS com
   `java -cp agent/target/agent-1.2.0.jar br.com.domus.agent.update.SignTool genkey ./chaves` (uma vez; a pública vai para os agentes) e
   `java -cp agent/target/agent-1.2.0.jar br.com.domus.agent.update.SignTool sign agent/target/agent-1.2.0.jar 1.2.0 stable ./chaves/release-private.key ./release [notBefore]`;
   publique o conteúdo de `./release` na `PORTARIA_UPDATE_URL`.
-- **Provas:** `UpdateTest` (14 cenários), `scripts/test-agent-launcher.sh` e `scripts/e2e-agent-update.sh` (jars reais: 1.0.0 → 1.1.0 → reinício → confirmação; manifesto adulterado e de outra chave recusados).
+- **Custódia da chave de lançamento (decisão D4, 2026-11-03):** a chave privada fica **só com o titular do produto, offline**: num cofre de senhas ou
+  dispositivo dele (pendrive/token), **nunca** no GitHub, na CI, na central nem em servidor. Quem a tem consegue distribuir código para todos os agentes,
+  então a regra é: assinar sempre na máquina do titular, copiar `./release` para o servidor de arquivos e **não** deixar a chave nessa máquina depois.
+  Mantenha uma segunda cópia da chave privada em outro local físico e confira de vez em quando que ela abre (assine uma versão de teste num diretório descartável).
+- **Chave de reserva e rotação:** instale em cada agente **duas** chaves públicas, separadas por vírgula, em `PORTARIA_UPDATE_PUBLIC_KEY=<principal>,<reserva>`
+  (gere a reserva com `genkey` em outra pasta e guarde a privada dela **em outro lugar**, desconectada da principal). Qualquer uma das duas valida um lançamento.
+  **Se a principal se perder ou vazar:** assine uma nova versão com a **reserva** acrescentando as chaves que devem valer dali em diante
+  (`sign … <pastaDeSaida> - <reserva>,<novaReserva>`, de 1 a 4 chaves, **sem** a comprometida). O agente instala, grava o novo conjunto em
+  `<dados>/update-trusted-keys` (que passa a valer no lugar da variável de ambiente, inclusive depois de reiniciar) e a chave vazada **deixa de valer**.
+  Gere em seguida uma nova reserva para voltar a ter duas. **Atenção à janela de risco:** até a rotação chegar a cada agente (próxima verificação, no máximo
+  `PORTARIA_UPDATE_CHECK_HOURS`, 24 h por padrão), quem tem a chave vazada ainda consegue lançar código; por isso a rotação é a primeira ação diante de um vazamento,
+  e um agente desligado só troca o conjunto quando voltar a ligar.
+- **Provas:** `UpdateTest` (18 cenários, 4 deles de reserva e rotação), `scripts/test-agent-launcher.sh` e `scripts/e2e-agent-update.sh` (jars reais: 1.0.0 → 1.1.0 → reinício → confirmação; manifesto adulterado e de outra chave recusados; **rotação**: a reserva assina a 1.2.0 trocando o conjunto, a chave principal vazada passa a ser recusada mesmo depois do reinício, e a nova reserva lança a 1.3.0).
 
 ## Validado (teste automatizado: 43 no agente, 12 do lado central, mais `scripts/e2e-contingency.sh`)
 1 queda de internet; 2 API central indisponível (503); 3 reinicialização; 4 perda da controladora; 5 eventos/comandos
@@ -77,7 +89,7 @@ dentro para fora. Detalhes, limites e prova em `docs/cameras.md`. `br.com.domus.
 Testes: 8 de unidade (comando, configuração, chave rotacionada, supervisão) e `scripts/e2e-agent-video.py` (também no CI, job "Vídeo do agente").
 
 ## Limitações conhecidas (honestas)
-- **Atualização:** não há rotação da chave de lançamento (trocá-la exige reinstalar a chave pública nos agentes); não há instalador/pacote (.deb); só Linux/systemd; o jar
+- **Atualização:** a rotação da chave de lançamento exige que a chave de **reserva** já esteja instalada nos agentes (agentes instalados só com a principal precisam ter `PORTARIA_UPDATE_PUBLIC_KEY` ajustada à mão uma vez); qualquer chave confiável também pode rotacionar o conjunto (por isso a de reserva merece a mesma guarda); não há instalador/pacote (.deb); só Linux/systemd; o jar
   não tem assinatura de código da JVM (a confiança é a do manifesto); a reversão depende do launcher (se o jar novo nem inicia, o launcher cobre; se o launcher for
   alterado por alguém com root, nada protege); a custódia da chave privada de lançamento é responsabilidade de quem publica.
 - **Controladora simulada:** `SimulatedDoor`. Falta o adaptador da controladora real (depende do fabricante e do teste

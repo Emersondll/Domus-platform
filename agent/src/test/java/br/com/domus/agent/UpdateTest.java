@@ -108,6 +108,85 @@ class UpdateTest {
         assertThat(restarted).isFalse();
     }
 
+    private static String b64(KeyPair k) {
+        return Base64.getEncoder().encodeToString(k.getPublic().getEncoded());
+    }
+
+    /** Manifesto 1.2.0 (ou a versão dada) com rotação de chaves, assinado por {@code signer}. */
+    private String rotationManifest(String version, KeyPair signer, java.util.List<String> keys) throws Exception {
+        String sha = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(newJar));
+        UpdateManifest unsigned = new UpdateManifest(version, "stable", "portaria-agent-" + version + ".jar", sha, newJar.length,
+                NOW.minusSeconds(60), "", keys);
+        Signature sg = Signature.getInstance("Ed25519");
+        sg.initSign(signer.getPrivate());
+        sg.update(unsigned.signedPayload().getBytes(StandardCharsets.UTF_8));
+        return String.format("{\"version\":\"%s\",\"channel\":\"stable\",\"fileName\":\"%s\",\"sha256\":\"%s\",\"size\":%d,"
+                        + "\"notBefore\":\"%s\",\"trustedKeys\":\"%s\",\"signature\":\"%s\"}", version, unsigned.fileName(), sha,
+                newJar.length, NOW.minusSeconds(60), String.join(",", keys), Base64.getEncoder().encodeToString(sg.sign()));
+    }
+
+    private AgentUpdater updaterWithKeys(String keysCsv, Path keysFile) {
+        return new AgentUpdater(URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/"),
+                new UpdateVerifier(keysCsv, "stable", 1 << 20), "1.0.0", jarPath, pending, idle::get, () -> restarted.set(true), clock,
+                keysFile);
+    }
+
+    @Test
+    void theReserveKeyCanSignAReleaseWhenBothKeysAreConfigured() throws Exception {
+        KeyPair reserve = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        manifestJson = manifest("1.1.0", "stable", newJar, NOW.minusSeconds(60), reserve, "1.1.0");
+        assertThat(updaterWithKeys(b64(releaseKey) + "," + b64(reserve), null).checkOnce()).isEqualTo(Outcome.INSTALLED);
+        // com só a chave principal configurada, a de reserva não vale (e uma terceira nunca vale)
+        Files.write(jarPath, oldJar);
+        Files.deleteIfExists(pending);
+        restarted.set(false);
+        assertThat(updaterWithKeys(b64(releaseKey), null).checkOnce()).isEqualTo(Outcome.REJECTED);
+    }
+
+    @Test
+    void aSignedRotationReplacesTheTrustedKeysAndTheLeakedOneStopsWorking() throws Exception {
+        KeyPair reserve = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        KeyPair newReserve = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        Path keysFile = dir.resolve("update-trusted-keys");
+        AgentUpdater u = updaterWithKeys(b64(releaseKey) + "," + b64(reserve), keysFile);
+        // a chave principal vazou: a reserva assina uma versão que troca o conjunto para [reserva, nova reserva]
+        manifestJson = rotationManifest("1.1.0", reserve, java.util.List.of(b64(reserve), b64(newReserve)));
+        assertThat(u.checkOnce()).isEqualTo(Outcome.INSTALLED);
+        assertThat(Files.readString(keysFile).trim()).isEqualTo(b64(reserve) + "," + b64(newReserve));
+        // quem tem a chave vazada já não consegue assinar nada; a reserva e a nova reserva continuam valendo
+        manifestJson = manifest("1.2.0", "stable", newJar, NOW.minusSeconds(60), releaseKey, "1.2.0");
+        assertThat(u.checkOnce()).isEqualTo(Outcome.REJECTED);
+        manifestJson = manifest("1.2.0", "stable", newJar, NOW.minusSeconds(60), newReserve, "1.2.0");
+        assertThat(u.checkOnce()).isEqualTo(Outcome.INSTALLED);
+    }
+
+    @Test
+    void aRotationWithMalformedOrTooManyKeysIsRejectedEvenWhenSignedByATrustedKey() throws Exception {
+        Path keysFile = dir.resolve("update-trusted-keys");
+        AgentUpdater u = updaterWithKeys(b64(releaseKey), keysFile);
+        manifestJson = rotationManifest("1.1.0", releaseKey, java.util.List.of("isto-nao-e-uma-chave"));
+        assertThat(u.checkOnce()).isEqualTo(Outcome.REJECTED);
+        java.util.List<String> five = new java.util.ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            five.add(b64(KeyPairGenerator.getInstance("Ed25519").generateKeyPair()));
+        }
+        manifestJson = rotationManifest("1.1.0", releaseKey, five);
+        assertThat(u.checkOnce()).isEqualTo(Outcome.REJECTED);
+        assertThat(keysFile).doesNotExist();
+        assertNothingChanged();
+    }
+
+    @Test
+    void theTrustedKeysCannotBeAddedToAnAlreadySignedManifestWithoutBreakingTheSignature() throws Exception {
+        // um atacante que só tem o manifesto assinado (sem rotação) não pode acrescentar a própria chave
+        String signedWithoutRotation = manifest("1.1.0", "stable", newJar, NOW.minusSeconds(60), releaseKey, "1.1.0");
+        KeyPair attacker = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        manifestJson = signedWithoutRotation.replace("\"signature\"", "\"trustedKeys\":\"" + b64(attacker) + "\",\"signature\"");
+        assertThat(updaterWithKeys(b64(releaseKey), dir.resolve("update-trusted-keys")).checkOnce()).isEqualTo(Outcome.REJECTED);
+        assertThat(dir.resolve("update-trusted-keys")).doesNotExist();
+        assertNothingChanged();
+    }
+
     @Test
     void aValidSignedNewerReleaseIsInstalledKeepingThePreviousJar() throws Exception {
         assertThat(updater("1.0.0").checkOnce()).isEqualTo(Outcome.INSTALLED);

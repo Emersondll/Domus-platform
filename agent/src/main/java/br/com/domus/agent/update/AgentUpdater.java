@@ -13,6 +13,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ public final class AgentUpdater {
     private final BooleanSupplier idle;
     private final Runnable restart;
     private final Clock clock;
+    private final Path trustedKeysFile;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NORMAL).build();
 
@@ -56,6 +58,13 @@ public final class AgentUpdater {
      */
     public AgentUpdater(URI baseUrl, UpdateVerifier verifier, String runningVersion, Path jarPath, Path pendingMarker,
                         BooleanSupplier idle, Runnable restart, Clock clock) {
+        this(baseUrl, verifier, runningVersion, jarPath, pendingMarker, idle, restart, clock, null);
+    }
+
+    /** Como o outro construtor; {@code trustedKeysFile} é onde se grava o novo conjunto de chaves de uma rotação (nulo = não persiste). */
+    public AgentUpdater(URI baseUrl, UpdateVerifier verifier, String runningVersion, Path jarPath, Path pendingMarker,
+                        BooleanSupplier idle, Runnable restart, Clock clock, Path trustedKeysFile) {
+        this.trustedKeysFile = trustedKeysFile;
         boolean local = "localhost".equals(baseUrl.getHost()) || "127.0.0.1".equals(baseUrl.getHost());
         if (!"https".equals(baseUrl.getScheme()) && !(local && "http".equals(baseUrl.getScheme()))) {
             throw new IllegalArgumentException("PORTARIA_UPDATE_URL must be https");
@@ -120,7 +129,8 @@ public final class AgentUpdater {
         }
         JsonNode n = JSON.readTree(r.body());
         return new UpdateManifest(text(n, "version"), text(n, "channel"), text(n, "fileName"), text(n, "sha256"),
-                n.path("size").asLong(0), Instant.parse(text(n, "notBefore")), text(n, "signature"));
+                n.path("size").asLong(0), Instant.parse(text(n, "notBefore")), text(n, "signature"),
+                n.hasNonNull("trustedKeys") ? List.of(n.get("trustedKeys").asString().split(",")) : List.of());
     }
 
     private static String text(JsonNode n, String field) {
@@ -150,6 +160,14 @@ public final class AgentUpdater {
         Files.write(staged, jar, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
         if (Files.exists(jarPath)) {
             Files.copy(jarPath, jarPath.resolveSibling(jarPath.getFileName() + ".previous"), StandardCopyOption.REPLACE_EXISTING);
+        }
+        if (!m.trustedKeys().isEmpty() && trustedKeysFile != null) {
+            // rotação de chaves assinada por uma chave confiável: vale a partir de agora e sobrevive ao reinício
+            Path tmp = trustedKeysFile.resolveSibling(trustedKeysFile.getFileName() + ".tmp");
+            Files.writeString(tmp, String.join(",", m.trustedKeys()) + "\n");
+            Files.move(tmp, trustedKeysFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            verifier.replaceKeys(m.trustedKeys());
+            log.warn("SECURITY: release keys rotated by a signed update ({} key(s) now trusted)", m.trustedKeys().size());
         }
         Files.writeString(pendingMarker, m.version() + "|" + Instant.now(clock) + "\n");
         Files.move(staged, jarPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);

@@ -1,6 +1,7 @@
 package br.com.domus.agent.update;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Manifesto de uma versão do agente, assinado pela chave de lançamento (Ed25519). A central e o servidor de arquivos NÃO fazem
@@ -12,14 +13,29 @@ import java.time.Instant;
  * @param sha256    hash SHA-256 do jar, em hexadecimal minúsculo
  * @param size      tamanho do jar em bytes
  * @param notBefore instante a partir do qual a versão pode ser instalada (liberação escalonada)
+
  * @param signature assinatura Ed25519 (base64) de {@link #signedPayload()}
+ * @param trustedKeys rotação de chaves (opcional): se não vazia, depois de instalar esta versão o agente passa a confiar SOMENTE
+ *                    nestas chaves públicas (1 a 4, Ed25519/X.509 em base64). Vai dentro do texto assinado.
  */
 public record UpdateManifest(String version, String channel, String fileName, String sha256, long size, Instant notBefore,
-                             String signature) {
+                             String signature, List<String> trustedKeys) {
+
+    /** Manifesto comum, sem rotação de chaves. */
+    public UpdateManifest(String version, String channel, String fileName, String sha256, long size, Instant notBefore,
+                          String signature) {
+        this(version, channel, fileName, sha256, size, notBefore, signature, List.of());
+    }
+
+    public UpdateManifest {
+        trustedKeys = trustedKeys == null ? List.of() : List.copyOf(trustedKeys);
+    }
 
     /** Texto exato que é assinado; qualquer campo alterado invalida a assinatura. */
     public String signedPayload() {
-        return String.join("|", "portaria-agent-update", "v1", version, channel, fileName, sha256, Long.toString(size),
+        String base = String.join("|", "portaria-agent-update", "v1", version, channel, fileName, sha256, Long.toString(size),
                 notBefore.toString());
+        // sem rotação o texto é idêntico ao das versões anteriores (manifestos antigos continuam válidos)
+        return trustedKeys.isEmpty() ? base : base + "|keys=" + String.join(",", trustedKeys);
     }
 }

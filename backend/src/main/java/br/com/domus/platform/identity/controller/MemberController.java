@@ -3,6 +3,7 @@ package br.com.domus.platform.identity.controller;
 import br.com.domus.platform.identity.entity.Membership;
 import br.com.domus.platform.identity.entity.Role;
 import br.com.domus.platform.identity.service.MemberService;
+import br.com.domus.platform.identity.service.ProvisioningService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -27,10 +28,72 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService service;
+    private final ProvisioningService provisioning;
 
     /** Construtor para criação de um(a) member controller. */
-    public MemberController(MemberService service) {
+    public MemberController(MemberService service, ProvisioningService provisioning) {
         this.service = service;
+        this.provisioning = provisioning;
+    }
+
+    /**
+     * @param email       e-mail (vira o nome de usuário no provedor de identidade)
+     * @param displayName nome de exibição
+     */
+    public record NewAccountRequest(@NotBlank @Email @Size(max = 190) String email, @NotBlank @Size(max = 160) String displayName) {
+    }
+
+    /**
+     * @param role    papel: OPERATOR ou CONDO_MANAGER
+     * @param account dados da pessoa
+     */
+    public record ProvisionStaffRequest(@NotNull @Pattern(regexp = "OPERATOR|CONDO_MANAGER") String role,
+                                        @NotNull @Valid NewAccountRequest account) {
+    }
+
+    /**
+     * @param membership        associação criada
+     * @param temporaryPassword senha provisória, exibida só nesta resposta; a pessoa a troca no primeiro acesso
+     */
+    public record ProvisionedResponse(MembershipResponse membership, String temporaryPassword) {
+    }
+
+    /**
+     * @param enabled se esta instalação cria contas direto no provedor de identidade
+     */
+    public record ProvisioningStatus(boolean enabled) {
+    }
+
+    /** Atende `GET /identity/provisioning`: informa se a criação de contas pelo provedor está ligada. */
+    @GetMapping("/identity/provisioning")
+    public ProvisioningStatus provisioningStatus() {
+        return new ProvisioningStatus(provisioning.enabled());
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/members/provision`.
+     *
+     * @param condominiumId condomínio
+     * @param r corpo da requisição (validado)
+     */
+    @PostMapping("/condominiums/{condominiumId}/members/provision")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProvisionedResponse provisionStaff(@PathVariable UUID condominiumId, @Valid @RequestBody ProvisionStaffRequest r) {
+        var p = provisioning.provisionStaff(condominiumId, Role.valueOf(r.role()), r.account().email(), r.account().displayName());
+        return new ProvisionedResponse(MembershipResponse.from(p.membership()), p.temporaryPassword());
+    }
+
+    /**
+     * Atende `POST /companies/{companyId}/admins/provision`.
+     *
+     * @param companyId empresa operadora
+     * @param r corpo da requisição (validado)
+     */
+    @PostMapping("/companies/{companyId}/admins/provision")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProvisionedResponse provisionCompanyAdmin(@PathVariable UUID companyId, @Valid @RequestBody NewAccountRequest r) {
+        var p = provisioning.provisionCompanyAdmin(companyId, r.email(), r.displayName());
+        return new ProvisionedResponse(MembershipResponse.from(p.membership()), p.temporaryPassword());
     }
 
     /**

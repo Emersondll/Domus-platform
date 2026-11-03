@@ -38,6 +38,8 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?defina KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD}
+      # Segredo da conta de serviço que cria as contas da equipe (importado com o realm; ver docs/operations.md)
+      PROVISIONER_CLIENT_SECRET: ${PROVISIONER_CLIENT_SECRET:?defina PROVISIONER_CLIENT_SECRET}
     volumes:
       - ./keycloak/portaria-realm.json:/opt/keycloak/data/import/portaria-realm.json:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
@@ -66,6 +68,9 @@ services:
       BLIND_INDEX_KEY: ${BLIND_INDEX_KEY:?defina BLIND_INDEX_KEY}
       FIELD_ENCRYPTION_MIGRATE: ${FIELD_ENCRYPTION_MIGRATE:-false}
       DEVICE_HTTP_ALLOWED_HOSTS: ${DEVICE_HTTP_ALLOWED_HOSTS:-}
+      PROVISIONER_ENABLED: ${PROVISIONER_ENABLED:-true}
+      PROVISIONER_BASE_URL: http://keycloak:8080
+      PROVISIONER_CLIENT_SECRET: ${PROVISIONER_CLIENT_SECRET}
       BOOTSTRAP_PLATFORM_ADMIN_SUBJECT: ${BOOTSTRAP_PLATFORM_ADMIN_SUBJECT:-}
       BOOTSTRAP_PLATFORM_ADMIN_EMAIL: ${BOOTSTRAP_PLATFORM_ADMIN_EMAIL:-}
     depends_on:

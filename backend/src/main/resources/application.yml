@@ -80,6 +80,15 @@ logging:
     level: "%5p [%X{correlationId:-}]"
 
 portaria:
+  identity:
+    provisioner:
+      # Cria as contas da equipe direto no Keycloak (conta de serviço com permissão só de usuários). Desligado por padrão:
+      # sem isto, a gestão cria a conta no Keycloak e cola o `sub` à mão.
+      enabled: ${PROVISIONER_ENABLED:false}
+      base-url: ${PROVISIONER_BASE_URL:http://localhost:8180}
+      realm: ${PROVISIONER_REALM:portaria}
+      client-id: ${PROVISIONER_CLIENT_ID:portaria-provisioner}
+      client-secret: ${PROVISIONER_CLIENT_SECRET:}
   credentials:
     # Obrigatório (>= 32 caracteres). Em produção vem de um gerenciador de segredos.
     hmac-secret: ${CREDENTIAL_HMAC_SECRET:}

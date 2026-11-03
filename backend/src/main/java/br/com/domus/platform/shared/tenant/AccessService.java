@@ -51,6 +51,11 @@ public class AccessService {
     private static final Map<Role, String> KEYCLOAK_STAFF_ROLE = Map.of(Role.PLATFORM_ADMIN, "platform-admin",
             Role.COMPANY_ADMIN, "company-admin", Role.CONDO_MANAGER, "condo-manager", Role.OPERATOR, "operator");
 
+    /** Papel de realm no Keycloak que corresponde ao papel de negócio da equipe (nulo para papéis sem MFA). */
+    public static String providerRole(Role role) {
+        return KEYCLOAK_STAFF_ROLE.get(role);
+    }
+
     /** Construtor de AccessService; recebe as dependências por injeção. */
     public AccessService(AppUserRepository users, MembershipRepository memberships,
                          CondominiumLookup condominiums, AuditService audit) {

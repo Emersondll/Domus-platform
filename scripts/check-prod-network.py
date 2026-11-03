@@ -11,7 +11,7 @@ import json, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV = dict(os.environ, DB_PASSWORD="x", DOMAIN="example.test", KEYCLOAK_ADMIN="a", KEYCLOAK_ADMIN_PASSWORD="x",
            CREDENTIAL_HMAC_SECRET="x", AGENT_POLICY_MASTER_SECRET="x", GRAFANA_PASSWORD="x",
-           FIELD_ENCRYPTION_KEYS="k1:x", BLIND_INDEX_KEY="x")
+           FIELD_ENCRYPTION_KEYS="k1:x", BLIND_INDEX_KEY="x", PROVISIONER_CLIENT_SECRET="x")
 failed = False
 
 

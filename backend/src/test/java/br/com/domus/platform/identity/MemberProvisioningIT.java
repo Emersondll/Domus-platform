@@ -192,4 +192,13 @@ class MemberProvisioningIT extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/condominiums/" + condoA + "/members?email=ninguem@example.invalid").with(as("p9-manager-a")))
                 .andExpect(jsonPath("$.length()").value(0));
     }
+
+    @Test
+    void creatingAccountsInTheProviderIsOffByDefaultAndSaysSo() throws Exception {
+        mvc.perform(get("/api/v1/identity/provisioning").with(as("p9-admin-a"))).andExpect(jsonPath("$.enabled").value(false));
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/provision").with(as("p9-admin-a"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"OPERATOR\",\"account\":{\"email\":\"off@example.invalid\",\"displayName\":\"Off\"}}"))
+                .andExpect(status().isConflict());
+    }
 }

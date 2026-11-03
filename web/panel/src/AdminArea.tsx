@@ -3,6 +3,7 @@ import { request, type Page } from "../../shared/src/api";
 import { AdminAgents } from "./AdminAgents";
 import type { AdminScope, Company, CondoRow } from "./types";
 import { errorMessage } from "./useCondoList";
+import { TemporaryPassword, useProvisioningEnabled } from "./provisioning";
 
 const SECTIONS = ["Empresas", "Condomínios", "Agentes e sincronização"] as const;
 
@@ -37,6 +38,10 @@ function Companies({ token }: { token: string }) {
   const [name, setName] = useState("");
   const [taxId, setTaxId] = useState("");
   const [adminCompany, setAdminCompany] = useState("");
+  const provisioning = useProvisioningEnabled(token);
+  const [manual, setManual] = useState(false);
+  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const direct = provisioning && !manual;
   const [subject, setSubject] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -126,28 +131,49 @@ function Companies({ token }: { token: string }) {
         setTaxId("");
       }, "Empresa cadastrada.")}>Cadastrar empresa</button>
       <h3>Adicionar administrador a uma empresa</h3>
-      <p className="hint">
-        Informe o identificador do usuário no provedor de login (Keycloak). <strong>Dê também a essa pessoa o papel "company-admin" no Keycloak</strong>:
-        é ele que obriga o código do autenticador (OTP) no login; sem o papel, a API recusa o acesso dela.
-      </p>
+      {direct ? (
+        <p className="hint">A conta é criada no provedor de login já com o papel "company-admin" (que obriga o código do autenticador, OTP) e a pessoa recebe uma senha provisória.</p>
+      ) : (
+        <p className="hint">
+          Informe o identificador do usuário no provedor de login (Keycloak). <strong>Dê também a essa pessoa o papel "company-admin" no Keycloak</strong>:
+          é ele que obriga o código do autenticador (OTP) no login; sem o papel, a API recusa o acesso dela.
+        </p>
+      )}
       <label htmlFor="ad-company">Empresa</label>
       <select id="ad-company" value={adminCompany} onChange={(e) => setAdminCompany(e.target.value)}>
         <option value="">Escolha…</option>
         {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
-      <label htmlFor="ad-subject">Identificador do usuário</label>
-      <input id="ad-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+      {!direct && (
+        <>
+          <label htmlFor="ad-subject">Identificador do usuário</label>
+          <input id="ad-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+        </>
+      )}
       <label htmlFor="ad-email">E-mail</label>
       <input id="ad-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <label htmlFor="ad-name">Nome</label>
       <input id="ad-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-      <button disabled={!adminCompany || !subject.trim() || !email.trim() || !displayName.trim()} onClick={() => run(async () => {
-        await request(token, "POST", `/api/v1/companies/${adminCompany}/admins`,
-          { externalSubject: subject.trim(), email: email.trim(), displayName: displayName.trim() });
+      <button disabled={!adminCompany || (!direct && !subject.trim()) || !email.trim() || !displayName.trim()} onClick={() => run(async () => {
+        setCreated(null);
+        if (direct) {
+          const r = await request<{ temporaryPassword: string }>(token, "POST", `/api/v1/companies/${adminCompany}/admins/provision`,
+            { email: email.trim(), displayName: displayName.trim() });
+          if (r) setCreated({ email: email.trim(), password: r.temporaryPassword });
+        } else {
+          await request(token, "POST", `/api/v1/companies/${adminCompany}/admins`,
+            { externalSubject: subject.trim(), email: email.trim(), displayName: displayName.trim() });
+        }
         setSubject("");
         setEmail("");
         setDisplayName("");
-      }, "Administrador adicionado.")}>Adicionar administrador</button>
+      }, "Administrador adicionado.")}>{direct ? "Criar conta e adicionar" : "Adicionar administrador"}</button>
+      {provisioning && (
+        <button className="link" onClick={() => setManual(!manual)}>
+          {manual ? "Criar a conta pela tela" : "A conta já existe no Keycloak: vincular pelo identificador"}
+        </button>
+      )}
+      {created && <TemporaryPassword email={created.email} password={created.password} onClose={() => setCreated(null)} />}
       {adminCompany && (
         <ul aria-label="Administradores da empresa">
           {admins.map((a) => (

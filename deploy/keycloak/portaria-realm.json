@@ -121,6 +121,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "portaria-provisioner",
+      "name": "Criação de contas pela API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${PROVISIONER_CLIENT_SECRET:provisioner_dev_only}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false
     }
   ],
   "browserFlow": "browser-mfa",
@@ -340,5 +354,31 @@
     "pt-BR",
     "en"
   ],
-  "defaultLocale": "pt-BR"
+  "defaultLocale": "pt-BR",
+  "users": [
+    {
+      "username": "service-account-portaria-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "portaria-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "query-users",
+          "view-users"
+        ]
+      }
+    }
+  ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "portaria-provisioner",
+        "roles": [
+          "manage-users",
+          "query-users",
+          "view-users"
+        ]
+      }
+    ]
+  }
 }

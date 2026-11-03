@@ -65,7 +65,7 @@ def create_user(tok, username, role):
     return uid
 
 
-def browser_login(username, redirect_uri="http://localhost:5173/"):
+def browser_login(username, redirect_uri="http://localhost:5173/", password=None):
     """Login real pelo fluxo 'browser-mfa'. Devolve ('code', codigo) ou ('otp-setup', None)."""
     jar = cookiejar.CookieJar()
     verifier = secrets.token_urlsafe(48)
@@ -76,12 +76,14 @@ def browser_login(username, redirect_uri="http://localhost:5173/"):
     for c in jar:  # navegadores enviam cookies Secure para localhost; o cookiejar do Python não: ajuste só do cliente de teste
         c.secure = False
     action = html.unescape(re.search(r'<form[^>]+id="kc-form-login"[^>]+action="([^"]+)"', page).group(1))
-    s, headers, body = http("POST", action, {"username": username, "password": PASSWORD, "credentialId": ""}, jar=jar, follow=False)
+    s, headers, body = http("POST", action, {"username": username, "password": password or PASSWORD, "credentialId": ""}, jar=jar, follow=False)
     if s in (302, 303) and "code=" in headers.get("Location", ""):
         return "code", (urllib.parse.parse_qs(urllib.parse.urlparse(headers["Location"]).query)["code"][0], verifier, redirect_uri)
     # sem redirecionamento com código: a próxima página é a configuração do autenticador (OTP)
     if s in (302, 303):
         s, _, body = http("GET", headers["Location"], jar=jar)
+    if re.search(r"password-new|kc-passwd-update-form", body, re.I):
+        return "update-password", None
     if re.search(r"kc-totp|otp|authenticator", body, re.I):
         return "otp-setup", None
     return "unknown", body[:300]
@@ -150,7 +152,8 @@ env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{VERIFY_DB}", D
            FIELD_ENCRYPTION_KEYS="kcv:" + base64.b64encode(b"kc-verify-field-key-0123456789-a").decode(), BLIND_INDEX_KEY="kc-verify-blind-index-key-0123456789-abc",
            CREDENTIAL_HMAC_SECRET="kc-verify-secret-0123456789-abcdefghijklmnopqr", AGENT_POLICY_MASTER_SECRET="kc-verify-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_admin, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"plat-admin-{suffix}@example.invalid",
-           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true")  # como em produção
+           SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true",
+           PROVISIONER_ENABLED="true", PROVISIONER_BASE_URL=KC, PROVISIONER_CLIENT_SECRET="provisioner_dev_only")  # como em produção
 log = open(os.path.join(os.environ.get("TMPDIR", "/tmp"), "kc-verify-api.log"), "w")
 proc = subprocess.Popen(["java", "-jar", os.path.join(ROOT, "backend/target/platform-0.1.0-SNAPSHOT.jar")], env=env, stdout=log, stderr=log)
 try:
@@ -212,6 +215,31 @@ try:
     t_forgot2 = direct_grant_token(tok, f"forgot-{suffix}")
     s, _, b = api("GET", "/api/v1/condominiums", t_forgot2)
     check("com o papel dado no Keycloak (que passa a exigir o OTP no login) a mesma pessoa entra -> 200", s == 200, f"({s})")
+    print("== criação de contas pela API (conta de serviço do Keycloak)")
+    s, _, b = api("GET", "/api/v1/identity/provisioning", t_admin)
+    check("a criação de contas aparece como ligada", s == 200 and json.loads(b)["enabled"] is True, f"({s})")
+    new_mail = f"prov-{suffix}@example.invalid"
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/provision", t_admin, {"email": new_mail, "displayName": "Criada Pela API"})
+    check("a plataforma cria a conta de administrador de empresa -> 201 com senha provisória", s == 201 and len(json.loads(b).get("temporaryPassword", "")) >= 12, f"({s}) {b[:120] if s != 201 else ''}")
+    created = json.loads(b) if s == 201 else {}
+    temp_pw = created.get("temporaryPassword", "")
+    s2, _, ub = admin("GET", f"/users?username={new_mail}&exact=true", tok)
+    kc_user = json.loads(ub)[0] if s2 == 200 and json.loads(ub) else {}
+    check("a conta existe no Keycloak com a troca de senha obrigatória", "UPDATE_PASSWORD" in kc_user.get("requiredActions", []), f"({kc_user.get('requiredActions')})")
+    s3, _, rb = admin("GET", f"/users/{kc_user.get('id')}/role-mappings/realm", tok)
+    check("e com o papel company-admin (que força o OTP)", s3 == 200 and any(r["name"] == "company-admin" for r in json.loads(rb)), "")
+    kind, _ = browser_login(new_mail, password=temp_pw)
+    check("a senha provisória é aceita no login (segue para configurar o OTP e trocar a senha)", kind in ("update-password", "otp-setup"), f"({kind})")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/provision", t_admin, {"email": new_mail, "displayName": "Outra"})
+    check("repetir o mesmo e-mail -> 409, sem criar nada", s == 409, f"({s})")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/provision", t_op, {"email": f"x-{suffix}@example.invalid", "displayName": "X"})
+    check("quem não é da plataforma não cria administrador de empresa -> 4xx", 400 <= s < 500, f"({s})")
+    s, _, b = admin("PUT", f"/users/{kc_user.get('id')}/reset-password", tok, {"type": "password", "value": PASSWORD, "temporary": False})
+    s4, _, _ = admin("PUT", f"/users/{kc_user.get('id')}", tok, {"username": new_mail, "email": new_mail, "enabled": True, "requiredActions": []})
+    print("   (teste: ação obrigatória removida, status", s4, "; reset-password", s, ")")
+    t_new = direct_grant_token(tok, new_mail)
+    s, _, b = api("GET", "/api/v1/condominiums", t_new)
+    check("a conta criada pela API entra com o vínculo ligado pelo sub e o papel do Keycloak -> 200", s == 200, f"({s})")
 finally:
     proc.terminate()
     try:

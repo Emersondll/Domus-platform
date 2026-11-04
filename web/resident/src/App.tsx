@@ -52,7 +52,7 @@ export function App() {
 
   // 401 da API: sessão expirada, volta à tela de entrada.
   useEffect(() => {
-    setUnauthorizedHandler(() => setToken(null));
+    setUnauthorizedHandler(() => { setError("Sua sessão expirou. Entre novamente."); setToken(null); });
     return () => setUnauthorizedHandler(null);
   }, []);
 
@@ -99,6 +99,7 @@ export function App() {
       setNeedsJoin((r ?? []).length === 0);
       setError(null);
     }).catch((e) => {
+      if (e instanceof ApiError && e.status === 401) return; // sessão expirada: o aviso já foi dado e a tela de entrada volta
       // 403: o condomínio ou a empresa operadora está suspensa (os registros ficam; só o acesso é desligado)
       // 403 "não cadastrado": ainda não há vínculo; a pessoa pode pedir acesso com o código do síndico
       const notRegistered = e instanceof ApiError && e.status === 403 && /not registered/i.test(e.detail);

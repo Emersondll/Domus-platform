@@ -66,7 +66,7 @@ export function App() {
 
   // 401 da API (token expirado/inválido): volta à tela de entrada (o SSO do Keycloak renova sem pedir senha).
   useEffect(() => {
-    setUnauthorizedHandler(() => setSession(null));
+    setUnauthorizedHandler(() => { setAuthError("Sua sessão expirou. Entre novamente."); setSession(null); });
     return () => setUnauthorizedHandler(null);
   }, []);
 

@@ -60,20 +60,33 @@ export function PanicAlerts({ token, onAttend }: { token: string; onAttend: () =
   const [silenced, setSilenced] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // falhas seguidas de rede/servidor (não 401/403): com 2 ou mais o operador é avisado de que a vigia do pânico está parada
+  const [failures, setFailures] = useState(0);
 
   useEffect(() => {
     let stopped = false;
     async function load() {
       try {
         const list = (await request<PanicAlert[]>(token, "GET", "/api/v1/operator/panics")) ?? [];
-        if (!stopped) setAlerts(list);
-      } catch {
-        // sem permissão ou API fora do ar: o aviso volta no próximo ciclo
+        if (!stopped) { setAlerts(list); setFailures(0); }
+      } catch (e) {
+        // sem permissão: silêncio (síndico sem a rota); rede ou servidor fora do ar: conta a falha e tenta no próximo ciclo
+        if (!stopped && !(e instanceof ApiError && e.status < 500)) setFailures((n) => n + 1);
       }
     }
     void load();
     const id = setInterval(load, POLL_MS);
-    return () => { stopped = true; clearInterval(id); };
+    // aba em segundo plano tem o relógio atrasado pelo navegador: ao voltar à tela ou à rede, consulta na hora
+    const wake = () => { if (document.visibilityState === "visible") void load(); };
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("online", wake);
+    window.addEventListener("focus", wake);
+    return () => {
+      stopped = true; clearInterval(id);
+      document.removeEventListener("visibilitychange", wake);
+      window.removeEventListener("online", wake);
+      window.removeEventListener("focus", wake);
+    };
   }, [token]);
 
   const loud = alerts.some((a) => !silenced.includes(a.callId));
@@ -86,7 +99,13 @@ export function PanicAlerts({ token, onAttend }: { token: string; onAttend: () =
     return () => { document.title = original; };
   }, [alerts]);
 
-  if (alerts.length === 0) return null;
+  const watchDown = failures >= 2 ? (
+    <div className="panic-watch-down" role="alert">
+      Sem conexão com a vigia de pânico. Alertas podem não aparecer até a rede voltar; confira a conexão.
+    </div>
+  ) : null;
+
+  if (alerts.length === 0) return watchDown;
 
   async function attend() {
     setBusy(true);

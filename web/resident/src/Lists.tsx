@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { request } from "../../shared/src/api";
+import { ConfirmRemove } from "./ConfirmRemove";
 import type { Parcel, Vehicle } from "./types";
 import { errorText, useList } from "./useApi";
 
@@ -88,7 +89,7 @@ export function Vehicles({ token, condo }: { token: string; condo: string }) {
           <li key={v.id}>
             {v.plate} {v.model ?? ""}{" "}
             <button aria-label={`Corrigir ${v.plate}`} onClick={() => { setEditing(v); setPlate(v.plate); setModel(v.model ?? ""); }}>Corrigir</button>{" "}
-            <button aria-label={`Remover ${v.plate}`} onClick={() => remove(v)}>Remover</button>
+            <ConfirmRemove label={v.plate} onConfirm={() => remove(v)} />
           </li>
         ))}
         {items.length === 0 && <li className="empty">Nenhum veículo.</li>}

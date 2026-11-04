@@ -24,7 +24,7 @@ export function StatusBar({ items }: { items: Overview[] }) {
 
 function Health({ label, value }: { label: string; value: string }) {
   const bad = /^(OFFLINE|DEGRADED)/.test(value);
-  return <span className={bad ? "badge warn" : "badge pending"}>{label}: {healthSummary(value)}</span>;
+  return <span className={bad ? "badge warn" : "badge pending health-ok"}>{label}: {healthSummary(value)}</span>;
 }
 
 /** Condomínios autorizados para escolher. Os números ficam na faixa de estado; o cartão só destaca o que pede ação. */
@@ -48,7 +48,9 @@ export function OverviewPanel({
             aria-pressed={selected === o.condominiumId}
             onClick={() => onSelect(o.condominiumId)}
           >
-            <strong>{o.name}</strong>
+            <strong>{o.name}{!/^(OFFLINE|DEGRADED)/.test(o.deviceHealth) && !/^(OFFLINE|DEGRADED)/.test(o.connectivity) && (
+              <span className="health-dot" role="img" aria-label="Dispositivos e conectividade sem alertas"> ●</span>
+            )}</strong>
             {o.queuedPanics > 0 && <span className="badge err">PÂNICO na fila: {o.queuedPanics}</span>}
             {o.queuedCalls > 0 && <span className="badge warn">Fila: {o.queuedCalls}</span>}
             {o.assignedCalls > 0 && <span className="badge pending">Em atendimento: {o.assignedCalls}</span>}

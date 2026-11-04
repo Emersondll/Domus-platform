@@ -37,6 +37,7 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
   const visitRequests = useList<VisitRequest>(token, `${base}/visit-requests`, POLL_MS);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmingPanic, setConfirmingPanic] = useState(false);
+  const [panicError, setPanicError] = useState<string | null>(null);
 
   // Uma só consulta ao abrir a tela (sem polling): cada consulta ao histórico pessoal fica na auditoria.
   const [lastAccess, setLastAccess] = useState<MyAccess | null | undefined>(undefined);
@@ -77,12 +78,14 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
 
   async function panic() {
     setMsg(null);
+    setPanicError(null);
     try {
       await request(token, "POST", `${base}/panic`);
       setConfirmingPanic(false);
       calls.reload();
     } catch (err) {
-      setMsg(errorText(err));
+      // o botão continua aberto para tentar de novo; deixa claro que o alerta NÃO foi enviado
+      setPanicError(`${errorText(err)} O alerta NÃO foi enviado. Tente de novo agora ou ligue para a portaria.`);
     }
   }
 
@@ -135,8 +138,9 @@ export function Home({ token, condo, onNavigate }: { token: string; condo: strin
       {confirmingPanic ? (
         <div className="panic-confirm" role="group" aria-label="Confirmar alerta de pânico">
           <p><strong>Enviar alerta de pânico para a central?</strong> Use apenas em emergência.</p>
-          <button className="danger" onClick={panic}>Confirmar pânico</button>
-          <button onClick={() => setConfirmingPanic(false)}>Cancelar</button>
+          {panicError && <p role="alert" className="error">{panicError}</p>}
+          <button className="danger" onClick={panic}>{panicError ? "Tentar de novo" : "Confirmar pânico"}</button>
+          <button onClick={() => { setConfirmingPanic(false); setPanicError(null); }}>Cancelar</button>
         </div>
       ) : (
         <button className="danger panic-action" onClick={() => setConfirmingPanic(true)} disabled={panicActive}>Alerta de pânico</button>

@@ -34,6 +34,8 @@ let myCameras: unknown[] = [];
 let lastAccess: unknown = null;
 let photoStatus: Record<string, unknown> = { enabled: false, textVersion: "v1", text: "", consentId: null, hasPhoto: false, photoCapturedAt: null };
 let openStatus = 202;
+let panicNetworkDown = false;
+let sessionExpired = false;
 let cmdState = "CONFIRMED";
 
 /** Substitui apenas a rede (fetch); UI, validações do cliente e geração do QR rodam de verdade. */
@@ -43,6 +45,7 @@ function fakeApi() {
     calls.push({ url, method, body: init?.body as string | undefined });
     const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
     if (url.startsWith("/dev/token")) return json({ access_token: "t" });
+    if (sessionExpired && url.startsWith("/api/v1/")) return json({ detail: "expired" }, 401);
     if (url === "/api/v1/me/residencies") {
       return notRegistered ? json({ detail: "User is not registered or is inactive" }, 403) : json(residency);
     }
@@ -76,6 +79,7 @@ function fakeApi() {
     if (url.endsWith("/me/pets/p1") && method === "PUT") return json({ id: "p1" });
     if (url.includes("/residents/") && method === "GET") return json({ id: "r1", unitId: "u1", fullName: "Fulano", email: null, phone: null, residentType: "OWNER", active: true });
     if (url.endsWith("/me/pets")) return json([{ id: "p1", unitId: "un1", name: "Rex", species: "DOG", breed: null, notes: null }]);
+    if (url.endsWith("/me/panic") && panicNetworkDown) throw new TypeError("Failed to fetch");
     if (url.endsWith("/me/panic")) return json({ id: "c9", source: "PANIC", status: "QUEUED" }, 201);
     if (url.endsWith("/approve") || url.endsWith("/deny")) return json({ id: "vr1" });
     if (url.endsWith("/me/visit-requests/vr1/snapshot")) return new Response(new Blob(["jpeg"]), { status: 200 });
@@ -143,6 +147,8 @@ describe("resident app", () => {
     lastAccess = null;
     photoStatus = { enabled: false, textVersion: "v1", text: "", consentId: null, hasPhoto: false, photoCapturedAt: null };
     openStatus = 202;
+    panicNetworkDown = false;
+    sessionExpired = false;
     cmdState = "CONFIRMED";
     vi.stubGlobal("fetch", fakeApi());
   });
@@ -278,6 +284,24 @@ describe("resident app", () => {
     expect(calls.some((c) => c.url.endsWith("/me/panic"))).toBe(false);
     await user.click(screen.getByRole("button", { name: "Confirmar pânico" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/me/panic"))).toBe(true));
+  });
+
+  it("says the panic alert was NOT sent when the network is down and lets the resident retry", async () => {
+    panicNetworkDown = true;
+    const user = await openTab("Início");
+    await user.click(await screen.findByRole("button", { name: "Alerta de pânico" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar pânico" }));
+    expect(await screen.findByText(/Sem conexão com o servidor.*NÃO foi enviado/)).toBeInTheDocument();
+    panicNetworkDown = false;
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/me/panic"))).toBe(true));
+  });
+
+  it("tells the resident that the session expired instead of silently returning to the login", async () => {
+    sessionExpired = true;
+    render(<App />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Entrar/ }));
+    expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument();
   });
 
   it("can cancel the panic confirmation without sending anything", async () => {
@@ -442,6 +466,8 @@ describe("resident app", () => {
       expect(JSON.parse(put!.body!)).toEqual({ plate: "XYZ9K88", model: "Sedan", color: "Prata" });
     });
     await user.click(await screen.findByRole("button", { name: "Remover ABC1D23" }));
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false); // só pede confirmação
+    await user.click(screen.getByRole("button", { name: "Confirmar remoção de ABC1D23" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.url.endsWith("/me/vehicles/v1"))).toBe(true));
   });
 

@@ -35,7 +35,7 @@ Rodada de 2026-11-03: todos os itens abaixo foram feitos; o que sobra de cada um
 | **B8** | Baixa | Cache do service worker nunca limpo. | Cache versionado (`shell-v2`), apagado ao ativar e casco renovado online. **Prova:** `scripts/test-service-worker.py` (Chromium real, offline incluído). |
 | **U5** | Alta (usabilidade) | **Sem push em nenhum canal** (morador só vê visita, encomenda e mensagem com o app aberto; a visita expira em 5 min). | **Aberto.** Web Push (VAPID) no app do morador; independe de SMTP. Precisa de decisão sobre texto e opt-in. |
 
-Ainda abertos da mesma varredura (usabilidade, não eram bugs): U1 (pânico engole erro de rede), U2 (varredura do pânico com a aba em segundo plano), U3 (401 volta ao login sem aviso), U4 (selos de saúde ocultos no celular), U6 (app do morador remove familiar/animal/veículo sem confirmação) e U7 (sem recuperação de senha por e-mail, D5).
+**Corrigidos em 2026-11-04 (U1, U2, U3, U4, U6; evidência em `docs/STATUS.md`):** pânico sem rede avisa que NÃO foi enviado e deixa tentar de novo; vigia de pânico do painel consulta ao voltar à aba/rede e avisa quando cai; 401 avisa "Sua sessão expirou"; selos de saúde normais viram um ponto no celular; remoção de familiar/animal/veículo pede confirmação. **Ainda abertos:** U5 (push, decisão sua) e U7 (recuperação de senha por e-mail, depende de SMTP/D5).
 
 ### B. Dependem de você (decisão ou texto)
 | Item | O que falta |

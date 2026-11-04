@@ -44,6 +44,7 @@ header button.danger, .confirm-end button.danger { background: #b3261e; }
 .condos .cards { margin-top: 0; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .condos .card { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 14px 10px; }
 .condos .card .badge { align-self: flex-start; }
+.condos .card .health-dot { display: none; color: #1f7a3d; font-size: 12px; font-weight: 600; }
 .desk-empty p { color: var(--muted); }
 .camera-shortcut { margin-top: 16px; }
 .camera-shortcut > button { width: 100%; background: var(--surface-2); border: 1px solid var(--line); }
@@ -131,6 +132,9 @@ header button[aria-pressed="true"] { background: var(--accent-strong); box-shado
   /* Lista de condomínios em uma fileira rolável (só ela rola, a página não) e sem os selos de saúde, que ocupavam ~120 px por cartão. */
   .condos .cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
   .condos .card { flex: 0 0 auto; min-width: 150px; max-width: 220px; scroll-snap-align: start; padding: 8px 12px; }
-  .condos .card .badge.pending { display: none; }
+  /* No celular os selos de saúde normais viram um ponto verde único; os de alerta (warn) e o "Em atendimento" continuam inteiros. */
+  .condos .card .badge.health-ok { display: none; }
+  .condos .card .health-dot { display: inline; }
   .condos h2 { margin-bottom: 0; }
 }
+.panic-watch-down { position: sticky; top: 0; z-index: 900; padding: .5rem 1rem; background: #7a1d1d; color: #fff; font-weight: 600; text-align: center; }

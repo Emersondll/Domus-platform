@@ -30,5 +30,6 @@ export function errorText(e: unknown): string {
     if (e.status === 409 && !hasFriendlyDetail(e.detail)) return "Conflito: o recurso já existe ou o horário está indisponível.";
     return friendlyDetail(e.detail);
   }
+  if (e instanceof TypeError) return "Sem conexão com o servidor. Verifique a internet e tente de novo.";
   return "Erro inesperado";
 }

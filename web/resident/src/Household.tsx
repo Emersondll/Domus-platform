@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { request } from "../../shared/src/api";
 import type { HouseholdMember, Pet } from "./types";
+import { ConfirmRemove } from "./ConfirmRemove";
 import { errorText } from "./useApi";
 
 const REL_TEXT: Record<string, string> = { OWNER: "proprietário", TENANT: "locatário", SPOUSE: "cônjuge", DEPENDENT: "dependente" };
@@ -71,8 +72,8 @@ export function Household({ token, condo }: { token: string; condo: string }) {
           <li key={m.id}>
             <strong>{m.fullName}</strong> · {REL_TEXT[m.relationship] ?? m.relationship}{m.phone ? ` · ${m.phone}` : ""}{" "}
             {m.removable && (
-              <button aria-label={`Remover ${m.fullName}`}
-                onClick={() => run(() => request(token, "POST", `${base}/household/${m.id}/remove`), family.reload)}>Remover</button>
+              <ConfirmRemove label={m.fullName}
+                onConfirm={() => run(() => request(token, "POST", `${base}/household/${m.id}/remove`), family.reload)} />
             )}
           </li>
         ))}
@@ -99,8 +100,8 @@ export function Household({ token, condo }: { token: string; condo: string }) {
           <li key={p.id}>
             <strong>{p.name}</strong> · {SPECIES_TEXT[p.species] ?? p.species}{p.breed ? ` (${p.breed})` : ""}{p.notes ? ` · ${p.notes}` : ""}{" "}
             <button aria-label={`Editar ${p.name}`} onClick={() => startEdit(p)}>Editar</button>{" "}
-            <button aria-label={`Remover ${p.name}`}
-              onClick={() => run(() => request(token, "POST", `${base}/pets/${p.id}/remove`), pets.reload)}>Remover</button>
+            <ConfirmRemove label={p.name}
+              onConfirm={() => run(() => request(token, "POST", `${base}/pets/${p.id}/remove`), pets.reload)} />
           </li>
         ))}
         {pets.items.length === 0 && <li className="empty">Nenhum animal cadastrado.</li>}

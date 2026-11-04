@@ -40,6 +40,7 @@ let mineCalls = 0;
 let mineGone = false;
 let lastEventType = "CLAIMED";
 let panics: unknown[] = [];
+let panicsDown = false;
 let claimed: Record<string, unknown> | null = null;
 const sirenStarts: number[] = [];
 const call = { id: "k1", condominiumId: "c1", unitId: null, source: "MANUAL", callerName: "Entregador",
@@ -133,7 +134,7 @@ function fakeApi() {
       { id: "d5", name: "Câmera do agente", kind: "CAMERA", adapter: "ONVIF", entrance: "fundos", status: "ONLINE", lastSeenAt: null, liveVideo: true, active: true, visitorEntrance: false, config: { videoSource: "AGENT" } },
     ]);
     if (url.startsWith("/dev/token")) return json({ access_token: "t", token_type: "Bearer" });
-    if (url === "/api/v1/operator/panics") return json(panics);
+    if (url === "/api/v1/operator/panics") { if (panicsDown) throw new TypeError("Failed to fetch"); return json(panics); }
     if (url === "/api/v1/operator/calls/next") { panics = []; claimed = { ...call, id: "k9", source: "PANIC", callerName: null, unitLabel: "A / 101" }; return json(claimed); }
     if (url.endsWith("/remind")) return json({ id: "p1" });
     if (url.endsWith("/rotate-key")) return json({ apiKey: "ROTATED-KEY" });
@@ -187,6 +188,7 @@ describe("operator panel", () => {
     mineGone = false;
     lastEventType = "CLAIMED";
     panics = [];
+    panicsDown = false;
     claimed = null;
     sirenStarts.length = 0;
     remoteEnabled = false;
@@ -884,6 +886,18 @@ describe("operator panel", () => {
     await user.click(await screen.findByRole("tab", { name: "Encomendas" }));
     await user.click(await screen.findByRole("button", { name: "Imprimir comprovante" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+  });
+
+  it("warns the operator when the panic watch loses the network and polls again at once when the tab wakes up", async () => {
+    await login();
+    await screen.findByRole("button", { name: /Residencial Sol/ });
+    panicsDown = true;
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("focus"));
+    expect(await screen.findByText(/Sem conexão com a vigia de pânico/)).toBeInTheDocument();
+    panicsDown = false;
+    window.dispatchEvent(new Event("focus"));
+    await waitFor(() => expect(screen.queryByText(/Sem conexão com a vigia de pânico/)).not.toBeInTheDocument());
   });
 
   it("raises a full-screen panic alert with the unit, plays the siren and lets the operator attend or silence", async () => {

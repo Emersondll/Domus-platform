@@ -3,7 +3,7 @@
 
 Uso: scripts/load-test.py [--base http://localhost:8081] [--seconds 15] [--concurrency 20]
 Requer a API com perfil dev (usa /dev/token) e com os limites de taxa elevados, por exemplo:
-  PORTARIA_RATE_LIMIT_API_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_VALIDATE_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_DEVICE_PER_MINUTE=1000000
+  PORTARIA_RATE_LIMIT_API_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_BEARER_PER_IP_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_USER_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_VALIDATE_PER_MINUTE=1000000 PORTARIA_RATE_LIMIT_DEVICE_PER_MINUTE=1000000
 Limitações: gerador e servidor na mesma máquina; cliente em Python (GIL). Os números são um PISO de capacidade.
 """
 import argparse, sys, http.client, json, statistics, threading, time, urllib.parse, uuid

@@ -145,4 +145,66 @@ class AccountProvisioningIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.membership.role").value("COMPANY_ADMIN"));
         mvc.perform(get("/api/v1/identity/provisioning").with(as("prov-platform"))).andExpect(jsonPath("$.enabled").value(true));
     }
+
+    private UUID provisionOperator(String email, String subject) throws Exception {
+        when(idp.create(eq(email), any(), eq("operator"))).thenReturn(new IdentityProvisioner.Created(subject, "Tmp-Pass-1234567890"));
+        String json = mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/provision").with(as("prov-admin-a"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("OPERATOR", email)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return UUID.fromString(new tools.jackson.databind.ObjectMapper().readTree(json).get("membership").get("id").asString());
+    }
+
+    @Test
+    void lostTemporaryPasswordCanBeReplacedForAnAccountThePlatformCreated() throws Exception {
+        UUID membership = provisionOperator("perdeu.senha@example.invalid", "kc-sub-reset-1");
+        when(idp.resetPassword("kc-sub-reset-1")).thenReturn("Nova-Tmp-123456789");
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + membership + "/reset-password").with(as("prov-admin-a")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.temporaryPassword").value("Nova-Tmp-123456789"));
+        // quem não administra o condomínio nunca chega ao provedor
+        for (String who : new String[] {"prov-admin-b", "prov-manager-a"}) {
+            mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + membership + "/reset-password").with(as(who)))
+                    .andExpect(status().is4xxClientError());
+        }
+        verify(idp, org.mockito.Mockito.times(1)).resetPassword("kc-sub-reset-1");
+    }
+
+    @Test
+    void passwordResetIsRefusedForAccountsNotCreatedByThePlatformOrWithAccessElsewhere() throws Exception {
+        // conta ligada à mão: a plataforma não a criou e não mexe na senha
+        user("prov-manual-op", Role.OPERATOR, null, condoA);
+        UUID manual = memberships.findByUserIdAndActiveTrue(users.findByExternalSubject("prov-manual-op").orElseThrow().getId())
+                .get(0).getId();
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + manual + "/reset-password").with(as("prov-admin-a")))
+                .andExpect(status().isConflict());
+        // conta criada pela plataforma, mas que também opera em OUTRA empresa: o administrador da primeira não a controla
+        UUID membership = provisionOperator("dois.lugares@example.invalid", "kc-sub-two-places");
+        UUID condoB = condominiums.save(new Condominium(companyB, "Prov CondoB", null)).getId();
+        UUID userId = users.findByExternalSubject("kc-sub-two-places").orElseThrow().getId();
+        memberships.save(new Membership(userId, Role.OPERATOR, null, condoB));
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + membership + "/reset-password").with(as("prov-admin-a")))
+                .andExpect(status().isConflict());
+        verify(idp, never()).resetPassword("kc-sub-two-places");
+        verify(idp, never()).resetPassword("prov-manual-op");
+    }
+
+    @Test
+    void revokingTheLastMembershipOfAPlatformCreatedAccountDeletesItSoTheEmailCanBeUsedAgain() throws Exception {
+        UUID membership = provisionOperator("volta.depois@example.invalid", "kc-sub-back-1");
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + membership + "/revoke").with(as("prov-admin-a")))
+                .andExpect(status().isNoContent());
+        verify(idp).delete("kc-sub-back-1");
+        // o mesmo e-mail pode ser cadastrado de novo (a conta antiga saiu do provedor e o e-mail foi liberado localmente)
+        provisionOperator("volta.depois@example.invalid", "kc-sub-back-2");
+        assertThat(users.findByExternalSubject("kc-sub-back-2")).isPresent();
+    }
+
+    @Test
+    void revokingAManuallyLinkedAccountNeverDeletesAnythingInTheProvider() throws Exception {
+        user("prov-manual-2", Role.OPERATOR, null, condoA);
+        UUID manual = memberships.findByUserIdAndActiveTrue(users.findByExternalSubject("prov-manual-2").orElseThrow().getId())
+                .get(0).getId();
+        mvc.perform(post("/api/v1/condominiums/" + condoA + "/members/" + manual + "/revoke").with(as("prov-admin-a")))
+                .andExpect(status().isNoContent());
+        verify(idp, never()).delete("prov-manual-2");
+    }
 }

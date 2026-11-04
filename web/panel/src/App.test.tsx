@@ -1154,6 +1154,27 @@ describe("operator panel", () => {
     }
   });
 
+  it("keeps sending the heartbeat during a long conversation while the call is open on the workbench", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = await login();
+      await waitFor(() => expect(posted.some((p) => p.url === "/api/v1/operator/calls/heartbeat")).toBe(true));
+      await user.click(await screen.findByRole("button", { name: /Entregador · MANUAL/ })); // abre o atendimento na bancada
+      const beats = () => posted.filter((p) => p.url === "/api/v1/operator/calls/heartbeat").length;
+      const before = beats();
+      await vi.advanceTimersByTimeAsync(5 * 60_000); // 5 min de conversa sem tocar na tela
+      expect(beats()).toBeGreaterThan(before + 3);
+      const mid = beats();
+      await vi.advanceTimersByTimeAsync(7 * 60_000); // passa dos 10 min sem interação: para o sinal
+      const after = beats();
+      await vi.advanceTimersByTimeAsync(2 * 60_000);
+      expect(beats()).toBe(after);
+      expect(after).toBeGreaterThan(mid);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("warns the operator when a call they attended went back to the queue for inactivity", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

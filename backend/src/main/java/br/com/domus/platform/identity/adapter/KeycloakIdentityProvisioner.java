@@ -106,6 +106,27 @@ public class KeycloakIdentityProvisioner implements IdentityProvisioner {
         }
     }
 
+    @Override
+    public String resetPassword(String subject) {
+        String password = generatePassword();
+        try {
+            String bearer = bearer();
+            http.put().uri("/admin/realms/{r}/users/{id}/reset-password", realm, subject)
+                    .header("Authorization", "Bearer " + bearer).contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("type", "password", "value", password, "temporary", true)).retrieve().toBodilessEntity();
+            // a senha antiga pode estar nas mãos de quem não deveria: derruba as sessões abertas
+            http.post().uri("/admin/realms/{r}/users/{id}/logout", realm, subject)
+                    .header("Authorization", "Bearer " + bearer).retrieve().toBodilessEntity();
+            return password;
+        } catch (RestClientResponseException e) {
+            log.warn("Identity provider answered {} while resetting a password", e.getStatusCode().value());
+            throw new ServiceUnavailableException("Identity provider rejected the password reset");
+        } catch (RestClientException e) {
+            log.warn("Identity provider unreachable while resetting a password: {}", e.getClass().getSimpleName());
+            throw new ServiceUnavailableException("Identity provider is not reachable");
+        }
+    }
+
     /**
      * Dá o papel de realm à conta. Os papéis disponíveis são lidos pela rota do próprio usuário (basta gerenciar usuários);
      * ler {@code /roles/{nome}} exigiria também a permissão de ver a configuração do realm.

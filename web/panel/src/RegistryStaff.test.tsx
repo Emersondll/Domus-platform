@@ -12,7 +12,8 @@ function stubApi(enabled: boolean) {
     calls.push({ method: init?.method ?? "GET", url, body: init?.body as string | undefined });
     if (url.endsWith("/identity/provisioning")) return json({ enabled });
     if (url.endsWith("/members/provision")) return json({ membership: { id: "m1" }, temporaryPassword: "senha-ficticia-de-teste" }, 201);
-    if (url.endsWith("/members")) return json([]);
+    if (url.endsWith("/members/m7/reset-password")) return json({ temporaryPassword: "nova-senha-ficticia" });
+    if (url.endsWith("/members")) return json([{ id: "m7", userId: "u7777777-aaaa", displayName: "Bia Operadora", role: "OPERATOR" }]);
     return json({});
   }));
   return calls;
@@ -40,5 +41,25 @@ describe("equipe: criar a conta pela tela", () => {
     render(<RegistryStaff token="t" condominiumId="c1" />);
     expect(await screen.findByLabelText("Identificador do usuário")).toBeTruthy();
     expect(screen.queryByText("Criar conta e adicionar")).toBeNull();
+  });
+
+  it("gera uma nova senha provisória só depois da confirmação e a mostra uma vez", async () => {
+    const calls = stubApi(true);
+    render(<RegistryStaff token="t" condominiumId="c1" />);
+    fireEvent.click(screen.getByText("Carregar equipe"));
+    fireEvent.click(await screen.findByLabelText("Gerar nova senha para Bia Operadora"));
+    expect(calls.some((c) => c.url.endsWith("/reset-password"))).toBe(false); // ainda só perguntou
+    fireEvent.click(screen.getByText("Confirmar nova senha"));
+    expect(await screen.findByText("nova-senha-ficticia")).toBeTruthy();
+    expect(screen.getByText(/Nova senha provisória gerada para/)).toBeTruthy();
+    expect(calls.filter((c) => c.url.endsWith("/members/m7/reset-password")).length).toBe(1);
+  });
+
+  it("sem a criação de contas ligada não oferece gerar nova senha", async () => {
+    stubApi(false);
+    render(<RegistryStaff token="t" condominiumId="c1" />);
+    fireEvent.click(screen.getByText("Carregar equipe"));
+    await screen.findByText(/Bia Operadora/);
+    expect(screen.queryByLabelText("Gerar nova senha para Bia Operadora")).toBeNull();
   });
 });

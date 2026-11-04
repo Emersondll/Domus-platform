@@ -240,6 +240,26 @@ try:
     t_new = direct_grant_token(tok, new_mail)
     s, _, b = api("GET", "/api/v1/condominiums", t_new)
     check("a conta criada pela API entra com o vínculo ligado pelo sub e o papel do Keycloak -> 200", s == 200, f"({s})")
+    print("== senha perdida e saída da equipe (conta criada pela API)")
+    mid = created["membership"]["id"]
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/{mid}/reset-password", t_admin)
+    new_pw = json.loads(b).get("temporaryPassword", "") if s == 200 else ""
+    check("a plataforma gera nova senha provisória para a conta -> 200", s == 200 and len(new_pw) >= 12 and new_pw != temp_pw, f"({s})")
+    s, _, _ = http("POST", f"{KC}/realms/portaria/protocol/openid-connect/token",
+                   {"client_id": "cli-test", "grant_type": "password", "username": new_mail, "password": PASSWORD, "scope": "openid"})
+    check("a senha anterior deixou de valer", s in (400, 401), f"({s})")
+    kind, _ = browser_login(new_mail, password=new_pw)
+    check("a nova senha provisória é aceita e exige a troca", kind in ("update-password", "otp-setup"), f"({kind})")
+    s2, _, ub = admin("GET", f"/users?username={new_mail}&exact=true", tok)
+    check("a troca obrigatória de senha está marcada de novo", "UPDATE_PASSWORD" in (json.loads(ub)[0].get("requiredActions", []) if s2 == 200 and json.loads(ub) else []), "")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/{mid}/reset-password", t_op)
+    check("quem não é da plataforma não repõe senha -> 4xx", 400 <= s < 500, f"({s})")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/{mid}/revoke", t_admin)
+    check("a plataforma revoga o administrador -> 204", s == 204, f"({s})")
+    s2, _, ub = admin("GET", f"/users?username={new_mail}&exact=true", tok)
+    check("e a conta criada pela API some do Keycloak (o e-mail fica livre)", s2 == 200 and json.loads(ub) == [], f"({ub[:80]})")
+    s, _, b = api("POST", f"/api/v1/companies/{company_id}/admins/provision", t_admin, {"email": new_mail, "displayName": "Criada De Novo"})
+    check("o mesmo e-mail pode ser cadastrado de novo -> 201", s == 201, f"({s}) {b[:100] if s != 201 else ''}")
 finally:
     proc.terminate()
     try:

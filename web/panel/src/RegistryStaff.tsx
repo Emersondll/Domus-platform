@@ -20,7 +20,8 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
   const [error, setError] = useState<string | null>(null);
   const provisioning = useProvisioningEnabled(token);
   const [manual, setManual] = useState(false);
-  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; password: string; reset?: boolean } | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
   const direct = provisioning && !manual;
 
   async function load() {
@@ -48,6 +49,27 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
                 setError(staffError(e));
               }
             }}>Revogar acesso</button>
+            {provisioning && resetting !== m.id && (
+              <button aria-label={`Gerar nova senha para ${m.displayName || m.userId.slice(0, 8)}`} onClick={() => setResetting(m.id)}>Gerar nova senha</button>
+            )}
+            {resetting === m.id && (
+              <>
+                <span> Gerar uma nova senha provisória e encerrar as sessões de {m.displayName || "esta pessoa"}? </span>
+                <button onClick={async () => {
+                  setError(null);
+                  setCreated(null);
+                  try {
+                    const r = await request<{ temporaryPassword: string }>(token, "POST", `${base}/${m.id}/reset-password`);
+                    if (r) setCreated({ email: m.displayName || "esta pessoa", password: r.temporaryPassword, reset: true });
+                  } catch (e) {
+                    setError(staffError(e));
+                  } finally {
+                    setResetting(null);
+                  }
+                }}>Confirmar nova senha</button>{" "}
+                <button onClick={() => setResetting(null)}>Cancelar</button>
+              </>
+            )}
           </li>
         ))}
         {members && members.filter((m) => m.role !== "RESIDENT").length === 0 && <li>Ninguém na equipe.</li>}
@@ -97,7 +119,7 @@ export function RegistryStaff({ token, condominiumId }: { token: string; condomi
           {manual ? "Criar a conta pela tela" : "A conta já existe no Keycloak: vincular pelo identificador"}
         </button>
       )}
-      {created && <TemporaryPassword email={created.email} password={created.password} onClose={() => setCreated(null)} />}
+      {created && <TemporaryPassword email={created.email} password={created.password} reset={created.reset} onClose={() => setCreated(null)} />}
       {error && <p role="alert" className="error">{error}</p>}
     </div>
   );

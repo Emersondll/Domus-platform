@@ -53,6 +53,18 @@ O perfil `dev` já liga o recurso (`portaria.media.enabled`) com segredos públi
 | `MEDIA_API_URL` | API de controle do MediaMTX (padrão `http://127.0.0.1:9997`, só loopback) |
 | `MEDIA_AUTH_ALLOWED_IPS` | IPs de onde o MediaMTX chama a validação (padrão loopback) |
 
+## Vídeo em produção: host de vídeo e CSP (2026-11-04)
+
+O painel e o app abrem o HLS em **outro host** (`video.<DOMAIN>`), e o hls.js reproduz por `MediaSource` (`blob:`) com um worker em `blob:`.
+O CSP do `deploy/caddy/Caddyfile` agora libera exatamente isso (`connect-src` e `media-src` com `https://video.<DOMAIN>`, `media-src blob:`,
+`worker-src blob:`); antes, o navegador bloquearia o vídeo, e o `e2e-browser.py` não via isso porque roda no Vite, sem o CSP de produção.
+Para ligar o vídeo: (1) suba o MediaMTX no servidor (acima); (2) copie `deploy/caddy/video/video.caddy.example` para `video.caddy` (sem o arquivo
+nada de vídeo é publicado) e crie o DNS de `video.<DOMAIN>`; (3) na API, `MEDIA_ENABLED=true`, `MEDIA_PUBLIC_HLS_URL=https://video.<DOMAIN>` e os
+segredos da tabela acima. O proxy alcança o MediaMTX do próprio servidor por `host.docker.internal:8888` (`MEDIA_UPSTREAM` muda isso).
+O MediaMTX deve aceitar CORS (`hlsAllowOrigin` do `deploy/media/mediamtx.yml`); o acesso continua protegido pelo token de cada sessão.
+Prova: `scripts/e2e-csp-video.py` (Caddy real com o Caddyfile de produção + MediaMTX + Chromium): o vídeo toca sob o CSP atual e, no controle
+negativo com o CSP antigo, o navegador bloqueia a playlist.
+
 ## Provas executadas (2026-10-25)
 
 - `CameraStreamIT` (4 testes, backend real + PostgreSQL): operador recebe sessão; o token só vale para o caminho da própria câmera

@@ -1,11 +1,14 @@
 package br.com.domus.platform.shared.config;
 
+import java.time.Clock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -16,7 +19,9 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http) throws Exception {
+    SecurityFilterChain api(HttpSecurity http, Clock clock,
+            @Value("${portaria.rate-limit.enabled:true}") boolean rateLimitEnabled,
+            @Value("${portaria.rate-limit.user-per-minute:1200}") int userPerMinute) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -33,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/internal/media/auth").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
+                // limite por pessoa: só depois que o token foi validado (o IP, sozinho, pune quem divide a mesma rede)
+                .addFilterAfter(new UserRateLimitFilter(clock, rateLimitEnabled, userPerMinute), BearerTokenAuthenticationFilter.class)
                 .build();
     }
 }

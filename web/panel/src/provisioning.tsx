@@ -15,15 +15,15 @@ export function useProvisioningEnabled(token: string): boolean {
 }
 
 /** Senha provisória: aparece só nesta resposta e some ao fechar; a pessoa a troca no primeiro acesso. */
-export function TemporaryPassword({ email, password, onClose }: { email: string; password: string; onClose: () => void }) {
+export function TemporaryPassword({ email, password, onClose, reset = false }: { email: string; password: string; onClose: () => void; reset?: boolean }) {
   return (
     <div role="status" className="hint" aria-label="Senha provisória">
       <p>
-        Conta criada para <strong>{email}</strong>. Entregue a senha provisória a ela por um canal seguro <strong>agora</strong>: ela não será
-        mostrada de novo.
+        {reset ? "Nova senha provisória gerada para " : "Conta criada para "}<strong>{email}</strong>. Entregue a senha provisória a ela por um canal seguro <strong>agora</strong>: ela não será
+        mostrada de novo.{reset ? " As sessões abertas dessa conta foram encerradas e a senha anterior deixou de valer." : ""}
       </p>
       <p><code>{password}</code></p>
-      <p>No primeiro acesso a pessoa configura o autenticador (código OTP) e troca a senha.</p>
+      <p>{reset ? "No próximo acesso a pessoa troca a senha (o autenticador já configurado continua valendo)." : "No primeiro acesso a pessoa configura o autenticador (código OTP) e troca a senha."}</p>
       <button onClick={onClose}>Já entreguei, fechar</button>
     </div>
   );

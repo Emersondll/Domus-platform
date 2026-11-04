@@ -97,6 +97,34 @@ public class MemberController {
     }
 
     /**
+     * @param temporaryPassword nova senha provisória, mostrada uma única vez; a troca é obrigatória no próximo acesso
+     */
+    public record PasswordResetResponse(String temporaryPassword) {
+    }
+
+    /**
+     * Atende `POST /condominiums/{condominiumId}/members/{membershipId}/reset-password`: nova senha provisória de quem perdeu a primeira.
+     *
+     * @param condominiumId condomínio
+     * @param membershipId associação da pessoa da equipe
+     */
+    @PostMapping("/condominiums/{condominiumId}/members/{membershipId}/reset-password")
+    public PasswordResetResponse resetStaffPassword(@PathVariable UUID condominiumId, @PathVariable UUID membershipId) {
+        return new PasswordResetResponse(provisioning.resetStaffPassword(condominiumId, membershipId));
+    }
+
+    /**
+     * Atende `POST /companies/{companyId}/admins/{membershipId}/reset-password` (só a plataforma).
+     *
+     * @param companyId empresa operadora
+     * @param membershipId associação do administrador
+     */
+    @PostMapping("/companies/{companyId}/admins/{membershipId}/reset-password")
+    public PasswordResetResponse resetCompanyAdminPassword(@PathVariable UUID companyId, @PathVariable UUID membershipId) {
+        return new PasswordResetResponse(provisioning.resetCompanyAdminPassword(companyId, membershipId));
+    }
+
+    /**
      * @param externalSubject claim {@code sub} do usuário no provedor de identidade (Keycloak)
      * @param email           e-mail do usuário
      * @param displayName     nome de exibição

@@ -16,6 +16,12 @@
 	}
 }
 
+(page_csp) {
+	# connect-src/media-src/worker-src com o host de vídeo: o hls.js busca a playlist e os trechos em video.<DOMAIN> (outro host) e
+	# reproduz por MediaSource (blob:), com um worker também em blob:. Sem isso o navegador bloqueia o vídeo ao vivo.
+	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX} https://video.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; media-src 'self' blob: https://video.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'"
+}
+
 (api_proxy) {
 	# Caminhos que não podem sair para a internet, mesmo que existissem na aplicação
 	@blocked path /actuator /actuator/* /dev /dev/* /swagger-ui /swagger-ui/* /swagger-ui.html /v3/api-docs /v3/api-docs/* /internal /internal/*
@@ -29,6 +35,10 @@
 	}
 }
 
+# Vídeo ao vivo (opcional): copie deploy/caddy/video/video.caddy.example para video.caddy e siga docs/cameras.md.
+# Sem o arquivo, nada de vídeo é publicado.
+import /etc/caddy/video/*.caddy
+
 api.{$DOMAIN} {
 	import security_headers
 	encode zstd gzip
@@ -37,7 +47,7 @@ api.{$DOMAIN} {
 
 panel.{$DOMAIN} {
 	import security_headers
-	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; frame-ancestors 'none'; base-uri 'none'"
+	import page_csp
 	encode zstd gzip
 	# Configuração em tempo de execução: o mesmo build serve qualquer ambiente
 	handle /config.json {
@@ -57,7 +67,7 @@ panel.{$DOMAIN} {
 
 app.{$DOMAIN} {
 	import security_headers
-	header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://auth.{$DOMAIN}{$PUBLIC_PORT_SUFFIX}; frame-ancestors 'none'; base-uri 'none'"
+	import page_csp
 	encode zstd gzip
 	# Configuração em tempo de execução: o mesmo build serve qualquer ambiente
 	handle /config.json {

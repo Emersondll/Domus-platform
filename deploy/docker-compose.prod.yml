@@ -16,6 +16,13 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init-keycloak.sql:/docker-entrypoint-initdb.d/10-keycloak.sql:ro
+    # Endurecimento: sem privilégios novos, só as capacidades que o entrypoint do Postgres usa para trocar de usuário e ajustar
+    # permissões, e sistema de arquivos somente leitura (só o volume de dados e o tmpfs são graváveis).
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    read_only: true
+    tmpfs: ["/tmp", "/run/postgresql"]
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U portaria -d portaria"]
@@ -46,6 +53,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Sem privilégios novos e sem capacidades. O sistema de arquivos NÃO é somente leitura: o comando `start` (sem build prévio) otimiza
+    # o Quarkus na primeira subida e grava em /opt/keycloak.
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
     # Só rede interna: o Keycloak não precisa de saída (sem e-mail, sem login social) e o proxy o alcança por dentro.
     networks: [internal]
 
@@ -80,6 +91,11 @@ services:
         condition: service_started
     # Só rede interna: sem saída para a internet nem para a rede do servidor. Se a central precisar falar com controladoras ou com
     # o servidor de mídia, some o override docker-compose.prod.devices.yml (e restrinja o destino no firewall: docs/operations.md).
+    # Endurecimento: sem privilégios novos, sem capacidades, sistema de arquivos somente leitura (só /tmp, em memória, é gravável).
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp"]
     networks: [internal]
     healthcheck:
       # JRE sem curl: requisição HTTP mínima pela porta de gestão (interna)
@@ -96,16 +112,27 @@ services:
       DOMAIN: ${DOMAIN}
       PUBLIC_PORT_SUFFIX: ${PUBLIC_PORT_SUFFIX:-}
       ACME_EMAIL: ${ACME_EMAIL:-admin@example.invalid}
+      MEDIA_UPSTREAM: ${MEDIA_UPSTREAM:-host.docker.internal:8888}
+    # Só para o vídeo opcional (caddy/video/video.caddy): alcançar o MediaMTX que roda no próprio servidor
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/video:/etc/caddy/video:ro
       - ../web/panel/dist:/srv/panel:ro
       - ../web/resident/dist:/srv/resident:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [app, keycloak]
+    # Endurecimento: só a capacidade de abrir as portas 80/443; os únicos pontos graváveis são os volumes de /data e /config e o /tmp.
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    read_only: true
+    tmpfs: ["/tmp"]
     # Única porta de entrada e única com saída (precisa dela para o certificado); alcança app e keycloak pela rede interna.
     networks: [edge, internal]
 
@@ -113,6 +140,8 @@ services:
     image: prom/prometheus:v3.15.1
     profiles: ["observability"]
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
     volumes:
       - ./prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -125,6 +154,8 @@ services:
     image: grafana/grafana:13.3.0
     profiles: ["observability"]
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?defina GRAFANA_PASSWORD}

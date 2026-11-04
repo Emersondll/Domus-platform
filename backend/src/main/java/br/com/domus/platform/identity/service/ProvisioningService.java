@@ -2,6 +2,11 @@ package br.com.domus.platform.identity.service;
 
 import br.com.domus.platform.identity.entity.Membership;
 import br.com.domus.platform.identity.entity.Role;
+import br.com.domus.platform.identity.repository.MembershipRepository;
+import br.com.domus.platform.shared.audit.AuditOutcome;
+import br.com.domus.platform.shared.audit.AuditService;
+import br.com.domus.platform.shared.error.NotFoundException;
+import br.com.domus.platform.shared.tenant.Actor;
 import br.com.domus.platform.shared.error.ConflictException;
 import br.com.domus.platform.shared.error.InvalidRequestException;
 import br.com.domus.platform.shared.tenant.AccessService;
@@ -17,15 +22,24 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProvisioningService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ProvisioningService.class);
+
     private final ObjectProvider<IdentityProvisioner> provisioner;
     private final MemberService members;
     private final AccessService access;
+    private final ProvisionedAccounts provisioned;
+    private final MembershipRepository memberships;
+    private final AuditService audit;
 
     /** Construtor para criação de um(a) provisioning service. */
-    public ProvisioningService(ObjectProvider<IdentityProvisioner> provisioner, MemberService members, AccessService access) {
+    public ProvisioningService(ObjectProvider<IdentityProvisioner> provisioner, MemberService members, AccessService access,
+                               ProvisionedAccounts provisioned, MembershipRepository memberships, AuditService audit) {
         this.provisioner = provisioner;
         this.members = members;
         this.access = access;
+        this.provisioned = provisioned;
+        this.memberships = memberships;
+        this.audit = audit;
     }
 
     /** Resultado: a associação criada e a senha provisória (mostrada uma única vez). */
@@ -75,10 +89,59 @@ public class ProvisioningService {
         }
         IdentityProvisioner.Created created = idp.create(email, displayName, AccessService.providerRole(role));
         try {
-            return new Provisioned(link.apply(created.subject()), created.temporaryPassword());
+            Membership linked = link.apply(created.subject());
+            try {
+                provisioned.record(created.subject());
+            } catch (RuntimeException e) {
+                // o vínculo já foi gravado: não desfazer. Só perde a reposição de senha e a limpeza automática dessa conta.
+                log.error("Could not record provisioned identity account {}", created.subject(), e);
+            }
+            return new Provisioned(linked, created.temporaryPassword());
         } catch (RuntimeException e) {
             idp.delete(created.subject());
             throw e;
         }
+    }
+
+    /**
+     * Gera uma nova senha provisória para quem perdeu a primeira (mostrada uma única vez, troca obrigatória no próximo acesso).
+     * Só vale para contas criadas pela plataforma e que não tenham nenhum acesso fora do condomínio.
+     *
+     * @param condominiumId condomínio
+     * @param membershipId associação da pessoa da equipe
+     */
+    public String resetStaffPassword(UUID condominiumId, UUID membershipId) {
+        Actor actor = access.requireCompanyAdminOf(condominiumId, "member.staff.reset-password");
+        Membership m = memberships.findByIdAndCondominiumId(membershipId, condominiumId).filter(Membership::isActive)
+                .filter(x -> x.getRole() == Role.OPERATOR || x.getRole() == Role.CONDO_MANAGER)
+                .orElseThrow(() -> new NotFoundException("Membership not found"));
+        return reset(actor, m, null, condominiumId,
+                x -> condominiumId.equals(x.getCondominiumId()) && x.getOperatorCompanyId() == null);
+    }
+
+    /**
+     * Mesma reposição de senha para um administrador de empresa (só a plataforma).
+     *
+     * @param companyId empresa operadora
+     * @param membershipId associação do administrador
+     */
+    public String resetCompanyAdminPassword(UUID companyId, UUID membershipId) {
+        Actor actor = access.requirePlatformAdmin("member.company-admin.reset-password");
+        Membership m = memberships.findByIdAndOperatorCompanyIdAndRole(membershipId, companyId, Role.COMPANY_ADMIN)
+                .filter(Membership::isActive).orElseThrow(() -> new NotFoundException("Membership not found"));
+        return reset(actor, m, companyId, null,
+                x -> companyId.equals(x.getOperatorCompanyId()) && x.getRole() == Role.COMPANY_ADMIN);
+    }
+
+    private String reset(Actor actor, Membership m, UUID companyId, UUID condominiumId,
+                         java.util.function.Predicate<Membership> scope) {
+        IdentityProvisioner idp = provisioner.getIfAvailable();
+        if (idp == null) {
+            throw new ConflictException("Account creation in the identity provider is not enabled");
+        }
+        String subject = provisioned.subjectForReset(m.getUserId(), scope);
+        String password = idp.resetPassword(subject);
+        provisioned.auditPasswordReset(actor.userId(), companyId, condominiumId, m.getId());
+        return password;
     }
 }

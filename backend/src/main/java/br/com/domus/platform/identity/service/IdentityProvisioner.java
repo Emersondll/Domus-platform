@@ -24,6 +24,16 @@ public interface IdentityProvisioner {
      */
     Created create(String email, String displayName, String providerRole);
 
-    /** Remove uma conta criada por {@link #create}; usado para desfazer quando o vínculo local falha. */
+    /** Remove uma conta criada por {@link #create}; usado para desfazer quando o vínculo local falha ou a pessoa sai da equipe. */
     void delete(String subject);
+
+    /**
+     * Gera uma nova senha provisória (troca obrigatória no próximo acesso) e encerra as sessões abertas da conta. O segundo fator
+     * já configurado é mantido: quem perdeu a senha não perdeu o aparelho.
+     *
+     * @param subject {@code sub} da conta
+     * @return a nova senha provisória, mostrada uma única vez
+     * @throws br.com.domus.platform.shared.error.ServiceUnavailableException se o provedor não respondeu
+     */
+    String resetPassword(String subject);
 }

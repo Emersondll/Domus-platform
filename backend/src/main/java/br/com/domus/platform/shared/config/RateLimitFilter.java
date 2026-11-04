@@ -19,7 +19,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Limitação de taxa (janela fixa de 60 s) e bloqueio por força bruta em credenciais de máquina.
  * Regras: API do agente por agente; ingestão de eventos por dispositivo; validação de credenciais por IP; demais
- * endpoints por IP. Falhas repetidas de autenticação (401/403) nas APIs de agente/dispositivo bloqueiam o IP por 5 min.
+ * endpoints por IP. Como a identidade informada por máquinas (X-Agent-Id, id do dispositivo na URL) é controlada pelo
+ * cliente, cada uma dessas chaves também passa por um teto por IP ({@value #MACHINE_IP_FACTOR} vezes o limite), para que
+ * variar o identificador não contorne o limite. Requisições com token Bearer usam um teto por IP bem mais alto
+ * ({@code bearer-per-ip-per-minute}): atrás de um mesmo NAT há muitos operadores e moradores, e o limite fino por pessoa é do
+ * {@link UserRateLimitFilter}, que só conhece o usuário depois da autenticação.
+ * Falhas repetidas de autenticação (401/403) nas APIs de agente/dispositivo bloqueiam a dupla IP + identificador por 5 min
+ * (um equipamento com chave errada não bloqueia os outros do mesmo condomínio, que saem pelo mesmo IP); um teto maior de
+ * falhas por IP ({@value #IP_FAILURE_FACTOR} vezes) ainda barra quem testa vários identificadores.
  * Estado em memória: vale por instância. Com mais de uma instância, use um armazenamento compartilhado (ex.: Redis);
  * o login de pessoas (senha/MFA) é protegido pelo provedor de identidade (Keycloak), não por este filtro.
  */
@@ -31,6 +38,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final long LOCKOUT_MS = 300_000;
     private static final Pattern DEVICE_EVENTS = Pattern.compile("^/api/v1/devices/([^/]+)/events$");
     private static final int MAX_KEYS = 100_000;
+    /** Teto por IP da identidade de máquina, em múltiplos do limite por identidade. */
+    static final int MACHINE_IP_FACTOR = 10;
+    /** Falhas de autenticação por IP, em múltiplos do limite por dupla IP + identificador. */
+    static final int IP_FAILURE_FACTOR = 10;
+    private static final Pattern UUID_TEXT = Pattern.compile(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private record Window(long start, int count) {
     }
@@ -43,6 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final int validatePerMin;
     private final int apiPerMin;
     private final int maxAuthFailures;
+    private final int bearerPerIp;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Window> failures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> blockedUntil = new ConcurrentHashMap<>();
@@ -57,7 +71,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             @Value("${portaria.rate-limit.device-per-minute:120}") int devicePerMin,
             @Value("${portaria.rate-limit.validate-per-minute:120}") int validatePerMin,
             @Value("${portaria.rate-limit.api-per-minute:600}") int apiPerMin,
-            @Value("${portaria.rate-limit.max-auth-failures:10}") int maxAuthFailures) {
+            @Value("${portaria.rate-limit.max-auth-failures:10}") int maxAuthFailures,
+            @Value("${portaria.rate-limit.bearer-per-ip-per-minute:6000}") int bearerPerIp) {
         this.clock = clock;
         this.enabled = enabled;
         this.trustForwardedFor = trustForwardedFor;
@@ -66,6 +81,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         this.validatePerMin = validatePerMin;
         this.apiPerMin = apiPerMin;
         this.maxAuthFailures = maxAuthFailures;
+        this.bearerPerIp = bearerPerIp;
     }
 
     @Override
@@ -81,26 +97,43 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ip = clientIp(request);
         boolean machine = path.startsWith("/api/v1/agent/") || DEVICE_EVENTS.matcher(path).matches();
 
-        if (machine && isBlocked("fail:" + ip, now)) {
-            reject(response, 429, retryAfter(blockedUntil.get("fail:" + ip), now));
-            return;
-        }
+        String identity = "-"; // quem a máquina diz ser (só vale para separar bloqueios; não é prova de nada)
         String key;
         int limit;
         Matcher dev = DEVICE_EVENTS.matcher(path);
         if (path.startsWith("/api/v1/agent/")) {
             String agent = request.getHeader("X-Agent-Id");
-            key = "agent:" + (agent != null && agent.length() <= 40 ? agent : ip);
+            boolean valid = agent != null && UUID_TEXT.matcher(agent).matches();
+            identity = valid ? agent : "-";
+            key = "agent:" + (valid ? agent : ip);
             limit = agentPerMin;
         } else if (dev.matches()) {
-            key = "device:" + dev.group(1);
+            identity = dev.group(1);
+            key = "device:" + identity;
             limit = devicePerMin;
         } else if (path.endsWith("/access/validate")) {
             key = "validate:" + ip;
             limit = validatePerMin;
+        } else if (hasBearer(request)) {
+            key = "bearer:" + ip;
+            limit = bearerPerIp;
         } else {
             key = "api:" + ip;
             limit = apiPerMin;
+        }
+        String failKey = "fail:" + ip + ":" + identity;
+        String failIpKey = "failip:" + ip;
+        if (machine) {
+            String blockedKey = isBlocked(failKey, now) ? failKey : isBlocked(failIpKey, now) ? failIpKey : null;
+            if (blockedKey != null) {
+                reject(response, 429, retryAfter(blockedUntil.get(blockedKey), now));
+                return;
+            }
+        }
+        // o identificador de máquina é informado pelo cliente: o teto por IP impede contornar o limite trocando o valor
+        if (machine && !tryAcquire("machine-ip:" + ip, limit * MACHINE_IP_FACTOR, now)) {
+            reject(response, 429, WINDOW_MS / 1000);
+            return;
         }
         if (!tryAcquire(key, limit, now)) {
             reject(response, 429, WINDOW_MS / 1000);
@@ -109,8 +142,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
         int status = response.getStatus();
         if (machine && (status == 401 || status == 403)) {
-            recordFailure("fail:" + ip, now);
+            recordFailure(failKey, maxAuthFailures, now);
+            recordFailure(failIpKey, maxAuthFailures * IP_FAILURE_FACTOR, now);
         }
+    }
+
+    private static boolean hasBearer(HttpServletRequest request) {
+        String auth = request.getHeader("Authorization");
+        return auth != null && auth.regionMatches(true, 0, "Bearer ", 0, 7);
     }
 
     private boolean tryAcquire(String key, int limit, long now) {
@@ -120,10 +159,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return w.count <= limit;
     }
 
-    private void recordFailure(String key, long now) {
+    private void recordFailure(String key, int threshold, long now) {
         Window w = failures.compute(key, (k, old) -> old == null || now - old.start >= LOCKOUT_MS
                 ? new Window(now, 1) : new Window(old.start, old.count + 1));
-        if (w.count >= maxAuthFailures) {
+        if (w.count >= threshold) {
             blockedUntil.put(key, now + LOCKOUT_MS);
             failures.remove(key);
         }

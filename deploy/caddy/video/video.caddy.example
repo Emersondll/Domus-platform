@@ -1,0 +1,8 @@
+# Publica o servidor de vídeo (MediaMTX) em video.<DOMAIN>. Para ligar: copie este arquivo para `video.caddy` (mesma pasta), crie o
+# registro DNS de video.<DOMAIN> e suba o MediaMTX no servidor (docs/cameras.md). Defina MEDIA_PUBLIC_HLS_URL=https://video.<DOMAIN>
+# na API. O MediaMTX valida cada leitura no backend (token de sessão); aqui só passa o tráfego.
+video.{$DOMAIN} {
+	import security_headers
+	# Servidor de mídia no próprio host (padrão). O proxy o alcança pelo gateway do Docker.
+	reverse_proxy {$MEDIA_UPSTREAM:host.docker.internal:8888}
+}

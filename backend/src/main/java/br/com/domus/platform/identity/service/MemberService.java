@@ -46,12 +46,14 @@ public class MemberService implements ResidentAccessRevoker {
     private final ViewSessionRevoker viewSessions;
     private final OperatorCallReleaser callReleaser;
     private final InvitationRevoker invitations;
+    private final ProvisionedAccounts provisioned;
 
     /** Construtor para criação de um(a) member service. */
     public MemberService(AppUserRepository users, MembershipRepository memberships, ResidentRepository residents,
                          OperatorCompanyRepository companies, AccessService access, AuditService audit, FieldCipher cipher,
                          ViewSessionRevoker viewSessions, OperatorCallReleaser callReleaser,
-                         InvitationRevoker invitations) {
+                         InvitationRevoker invitations, ProvisionedAccounts provisioned) {
+        this.provisioned = provisioned;
         this.invitations = invitations;
         this.callReleaser = callReleaser;
         this.cipher = cipher;
@@ -127,6 +129,7 @@ public class MemberService implements ResidentAccessRevoker {
         m.revoke();
         audit.record(actor.userId(), companyId, null, "member.company-admin.revoke", "membership", membershipId.toString(),
                 AuditOutcome.SUCCESS);
+        provisioned.releaseIfOrphan(m.getUserId());
     }
 
     /**
@@ -253,6 +256,7 @@ public class MemberService implements ResidentAccessRevoker {
         }
         audit.record(actor.userId(), null, condominiumId, "member.revoke", "membership", membershipId.toString(),
                 AuditOutcome.SUCCESS);
+        provisioned.releaseIfOrphan(m.getUserId());
     }
 
     /** O cadastro foi desativado (mudou-se, saiu): sem vínculo ele não chama a central, não convida nem vê câmeras. */

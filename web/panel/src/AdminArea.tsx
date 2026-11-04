@@ -40,7 +40,7 @@ function Companies({ token }: { token: string }) {
   const [adminCompany, setAdminCompany] = useState("");
   const provisioning = useProvisioningEnabled(token);
   const [manual, setManual] = useState(false);
-  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; password: string; reset?: boolean } | null>(null);
   const direct = provisioning && !manual;
   const [subject, setSubject] = useState("");
   const [email, setEmail] = useState("");
@@ -173,7 +173,7 @@ function Companies({ token }: { token: string }) {
           {manual ? "Criar a conta pela tela" : "A conta já existe no Keycloak: vincular pelo identificador"}
         </button>
       )}
-      {created && <TemporaryPassword email={created.email} password={created.password} onClose={() => setCreated(null)} />}
+      {created && <TemporaryPassword email={created.email} password={created.password} reset={created.reset} onClose={() => setCreated(null)} />}
       {adminCompany && (
         <ul aria-label="Administradores da empresa">
           {admins.map((a) => (
@@ -184,6 +184,17 @@ function Companies({ token }: { token: string }) {
                     "Administrador revogado.");
                 }
               }}>Revogar</button>
+              {provisioning && (
+                <button aria-label={`Gerar nova senha para ${a.displayName}`} onClick={() => {
+                  if (window.confirm(`Gerar uma nova senha provisória e encerrar as sessões de ${a.displayName}?`)) {
+                    void run(async () => {
+                      setCreated(null);
+                      const r = await request<{ temporaryPassword: string }>(token, "POST", `/api/v1/companies/${adminCompany}/admins/${a.membershipId}/reset-password`);
+                      if (r) setCreated({ email: a.displayName, password: r.temporaryPassword, reset: true });
+                    }, "Nova senha gerada.");
+                  }
+                }}>Gerar nova senha</button>
+              )}
             </li>
           ))}
           {admins.length === 0 && <li>Nenhum administrador nesta empresa.</li>}

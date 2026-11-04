@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -142,7 +142,7 @@ function fakeApi() {
     if (url === "/api/v1/companies/co1/admins" && init?.method !== "POST") return json([{ membershipId: "m-adm1", userId: "u1", displayName: "Admin Antigo" }]);
     if (url.startsWith("/api/v1/companies?")) return pg([{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }]);
     if (url === "/api/v1/condominiums/c1" && (init?.method ?? "GET") === "GET") return json({ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" });
-    if (url.endsWith("/suspend") || url.endsWith("/reactivate")) return json({ id: "x" });
+    if (url.endsWith("/suspend") || url.endsWith("/reactivate") || url.endsWith("/transfer")) return json({ id: "x" });
     if ((url === "/api/v1/companies/co1" || url === "/api/v1/condominiums/c1") && init?.method === "PUT") return json({ id: "x" });
     if (url.startsWith("/api/v1/condominiums?")) return pg([{ id: "c1", operatorCompanyId: "co1", name: "Residencial Sol", status: "ACTIVE" }]);
     if (url.endsWith("/agents") && (!init?.method || init.method === "GET")) return json([{ id: "ag1", name: "Servidor portaria", status: "ACTIVE", online: true, lastSeenAt: new Date().toISOString(), lastPolicyVersion: 7, backlog: 2 }]);
@@ -1073,6 +1073,32 @@ describe("operator panel", () => {
     await user.click(screen.getByRole("button", { name: "Salvar correção" }));
     await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/condominiums/c1")?.body)
       .toEqual({ name: "Residencial Sol Nascente", taxId: null }));
+  });
+
+  it("marks a condominium without health alerts with a single dot", async () => {
+    await login();
+    expect(await screen.findByRole("img", { name: "Dispositivos e conectividade sem alertas" })).toBeInTheDocument();
+  });
+
+  it("lets only the platform administrator move a condominium to another company, with a reason", async () => {
+    adminScope = { platformAdmin: false, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }] };
+    let user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    await screen.findByRole("button", { name: "Corrigir condomínio Residencial Sol" });
+    expect(screen.queryByRole("button", { name: /Passar Residencial Sol para outra empresa/ })).not.toBeInTheDocument();
+    cleanup();
+    adminScope = { platformAdmin: true, operator: false, companies: [{ id: "co1", name: "Alfa Portaria", taxId: "11111111000191" }, { id: "co2", name: "Beta Operadora", taxId: "22222222000191" }] };
+    user = await login();
+    await user.click(await screen.findByRole("button", { name: "Administração" }));
+    await user.click(await screen.findByRole("tab", { name: "Condomínios" }));
+    await user.click(await screen.findByRole("button", { name: "Passar Residencial Sol para outra empresa" }));
+    const confirm = screen.getByRole("button", { name: "Confirmar transferência" });
+    expect(confirm).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Nova empresa operadora"), "co2");
+    await user.type(screen.getByLabelText("Motivo (sem dado pessoal)"), "Contrato transferido");
+    await user.click(confirm);
+    await waitFor(() => expect(posted.find((p) => p.url === "/api/v1/condominiums/c1/transfer")?.body)
+      .toEqual({ companyId: "co2", reason: "Contrato transferido" }));
   });
 
   it("lets the platform administrator manage companies and create condominiums", async () => {

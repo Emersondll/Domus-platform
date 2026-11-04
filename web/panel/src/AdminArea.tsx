@@ -213,8 +213,23 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
   const [name, setName] = useState("");
   const [taxId, setTaxId] = useState("");
   const [editing, setEditing] = useState<{ id: string; name: string; taxId: string } | null>(null);
+  const [transferring, setTransferring] = useState<{ id: string; toCompany: string; reason: string } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function saveTransfer() {
+    if (!transferring) return;
+    setError(null);
+    setDone(null);
+    try {
+      await request(token, "POST", `/api/v1/condominiums/${transferring.id}/transfer`, { companyId: transferring.toCompany, reason: transferring.reason.trim() });
+      setTransferring(null);
+      setDone("Condomínio passado para a nova empresa.");
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
 
   async function saveEdit() {
     if (!editing) return;
@@ -275,10 +290,24 @@ function Condominiums({ token, companies, platformAdmin }: { token: string; comp
                 <button disabled={!editing.name.trim()} onClick={saveEdit}>Salvar correção</button>{" "}
                 <button onClick={() => setEditing(null)}>Cancelar</button>
               </span>
+            ) : transferring?.id === c.id ? (
+              <span role="group" aria-label={`Passar condomínio ${c.name} para outra empresa`}>
+                <label htmlFor={`cd-tr-co-${c.id}`}>Nova empresa operadora</label>
+                <select id={`cd-tr-co-${c.id}`} value={transferring.toCompany} onChange={(e) => setTransferring({ ...transferring, toCompany: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {allCompanies.filter((o) => o.id !== c.operatorCompanyId).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                <label htmlFor={`cd-tr-why-${c.id}`}>Motivo (sem dado pessoal)</label>
+                <input id={`cd-tr-why-${c.id}`} maxLength={200} value={transferring.reason} onChange={(e) => setTransferring({ ...transferring, reason: e.target.value })} />
+                <p className="hint">A equipe e os moradores continuam no condomínio. O administrador da empresa antiga perde o acesso e o da nova passa a ter.</p>
+                <button disabled={!transferring.toCompany || transferring.reason.trim().length < 5} onClick={saveTransfer}>Confirmar transferência</button>{" "}
+                <button onClick={() => setTransferring(null)}>Cancelar</button>
+              </span>
             ) : (
               <>
                 {c.name}{platformAdmin ? ` · ${companyName(c.operatorCompanyId)}` : ""} · {c.status === "SUSPENDED" ? "suspenso" : "ativo"}{" "}
                 <button aria-label={`Corrigir condomínio ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name, taxId: "" })}>Corrigir</button>{" "}
+                {platformAdmin && <><button aria-label={`Passar ${c.name} para outra empresa`} onClick={() => setTransferring({ id: c.id, toCompany: "", reason: "" })}>Passar para outra empresa</button>{" "}</>}
               </>
             )}
             <button className={c.status === "SUSPENDED" ? "" : "danger"}

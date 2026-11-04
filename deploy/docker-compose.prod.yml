@@ -31,9 +31,11 @@ services:
       retries: 20
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8
+    build:
+      context: ./keycloak
+    image: portaria-keycloak:local
     restart: unless-stopped
-    command: ["start", "--import-realm"]
+    command: ["start", "--optimized", "--import-realm"]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/keycloak
@@ -53,10 +55,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Sem privilégios novos e sem capacidades. O sistema de arquivos NÃO é somente leitura: o comando `start` (sem build prévio) otimiza
-    # o Quarkus na primeira subida e grava em /opt/keycloak.
+    # Endurecimento: sem privilégios novos, sem capacidades e sistema de arquivos somente leitura. A etapa de build do Quarkus
+    # roda na construção da imagem (deploy/keycloak/Dockerfile); em execução só /tmp e a pasta de dados (em memória) são graváveis.
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp", "/opt/keycloak/data/tmp"]
     # Só rede interna: o Keycloak não precisa de saída (sem e-mail, sem login social) e o proxy o alcança por dentro.
     networks: [internal]
 

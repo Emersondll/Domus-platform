@@ -3,6 +3,7 @@ package br.com.domus.platform.commercial;
 import br.com.domus.platform.AbstractIntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -108,5 +109,30 @@ class IdentityEditIT extends AbstractIntegrationTest {
         assertThat(condominiums.findById(condoA).orElseThrow().getTaxId()).isEqualTo("11444777000161");
         assertThat(details("condominium.update", condoA)).anyMatch(d -> d.contains("'11111111000111' -> '11444777000161'"));
         assertThat(details("condominium.update", condoA)).anyMatch(d -> d.contains("'Ide A' -> 'Ide A Corrigido'"));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions transfer(String who, UUID condo, UUID toCompany) throws Exception {
+        return mvc.perform(post("/api/v1/condominiums/" + condo + "/transfer").with(as(who)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"companyId\":\"" + toCompany + "\",\"reason\":\"Contrato transferido\"}"));
+    }
+
+    @Test
+    void onlyThePlatformMovesACondominiumToAnotherCompanyAndTheAccessFollows() throws Exception {
+        UUID moving = condominiums.save(new Condominium(company, "Ide Transfer", null)).getId();
+        transfer("ide-admin", moving, otherCompany).andExpect(status().isNotFound());
+        transfer("ide-manager", moving, otherCompany).andExpect(status().isNotFound());
+        transfer("ide-platform", moving, company).andExpect(status().isConflict());
+        transfer("ide-platform", moving, UUID.randomUUID()).andExpect(status().isNotFound());
+        // nome já usado na empresa de destino
+        condominiums.save(new Condominium(otherCompany, "Ide Transfer", null));
+        transfer("ide-platform", moving, otherCompany).andExpect(status().isConflict());
+        UUID free = condominiums.save(new Condominium(company, "Ide Transfer Livre", null)).getId();
+        putAs("ide-admin-other", "/api/v1/condominiums/" + free, "{\"name\":\"Ide Transfer Livre\"}").andExpect(status().isNotFound());
+        transfer("ide-platform", free, otherCompany).andExpect(status().isOk());
+        assertThat(condominiums.findById(free).orElseThrow().getOperatorCompanyId()).isEqualTo(otherCompany);
+        // o administrador da empresa nova passa a gerir; o da antiga perde o acesso
+        putAs("ide-admin-other", "/api/v1/condominiums/" + free, "{\"name\":\"Ide Transfer Livre\"}").andExpect(status().isOk());
+        putAs("ide-admin", "/api/v1/condominiums/" + free, "{\"name\":\"Ide Transfer Livre\"}").andExpect(status().isNotFound());
+        assertThat(details("condominium.transfer", free)).anyMatch(d -> d.contains(company + " -> " + otherCompany));
     }
 }

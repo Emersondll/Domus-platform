@@ -131,6 +131,40 @@ public class CommercialService {
         return condominium;
     }
 
+    /**
+     * Passa um condomínio para outra empresa operadora. Só a plataforma. A equipe e os moradores do condomínio não mudam (as
+     * associações são do condomínio); o administrador da empresa antiga perde o acesso e o da nova passa a ter. A auditoria guarda
+     * as duas empresas e o motivo.
+     *
+     * @param condominiumId condomínio
+     * @param newCompanyId empresa operadora que passa a ser a dona
+     * @param reason motivo (sem dado pessoal)
+     */
+    @Transactional
+    public Condominium transferCondominium(UUID condominiumId, UUID newCompanyId, String reason) {
+        Actor actor = access.currentActor();
+        Condominium condominium = condominiums.findById(condominiumId).orElse(null);
+        if (condominium == null || !access.isPlatformAdmin(actor)) {
+            audit.record(actor.userId(), null, condominiumId, "condominium.transfer", "condominium", condominiumId.toString(),
+                    AuditOutcome.DENIED);
+            throw new NotFoundException("Condominium not found");
+        }
+        if (!companies.existsById(newCompanyId)) {
+            throw new NotFoundException("Company not found");
+        }
+        UUID oldCompanyId = condominium.getOperatorCompanyId();
+        if (oldCompanyId.equals(newCompanyId)) {
+            throw new ConflictException("The condominium already belongs to this company");
+        }
+        if (condominiums.existsByOperatorCompanyIdAndNameAndIdNot(newCompanyId, condominium.getName(), condominiumId)) {
+            throw new ConflictException("A condominium with this name already exists for the company");
+        }
+        condominium.transferTo(newCompanyId);
+        audit.record(actor.userId(), newCompanyId, condominiumId, "condominium.transfer", "condominium", condominiumId.toString(),
+                AuditOutcome.SUCCESS, "company: " + oldCompanyId + " -> " + newCompanyId + "; reason: " + reason);
+        return condominium;
+    }
+
     /** Texto curto com o antes e o depois do que mudou (só nome e CNPJ de pessoa jurídica, nunca dado de morador). */
     private static String changes(String oldName, String newName, String oldTaxId, String newTaxId) {
         StringBuilder sb = new StringBuilder();

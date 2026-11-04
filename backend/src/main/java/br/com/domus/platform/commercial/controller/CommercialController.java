@@ -71,6 +71,13 @@ public class CommercialController {
     }
 
     /**
+     * @param companyId empresa operadora que passa a ser a dona do condomínio
+     * @param reason    motivo, registrado na auditoria (sem dado pessoal)
+     */
+    public record TransferCondominiumRequest(@NotNull UUID companyId, @NotBlank @Size(min = 5, max = 200) String reason) {
+    }
+
+    /**
      * @param operatorCompanyId empresa operadora responsável; validada contra as associações do chamador
      * @param name              nome do condomínio
      * @param taxId             CNPJ do condomínio, opcional
@@ -199,6 +206,13 @@ public class CommercialController {
                                                  @Valid @RequestBody UpdateCondominiumRequest request) {
         return CondominiumResponse.from(service.updateCondominium(condominiumId, request.name().trim(),
                 request.taxId() == null ? null : request.taxId().trim()));
+    }
+
+    /** Atende `POST /condominiums/{condominiumId}/transfer`: só a plataforma passa o condomínio para outra empresa operadora. */
+    @PostMapping("/condominiums/{condominiumId}/transfer")
+    public CondominiumResponse transferCondominium(@PathVariable UUID condominiumId,
+                                                   @Valid @RequestBody TransferCondominiumRequest request) {
+        return CondominiumResponse.from(service.transferCondominium(condominiumId, request.companyId(), request.reason().trim()));
     }
 
     /**

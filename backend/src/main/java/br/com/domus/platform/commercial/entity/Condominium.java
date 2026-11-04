@@ -17,7 +17,7 @@ public class Condominium {
     @Id
     private UUID id;
 
-    @Column(name = "operator_company_id", nullable = false, updatable = false)
+    @Column(name = "operator_company_id", nullable = false)
     private UUID operatorCompanyId;
 
     @Column(nullable = false)
@@ -77,6 +77,11 @@ public class Condominium {
     /** Verdadeiro quando o acesso está suspenso (os registros ficam; só o acesso é desligado). */
     public boolean isSuspended() {
         return SUSPENDED.equals(status);
+    }
+
+    /** Passa o condomínio para outra empresa operadora (a autorização é do serviço; as associações do condomínio não mudam). */
+    public void transferTo(UUID companyId) {
+        this.operatorCompanyId = companyId;
     }
 
     /** Suspende ou reativa; os registros nunca são apagados. */

@@ -12,7 +12,7 @@ import base64, hashlib, html, json, os, re, secrets, subprocess, sys, time
 import http.cookiejar as cookiejar
 import urllib.error, urllib.parse, urllib.request
 
-KC = "http://localhost:8180"
+KC = os.environ.get("KEYCLOAK_URL", "http://localhost:8180")
 API = "http://localhost:8081"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PASSWORD = "Senha-Longa-De-Teste-123"
@@ -153,7 +153,7 @@ env = dict(os.environ, DB_URL=f"jdbc:postgresql://localhost:5433/{VERIFY_DB}", D
            CREDENTIAL_HMAC_SECRET="kc-verify-secret-0123456789-abcdefghijklmnopqr", AGENT_POLICY_MASTER_SECRET="kc-verify-agent-master-0123456789-abcdefghij",
            BOOTSTRAP_PLATFORM_ADMIN_SUBJECT=uid_admin, BOOTSTRAP_PLATFORM_ADMIN_EMAIL=f"plat-admin-{suffix}@example.invalid",
            SPRING_PROFILES_ACTIVE="", PORTARIA_SECURITY_REQUIRE_STAFF_MFA_ROLE="true",
-           PROVISIONER_ENABLED="true", PROVISIONER_BASE_URL=KC, PROVISIONER_CLIENT_SECRET="provisioner_dev_only")  # como em produção
+           PROVISIONER_ENABLED="true", PROVISIONER_BASE_URL=KC, PROVISIONER_CLIENT_SECRET=os.environ.get("PROVISIONER_CLIENT_SECRET", "provisioner_dev_only"))  # como em produção
 log = open(os.path.join(os.environ.get("TMPDIR", "/tmp"), "kc-verify-api.log"), "w")
 proc = subprocess.Popen(["java", "-jar", os.path.join(ROOT, "backend/target/platform-0.1.0-SNAPSHOT.jar")], env=env, stdout=log, stderr=log)
 try:

@@ -128,4 +128,9 @@ header button[aria-pressed="true"] { background: var(--accent-strong); box-shado
   .status-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
   .status-bar .stat { flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; }
   .status-bar .stat strong { font-size: 22px; }
+  /* Lista de condomínios em uma fileira rolável (só ela rola, a página não) e sem os selos de saúde, que ocupavam ~120 px por cartão. */
+  .condos .cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .condos .card { flex: 0 0 auto; min-width: 150px; max-width: 220px; scroll-snap-align: start; padding: 8px 12px; }
+  .condos .card .badge.pending { display: none; }
+  .condos h2 { margin-bottom: 0; }
 }

@@ -1040,7 +1040,7 @@ try:
         mob.get_by_role("button", name=re.compile("Residencial Sol")).click()
         expect(mob.get_by_label("Mesa do condomínio")).to_be_visible()
         top = mob.evaluate("() => document.querySelector('[aria-label=\"Mesa do condomínio\"]').getBoundingClientRect().top + window.scrollY")
-        check("sem atendimento em andamento, a mesa do condomínio sobe no celular (antes ~800 px; medido 607 px em 2026-11-03: o resto é cabeçalho, resumo e lista de condomínios)", top < 700, f"(topo a {top:.0f} px)")
+        check("sem atendimento em andamento, a mesa do condomínio sobe no celular (antes ~800 px; medido 539 px em 2026-11-03 com a lista de condomínios em fileira única)", top < 600, f"(topo a {top:.0f} px)")
         check("e a fila 'Meus atendimentos' vem depois dela", mob.evaluate(
             "() => document.querySelector('[aria-label=\"Mesa do condomínio\"]').getBoundingClientRect().top"
             " < document.querySelector('[aria-label=\"Meus atendimentos\"]').getBoundingClientRect().top"))

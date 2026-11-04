@@ -38,7 +38,7 @@ administrador da plataforma; o condomínio, o administrador da plataforma ou o d
 | `AGENT_POLICY_MASTER_SECRET` (≥32) | sim | deriva o segredo de assinatura da política de cada agente |
 | `FIELD_ENCRYPTION_KEYS` (`id:base64`, 32 bytes) · `BLIND_INDEX_KEY` (≥32) | sim | criptografia de dados pessoais (ver abaixo) |
 | `FIELD_ENCRYPTION_ACTIVE_KEY_ID` · `FIELD_ENCRYPTION_MIGRATE` | não | chave ativa (padrão: a primeira) · cifra dados legados/rotaciona na partida |
-| `REQUIRE_VALID_CNPJ` (padrão `true` em produção) | não | exige CNPJ de 14 dígitos com verificadores corretos ao cadastrar empresa e condomínio (e guarda só os dígitos); em desenvolvimento e testes aceita identificadores fictícios, mas 14 dígitos sempre são conferidos |
+| `REQUIRE_VALID_CNPJ` (padrão `true` em produção) | não | exige CNPJ de 14 dígitos com verificadores corretos ao cadastrar empresa e condomínio (e guarda só os dígitos); em desenvolvimento e testes aceita identificadores fictícios, mas 14 dígitos sempre são conferidos **Em instalação existente, rode antes `python3 scripts/check-tax-ids.py`** (somente leitura: lista os CNPJs que seriam recusados). |
 | `PROVISIONER_ENABLED` · `PROVISIONER_CLIENT_SECRET` (obrigatório no compose de produção) | não · sim | criação de contas da equipe pela tela (ver "Criar a conta da equipe pela tela") |
 | `DEVICE_HTTP_ALLOWED_HOSTS` | se usar controladora HTTP | anti-SSRF: hosts que a central pode contatar |
 | `BOOTSTRAP_PLATFORM_ADMIN_*` | só na instalação | primeiro administrador |

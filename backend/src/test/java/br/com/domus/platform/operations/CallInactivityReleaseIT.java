@@ -56,6 +56,7 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
     @Autowired OperationsService operations;
 
     UUID condo;
+    UUID unitId;
 
     @BeforeAll
     void seed() {
@@ -63,6 +64,7 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
         condo = condominiums.save(new Condominium(c.getId(), "IA Main", null)).getId();
         Block b = blocks.save(new Block(condo, "A"));
         UUID unit = units.save(new Unit(condo, b.getId(), "101")).getId();
+        unitId = unit;
         Resident r = residents.save(new Resident(condo, unit, "ia-res", null, null, ResidentType.OWNER));
         AppUser ru = users.save(new AppUser("ia-res", "ia-res@example.invalid", "ia-res"));
         memberships.save(Membership.forResident(ru.getId(), condo, r.getId()));
@@ -173,6 +175,26 @@ class CallInactivityReleaseIT extends AbstractIntegrationTest {
         operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).minusMillis(500));
         assertThat(statusOf(again)).isEqualTo("ASSIGNED");
         mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + again + "/close").with(as("ia-op1")));
+        drainQueue();
+    }
+
+    @Test
+    void openingAnIncidentOrAskingAVisitAuthorizationOnTheCallRenewsItsDeadline() throws Exception {
+        drainQueue();
+        String id = ordinaryCallClaimedBy("ia-op1");
+        Thread.sleep(1200);
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/incidents").with(as("ia-op1")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"callId\":\"" + id + "\",\"severity\":\"LOW\",\"title\":\"Teste\"}")).andExpect(status().isCreated());
+        operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).minusMillis(500));
+        assertThat(statusOf(id)).as("a ocorrência na chamada renovou o prazo").isEqualTo("ASSIGNED");
+
+        Thread.sleep(1200);
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/visit-requests").with(as("ia-op1")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"unitId\":\"" + unitId + "\",\"visitorName\":\"Visitante\",\"kind\":\"VISITOR\",\"callId\":\"" + id + "\"}"))
+                .andExpect(status().isCreated());
+        operations.releaseInactiveCalls(Instant.now().plus(Duration.ofMinutes(5)).minusMillis(500));
+        assertThat(statusOf(id)).as("o pedido de autorização renovou o prazo").isEqualTo("ASSIGNED");
+        mvc.perform(post("/api/v1/condominiums/" + condo + "/calls/" + id + "/close").with(as("ia-op1")));
         drainQueue();
     }
 

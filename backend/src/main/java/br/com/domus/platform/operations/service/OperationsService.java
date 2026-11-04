@@ -454,6 +454,7 @@ public class OperationsService implements OperatorCallReleaser {
         if (callId != null) {
             calls.findByIdAndCondominiumId(callId, condominiumId)
                     .orElseThrow(() -> new NotFoundException("Call not found"));
+            touchCall(condominiumId, callId, actor.userId());
         }
         Incident incident = incidents.save(new Incident(condominiumId, callId, severity, title, description,
                 actor.userId(), now()));

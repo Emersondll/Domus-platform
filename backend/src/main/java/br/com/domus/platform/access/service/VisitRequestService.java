@@ -6,6 +6,7 @@ import br.com.domus.platform.access.repository.AccessAttemptRepository;
 import br.com.domus.platform.access.repository.VisitRequestRepository;
 import br.com.domus.platform.commercial.service.CommercialService;
 import br.com.domus.platform.notifications.service.NotificationService;
+import br.com.domus.platform.operations.service.OperationsService;
 import br.com.domus.platform.residents.repository.ResidentRepository;
 import br.com.domus.platform.shared.audit.AuditOutcome;
 import br.com.domus.platform.shared.audit.AuditService;
@@ -46,6 +47,7 @@ public class VisitRequestService {
     private final AuditService audit;
     private final AccessAttemptRepository attempts;
     private final VisitSnapshotService snapshots;
+    private final OperationsService operations;
     private final Clock clock;
 
     /** Construtor de VisitRequestService; recebe as dependências por injeção. */
@@ -53,7 +55,7 @@ public class VisitRequestService {
                                VisitSnapshotService snapshots,
                                CommercialService commercial,
                                ResidentRepository residents, NotificationService notifications,
-                               AccessService access, AuditService audit, Clock clock) {
+                               AccessService access, AuditService audit, OperationsService operations, Clock clock) {
         this.requests = requests;
         this.attempts = attempts;
         this.snapshots = snapshots;
@@ -62,6 +64,7 @@ public class VisitRequestService {
         this.notifications = notifications;
         this.access = access;
         this.audit = audit;
+        this.operations = operations;
         this.clock = clock;
     }
 
@@ -85,6 +88,9 @@ public class VisitRequestService {
                 actor.userId(), now, now.plus(RESPONSE_WINDOW)));
         audit.record(actor.userId(), null, condominiumId, "visit.request", "visit_request",
                 request.getId().toString(), AuditOutcome.SUCCESS);
+        if (callId != null) {
+            operations.touchCall(condominiumId, callId, actor.userId()); // pedir autorização é presença: renova o prazo da chamada
+        }
         if (snapshotId != null) {
             snapshots.attach(condominiumId, snapshotId, request.getId(), actor.userId());
         }

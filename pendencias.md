@@ -22,6 +22,16 @@ Rodada de 2026-11-03: todos os itens abaixo foram feitos; o que sobra de cada um
 | **Imagens de contêiner** | Varredura repetida (`scripts/scan-images.sh`, resultado em `docs/security.md`). Ainda há achados em `postgres:17` (2 CRIT/87 HIGH), `caddy:2` (1/9) e `mediamtx:1.15.1` (1/45) **sem correção aplicada**: as tags móveis mais novas de Caddy e Postgres têm os mesmos números hoje; trocar versão exige reteste da pilha. |
 | **CNPJ em produção** | `REQUIRE_VALID_CNPJ` (ligado em produção) recusa CNPJ fictício: rode `python3 scripts/check-tax-ids.py` (somente leitura) antes de ligar numa instalação existente; no banco de desenvolvimento ele aponta os 7 cadastros de teste, como esperado. |
 
+### A2. Achados da varredura de 2026-11-04 (só leitura de código e configuração; nada reproduzido em execução)
+| ID | Gravidade | Achado | O que fazer |
+|---|---|---|---|
+| **B1** | Alta (provável) | **Vídeo ao vivo provavelmente não funciona em produção.** O `deploy/caddy/Caddyfile` não publica host de mídia, e o CSP (`default-src 'self'`, `connect-src` só com o `auth`, sem `media-src` com `blob:`) bloquearia a playlist do `MEDIA_PUBLIC_HLS_URL` (outro host) e a reprodução do hls.js por `blob:`. O e2e passa porque roda no Vite, sem esse CSP e sem o proxy. | Publicar o servidor de mídia por um host no Caddy, ajustar `connect-src` e `media-src`, e rodar um e2e de vídeo com o CSP de produção. |
+| **B2** | Média | **Bloqueio de falhas por IP (`RateLimitFilter`).** Após 10 respostas 401/403 de agente ou dispositivo o IP é bloqueado; como um condomínio costuma sair por um IP só, um equipamento com chave errada pode bloquear o agente de contingência do mesmo condomínio. | Contar falhas por agente ou dispositivo identificado, não só por IP. |
+| **B3** | Média | **Limite de 600 req/min por IP, não por usuário.** Cada painel faz ~80–100 req/min (varredura 5 s, pânico 3 s, sinal de vida); uma central com 6+ operadores no mesmo IP, ou moradores no mesmo NAT, recebe 429, e o painel engole o erro. | Limitar por usuário autenticado (`sub`) no tráfego do painel e do app; subir o limite por IP ou calibrar com medição. |
+| **U5** | Alta (usabilidade) | **Sem push em nenhum canal.** O app do morador só atualiza a cada 5 s com a tela aberta; o pedido de autorização de visita expira em 5 min, e encomenda, mensagem e comunicado só aparecem se o app estiver aberto. | Web Push (VAPID) no app do morador; independe de SMTP. Precisa de decisão sobre texto e opt-in. |
+
+Outros achados da mesma varredura, ainda não registrados como pendência: B4 (`X-Agent-Id` controlado pelo cliente contorna o limite por agente), B5 (chamada devolvida durante conversa longa sem toque no painel), B6 (senha provisória perdida e e-mail já existente no Keycloak sem saída pela tela), B7 (Compose sem `read_only`/`cap_drop`/`no-new-privileges`), B8 (cache do service worker sem versão), U1–U4, U6, U7 e as melhorias propostas.
+
 ### B. Dependem de você (decisão ou texto)
 | Item | O que falta |
 |---|---|
